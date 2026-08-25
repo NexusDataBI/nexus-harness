@@ -34,9 +34,13 @@ def validate_memory_text(text: str) -> None:
 
 
 def validate_memory_record(record: MemoryRecord) -> None:
-    texts = [record.id, record.title, record.body]
+    texts = [record.id, record.title, record.body, record.created_at]
     if record.project_id is not None:
         texts.append(record.project_id)
+    if record.verified_at is not None:
+        texts.append(record.verified_at)
+    if record.valid_at_commit is not None:
+        texts.append(record.valid_at_commit)
     for source in record.sources:
         texts.append(source.kind)
         texts.append(source.ref)

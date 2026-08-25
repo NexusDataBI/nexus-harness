@@ -130,6 +130,30 @@ class MemoryGuardTests(unittest.TestCase):
             self.assertEqual(list(memory_root.glob("*.md")), [])
             self.assertEqual(list(memory_root.glob("*.json")), [])
 
+    def test_write_memory_rejects_secret_in_verified_at_without_persisting(self):
+        secret = "sk-abcdefghijklmnopqrstuvwxyz"
+        record = replace(
+            MemoryDraft(
+                type=MemoryType.COMPONENT,
+                scope=MemoryScope.PROJECT,
+                project_id="repo-1",
+                title="Safe title",
+                body="Safe body",
+            ).to_record(),
+            verified_at=secret,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            with self.assertRaises(MemoryGuardError) as ctx:
+                write_memory(root, record)
+            message = str(ctx.exception)
+            self.assertEqual(message, "memory rejected by guard rule: api_token")
+            self.assertNotIn(secret, message)
+            memory_root = root / ".nexus" / "memory" / "components"
+            self.assertEqual(list(memory_root.glob("*.md")), [])
+            self.assertEqual(list(memory_root.glob("*.json")), [])
+
     def test_write_memory_rejects_secret_in_sidecar_strings(self):
         secret = "sk-abcdefghijklmnopqrstuvwxyz"
         safe = MemoryDraft(
@@ -144,6 +168,8 @@ class MemoryGuardTests(unittest.TestCase):
             replace(safe.to_record(), related_paths=(secret,)),
             replace(safe.to_record(), evidence_ids=(secret,)),
             replace(safe.to_record(), project_id=secret),
+            replace(safe.to_record(), created_at=secret),
+            replace(safe.to_record(), valid_at_commit=secret),
             replace(
                 safe.to_record(),
                 sources=(MemorySource(kind=secret, ref="safe-ref"),),
