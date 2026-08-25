@@ -1,0 +1,23 @@
+schema_version = 1
+
+[weights]
+same_project = 20
+exact_path = 16
+path_prefix = 10
+exact_tag = 8
+exact_tag_cap = 24
+title_token = 5
+title_token_cap = 20
+body_token = 2
+body_token_cap = 20
+requested_type = 10
+verified_fresh = 12
+verified_unknown = 4
+stale = -30
+
+[capsule]
+hot_max_chars = 6000
+warm_max_chars = 10000
+max_items = 16
+max_item_chars = 1800
+include_stale_warnings = true

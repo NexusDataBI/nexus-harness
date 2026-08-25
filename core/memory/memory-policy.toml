@@ -1,0 +1,18 @@
+schema_version = 1
+
+auto_inject_statuses = ["VERIFIED"]
+stale_warning_enabled = true
+candidate_auto_inject = false
+confidential_auto_inject = false
+
+[promotion]
+decision_sources = ["approved_spec", "adr", "explicit_user_decision", "accepted_issue_or_pr_decision"]
+invariant_sources = ["approved_spec", "policy", "deterministic_evidence", "adr"]
+component_sources = ["canonical_doc", "deterministic_evidence"]
+lesson_sources = ["bug_card", "incident", "review_finding"]
+incident_sources = ["incident", "github_issue"]
+pattern_min_independent_sources = 2
+
+[storage]
+project_relative_path = ".nexus/memory"
+atomic_pair_writes = true

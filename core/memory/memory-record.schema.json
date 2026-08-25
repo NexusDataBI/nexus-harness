@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Nexus Durable Memory Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "type",
+    "scope",
+    "project_id",
+    "title",
+    "body",
+    "status",
+    "confidence",
+    "created_at",
+    "verified_at",
+    "valid_at_commit",
+    "sources",
+    "evidence_ids",
+    "related_paths",
+    "tags",
+    "supersedes",
+    "sensitivity"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^mem-[a-z]+-[a-z0-9-]+-[0-9a-f]{8}$"
+    },
+    "type": {
+      "enum": [
+        "decision",
+        "invariant",
+        "component",
+        "pattern",
+        "lesson",
+        "incident"
+      ]
+    },
+    "scope": {
+      "enum": ["project", "portfolio"]
+    },
+    "project_id": {
+      "type": ["string", "null"]
+    },
+    "title": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "CANDIDATE",
+        "VERIFIED",
+        "STALE",
+        "SUPERSEDED",
+        "REJECTED",
+        "ARCHIVED"
+      ]
+    },
+    "confidence": {
+      "enum": ["LOW", "MEDIUM", "HIGH"]
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "verified_at": {
+      "type": ["string", "null"]
+    },
+    "valid_at_commit": {
+      "type": ["string", "null"]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "related_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supersedes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sensitivity": {
+      "enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL"]
+    }
+  }
+}
