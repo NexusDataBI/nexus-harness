@@ -1,0 +1,18 @@
+[canonical]
+generated_outputs_are_not_sources = true
+manual_edit_of_generated_dist_forbidden = true
+
+[isolation]
+significant_mutations_use_worktree = true
+preserve_unrelated_user_changes = true
+
+[deny_patterns]
+relative_globs = [
+  "dist/**",
+  "inputs/**",
+  "legacy/**",
+]
+
+[production]
+global_production_paths_forbidden = true
+implicit_production_write_forbidden = true

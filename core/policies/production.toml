@@ -1,0 +1,14 @@
+[deploy]
+immutable_artifacts = true
+identify_by_digest = true
+mutable_latest_tag_forbidden = true
+deploy_only_source_pr_forbidden = true
+requires_explicit_gate = true
+
+[planes]
+ci_and_production_credentials_separated = true
+production_runtime_isolated_per_client = true
+ci_jobs_have_no_standing_production_secrets = true
+
+[build]
+build_once_then_promote_same_digest = true

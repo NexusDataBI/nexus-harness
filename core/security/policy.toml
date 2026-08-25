@@ -1,0 +1,13 @@
+scanner = "trivy"
+single_primary_scanner = true
+
+[coverage]
+source_dependency_vulnerabilities = true
+secrets = true
+dockerfile_iac_misconfiguration = true
+image_vulnerability_scan = true
+sbom = true
+
+[blocking]
+critical_vulnerability_blocks = true
+high_vulnerability_with_available_fix_blocks = true

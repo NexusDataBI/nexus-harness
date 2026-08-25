@@ -1,0 +1,48 @@
+[project]
+name = "Nexus Engineering"
+id_stored_in_user_configuration = true
+
+[fields]
+names = [
+  "Project",
+  "Type",
+  "Status",
+  "Priority",
+  "Area",
+  "Client",
+  "Iteration",
+  "Risk",
+  "Environment",
+  "Quality",
+  "Security",
+  "Target date",
+]
+
+[status]
+values = [
+  "Inbox",
+  "Planned",
+  "Ready",
+  "In Progress",
+  "Review",
+  "Blocked",
+  "Verifying",
+  "Done",
+]
+
+[status_from_lifecycle]
+0 = "Inbox"
+1 = "Planned"
+2 = "Ready"
+3 = "Ready"
+4 = "Ready"
+5 = "In Progress"
+6 = "Verifying"
+7 = "Review"
+8 = "Done"
+9 = "Done"
+blocked = "Blocked"
+
+[source_of_truth]
+lifecycle_events_update_status = true
+board_is_not_a_separate_manual_truth = true

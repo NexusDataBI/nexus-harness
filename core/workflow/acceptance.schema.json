@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.local/schemas/acceptance.schema.json",
+  "title": "AcceptanceCriterion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "statement", "status"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "statement": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["FAIL", "PASS"] },
+    "verification": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "kind": { "type": "string" },
+        "command": { "type": "string" }
+      }
+    },
+    "evidence": { "type": ["string", "null"] }
+  }
+}

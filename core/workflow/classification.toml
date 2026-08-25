@@ -1,0 +1,27 @@
+[intent]
+values = ["inspect", "change", "debug", "design", "review", "migrate", "ship"]
+
+[scope]
+values = ["trivial", "bounded", "architectural", "long_horizon"]
+
+[domains]
+values = ["frontend", "backend", "database", "security", "infra", "docs", "tooling"]
+
+[risk]
+values = ["low", "medium", "high", "critical"]
+
+[environment]
+values = ["local", "staging", "production"]
+
+[quality_profile]
+values = ["light", "standard", "strict", "critical"]
+
+[also_resolve]
+items = [
+  "new_task_or_continuation",
+  "repository_identity",
+  "project_identity",
+  "required_approvals",
+  "issue_tracking_requirement",
+  "likely_graph_nodes",
+]

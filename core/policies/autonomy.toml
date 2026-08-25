@@ -1,0 +1,21 @@
+[local]
+high_autonomy = true
+may_run_deterministic_checks = true
+may_mutate_isolated_worktree = true
+
+[production]
+never_implicit = true
+requires_explicit_gate = true
+credentials_separated_from_ci = true
+
+[human_attention]
+reserved_for = [
+  "judgment",
+  "architecture",
+  "risk_acceptance",
+  "production_gates",
+]
+not_for = [
+  "routine_lint",
+  "routine_test_babysitting",
+]

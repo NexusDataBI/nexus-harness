@@ -1,0 +1,22 @@
+promote_improvements = true
+never_weaken_policy_or_baseline = true
+stale_baseline_rejected_when_improvement_required = true
+required_metric_failure_overrides_aggregate = true
+
+[modes]
+absolute = "must_satisfy_fixed_condition"
+ratchet = "maintain_or_improve_never_regress"
+budget = "tolerance_based_for_noisy_metrics"
+
+[defaults]
+build_type_errors = "absolute"
+failing_tests = "absolute"
+critical_security = "absolute"
+coverage = "ratchet"
+lint_warnings = "ratchet"
+duplication = "ratchet"
+performance = "budget"
+
+[baseline]
+path = ".nexus/quality/baseline.json"
+update_in_same_pr_when_materially_improved = true

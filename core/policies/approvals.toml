@@ -1,0 +1,17 @@
+[policy]
+description = "Approvals are required by capability and risk, not by model identity."
+
+[required]
+architecture_or_public_api = true
+broad_restructure = true
+production_environment = true
+authentication_or_schema_production_change = true
+destructive_action = true
+significant_scope_change = true
+material_external_cost_or_risk = true
+major_dependency_upgrade = true
+new_external_service = true
+
+[shipping]
+requires_request_or_explicit_approval = true
+implementation_is_not_shipping = true

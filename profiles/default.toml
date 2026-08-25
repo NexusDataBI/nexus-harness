@@ -1,0 +1,15 @@
+[profile]
+name = "default"
+quality_profile = "standard"
+workflow_mandatory = true
+
+[runtime]
+prefer_local_execution = true
+ci_compute = "self_hosted"
+production_access = "never_implicit"
+
+[checks]
+format_lint = "biome"
+unit_integration = "vitest"
+e2e_visual = "playwright"
+security = "trivy"

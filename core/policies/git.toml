@@ -1,0 +1,16 @@
+[worktree]
+required_for_significant_mutations = true
+record_base_commit = true
+non_git_environment_requires_justified_skip = true
+
+[history]
+conversation_is_not_operational_state = true
+authoritative_state = ["task_state", "git", "issues", "pull_requests", "evidence"]
+
+[branch]
+no_force_push_on_shared_branches = true
+every_code_changing_pr_references_issue = true
+
+[ship]
+separate_from_implementation = true
+commit_only_when_requested_or_approved = true

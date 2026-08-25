@@ -1,0 +1,31 @@
+mandatory = true
+
+[stages]
+0 = "classify"
+1 = "acceptance"
+2 = "explore"
+3 = "design_plan"
+4 = "worktree_isolation"
+5 = "implement"
+6 = "verify_quality_security"
+7 = "fresh_review"
+8 = "done_gate"
+9 = "ship"
+
+[stage_status]
+allowed = [
+  "PENDING",
+  "PASS",
+  "FAIL",
+  "SKIP",
+  "BLOCKED",
+  "WAITING_APPROVAL",
+]
+
+[parallelism]
+governance_order_does_not_imply_serial_execution = true
+dag_parallelism_allowed_inside_a_stage = true
+
+[read_only]
+may_skip_mutation_stages = true
+skip_requires_recorded_reason = true

@@ -1,0 +1,32 @@
+one_primary_tool_per_responsibility = true
+prefer_existing = true
+prefer_free = true
+prefer_open_source = true
+prefer_local_execution = true
+
+[baseline]
+work_tracking = "github"
+product_analytics = "posthog_cloud"
+format_lint = "biome"
+unit_integration = "vitest"
+e2e_visual = "playwright"
+security = "trivy"
+ci_compute = "self_hosted"
+
+[not_baseline]
+tools = [
+  "jira",
+  "linear",
+  "trello",
+  "slack",
+  "sentry",
+  "datadog",
+  "new_relic",
+  "grafana",
+  "codecov",
+  "semgrep",
+  "gitleaks",
+  "knip",
+  "stryker",
+  "archcontract",
+]

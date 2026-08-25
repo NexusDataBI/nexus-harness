@@ -1,0 +1,33 @@
+[profiles.light]
+format_lint = true
+unit_tests = true
+coverage = false
+e2e_visual = false
+security_scan = false
+
+[profiles.standard]
+format_lint = true
+unit_tests = true
+coverage = true
+e2e_visual = false
+security_scan = true
+typecheck_when_configured = true
+
+[profiles.strict]
+format_lint = true
+unit_tests = true
+coverage = true
+e2e_visual = true
+security_scan = true
+typecheck_when_configured = true
+fresh_review = true
+
+[profiles.critical]
+format_lint = true
+unit_tests = true
+coverage = true
+e2e_visual = true
+security_scan = true
+typecheck_when_configured = true
+fresh_review = true
+production_approvals = true

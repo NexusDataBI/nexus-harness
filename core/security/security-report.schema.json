@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.local/schemas/security-report.schema.json",
+  "title": "SecurityReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gate", "counts", "findings"],
+  "properties": {
+    "gate": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "scanner": { "type": "string", "const": "trivy" },
+    "diff_hash": { "type": ["string", "null"] },
+    "counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 },
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "severity"],
+      "properties": {
+        "id": { "type": "string" },
+        "target": { "type": "string" },
+        "severity": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["vulnerability", "secret", "misconfiguration"]
+        },
+        "fixed_version": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

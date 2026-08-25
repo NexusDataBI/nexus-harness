@@ -1,0 +1,8 @@
+[write_write]
+concurrent_writers_of_same_resource_forbidden = true
+merge_strategy_required_to_run_concurrently = true
+
+[serialize_by_default]
+shared_schema = true
+shared_config = true
+migrations = true

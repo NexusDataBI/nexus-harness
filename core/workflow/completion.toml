@@ -1,0 +1,25 @@
+[gate]
+blocks_false_done = true
+shipping_is_not_implied = true
+
+[require]
+issue_linked_when_tracking_required = true
+acceptance_criteria_pass = true
+evidence_fresh_for_current_diff = true
+verify_quality_security_pass = true
+review_pass_or_justified_skip = true
+zero_confirmed_blocker_or_high_findings = true
+verified_reviewed_diff_hash_equals_current_diff = true
+required_approvals_recorded = true
+
+[result]
+ready = "READY_TO_SHIP"
+done_without_ship = "DONE_NOT_SHIPPED"
+
+[acceptance]
+initial_status = "FAIL"
+promote_only_from_fresh_recorded_evidence = true
+
+[ship]
+only_when_requested_or_explicitly_approved = true
+production_deploy_is_explicit_gate = true

@@ -1,0 +1,8 @@
+[order]
+targets = ["local", "self_hosted", "github_hosted"]
+github_hosted_only_by_exception = true
+
+[billing]
+graph_node_does_not_imply_actions_job = true
+batch_cheap_nodes = true
+target_github_hosted_minutes_per_normal_pr = 0

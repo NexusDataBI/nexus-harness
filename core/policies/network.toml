@@ -1,0 +1,13 @@
+[preference]
+prefer_local_execution = true
+self_hosted_ci_before_hosted_compute = true
+
+[production]
+never_implicit = true
+requires_explicit_approval = true
+
+[external_service]
+requires_uncovered_capability = true
+requires_material_benefit = true
+requires_evidence_existing_tools_insufficient = true
+requires_explicit_approval = true

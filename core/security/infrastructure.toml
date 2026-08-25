@@ -1,0 +1,20 @@
+[container]
+root_user_forbidden_unless_justified = true
+privileged_forbidden = true
+secrets_in_image_forbidden = true
+mutable_production_tag_forbidden = true
+healthcheck_required = true
+resource_limits_required = true
+prefer_rootless = true
+
+[vm]
+ssh_keys_only = true
+root_ssh_disabled = true
+password_ssh_disabled = true
+firewall_default_deny = true
+production_database_not_publicly_exposed = true
+security_updates_required = true
+backup_freshness_required = true
+restore_drill_status_required = true
+health_checks_required = true
+per_client_credentials = true

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.local/schemas/quality-report.schema.json",
+  "title": "QualityReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gate", "metrics"],
+  "properties": {
+    "gate": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "profile": {
+      "type": "string",
+      "enum": ["light", "standard", "strict", "critical"]
+    },
+    "diff_hash": { "type": ["string", "null"] },
+    "metrics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/metric" }
+    }
+  },
+  "$defs": {
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "mode", "status"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "current": { "type": ["number", "integer", "boolean"] },
+        "baseline": { "type": ["number", "integer", "boolean", "null"] },
+        "mode": { "type": "string", "enum": ["absolute", "ratchet", "budget"] },
+        "direction": { "type": "string", "enum": ["lower", "higher"] },
+        "required": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    }
+  }
+}

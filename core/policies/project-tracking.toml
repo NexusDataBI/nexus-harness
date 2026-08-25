@@ -1,0 +1,23 @@
+[system_of_record]
+work = "github"
+product_runtime = "posthog_cloud"
+
+[required_before_implement]
+intents = ["change", "debug", "migrate"]
+implementation_bearing_design = true
+stage = 5
+
+[not_required_by_default]
+intents = ["inspect"]
+read_only_research = true
+read_only_explanation = true
+unless_explicitly_requested = true
+
+[pull_request]
+must_reference_issue = true
+draft_allowed_before_green = true
+
+[hierarchy]
+project_then_epic_then_feature_or_story_or_bug_then_task = true
+use_only_when_it_reduces_ambiguity = true
+bounded_bug_may_be_single_issue = true

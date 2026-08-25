@@ -1,0 +1,12 @@
+[weights]
+token_cost = true
+wall_time = true
+cpu_time = true
+github_hosted_minutes = true
+risk = true
+blast_radius = true
+confidence = true
+
+[invalidation]
+overlap_on_affected_paths_returns_pending = true
+stale_evidence_ids_are_cleared = true

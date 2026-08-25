@@ -1,0 +1,19 @@
+[item]
+required_fields = [
+  "command",
+  "exit_code",
+  "timestamp",
+  "base_commit",
+  "diff_hash",
+  "artifact_path",
+  "limitation",
+]
+
+[freshness]
+bound_to_current_diff_hash = true
+relevant_code_change_invalidates = true
+conversation_history_is_not_evidence = true
+
+[promotion]
+acceptance_requires_exit_code_zero = true
+acceptance_requires_matching_diff_hash = true
