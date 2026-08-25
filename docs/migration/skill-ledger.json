@@ -1,0 +1,923 @@
+[
+  {
+    "decision": "upstream",
+    "name": "ask-matt",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/ask-matt/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/ask-matt/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "aws-skills",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/aws-skills/SKILL.md"
+    ]
+  },
+  {
+    "decision": "obsolete",
+    "name": "babysitting-prs",
+    "relationship": "unique",
+    "sources": [
+      "claude/scheduled-tasks/babysitting-prs/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "banner-design",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/banner-design/SKILL.md",
+      "claude/skills/banner-design/SKILL.md",
+      "cursor/skills/banner-design/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "baseline-ui",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/baseline-ui/SKILL.md",
+      "claude/skills/baseline-ui/SKILL.md",
+      "codex/skills/baseline-ui/SKILL.md"
+    ]
+  },
+  {
+    "decision": "upstream",
+    "name": "batch-grill-me",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/batch-grill-me/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/batch-grill-me/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "better-accessibility",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/better-accessibility/SKILL.md",
+      "claude/skills/better-accessibility/SKILL.md"
+    ],
+    "target": "skills/accessibility/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "better-colors",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/better-colors/SKILL.md",
+      "claude/skills/better-colors/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "better-interface",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/better-interface/SKILL.md",
+      "claude/skills/better-interface/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "better-layout",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/better-layout/SKILL.md",
+      "claude/skills/better-layout/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "better-typography",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/better-typography/SKILL.md",
+      "claude/skills/better-typography/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "better-ui",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/better-ui/SKILL.md",
+      "claude/skills/better-ui/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "better-writing",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/better-writing/SKILL.md",
+      "claude/skills/better-writing/SKILL.md",
+      "codex/skills/better-writing/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "brand",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/brand/SKILL.md",
+      "claude/skills/brand/SKILL.md",
+      "cursor/skills/brand/SKILL.md"
+    ]
+  },
+  {
+    "decision": "obsolete",
+    "name": "calibracao-score-engajamento",
+    "relationship": "unique",
+    "sources": [
+      "claude/scheduled-tasks/calibracao-score-engajamento/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "changelog-generator",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/changelog-generator/SKILL.md"
+    ]
+  },
+  {
+    "decision": "merge",
+    "name": "code-review",
+    "rationale": "Claude and Codex copies differ; merge unique review heuristics into fresh Stage 7 reviewer agents, do not delete either source.",
+    "relationship": "divergent",
+    "sources": [
+      "claude/skills/code-review/SKILL.md",
+      "codex/skills/code-review/SKILL.md"
+    ],
+    "target": "skills/nexus-quality/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "codebase-design",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/codebase-design/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/codebase-design/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "content-research-writer",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/content-research-writer/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "context-mode",
+    "relationship": "unique",
+    "sources": [
+      "claude/tools/context-mode/skills/context-mode/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "ctx-cloud-setup",
+    "relationship": "unique",
+    "sources": [
+      "claude/tools/context-mode/skills/ctx-cloud-setup/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "ctx-cloud-status",
+    "relationship": "unique",
+    "sources": [
+      "claude/tools/context-mode/skills/ctx-cloud-status/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "ctx-doctor",
+    "relationship": "unique",
+    "sources": [
+      "claude/tools/context-mode/skills/ctx-doctor/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "ctx-stats",
+    "relationship": "unique",
+    "sources": [
+      "claude/tools/context-mode/skills/ctx-stats/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "ctx-upgrade",
+    "relationship": "unique",
+    "sources": [
+      "claude/tools/context-mode/skills/ctx-upgrade/SKILL.md"
+    ]
+  },
+  {
+    "decision": "merge",
+    "name": "deploy",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/deploy/SKILL.md",
+      "claude/skills/deploy/SKILL.md",
+      "codex/skills/deploy/SKILL.md"
+    ],
+    "target": "skills/nexus-ship/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "design",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/design/SKILL.md",
+      "claude/skills/design/SKILL.md",
+      "cursor/skills/design/SKILL.md"
+    ]
+  },
+  {
+    "decision": "upstream",
+    "name": "design-motion-principles",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/design-motion-principles/SKILL.md",
+      "claude/skills/design-motion-principles/SKILL.md",
+      "codex/skills/design-motion-principles/SKILL.md"
+    ],
+    "target": "upstream/design-motion-principles/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "design-system",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/design-system/SKILL.md",
+      "claude/skills/design-system/SKILL.md",
+      "cursor/skills/design-system/SKILL.md"
+    ]
+  },
+  {
+    "decision": "merge",
+    "name": "design-taste-frontend",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/design-taste-frontend/SKILL.md",
+      "claude/skills/design-taste-frontend/SKILL.md",
+      "codex/skills/design-taste-frontend/SKILL.md"
+    ],
+    "target": "skills/nexus-frontend/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "diagnosing-bugs",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/diagnosing-bugs/SKILL.md"
+    ],
+    "target": "upstream/superpowers/systematic-debugging/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "domain-modeling",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/domain-modeling/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/domain-modeling/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "explain-interface",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/explain-interface/SKILL.md",
+      "claude/skills/explain-interface/SKILL.md"
+    ],
+    "target": "skills/nexus-frontend/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "extract-design-system",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/extract-design-system/SKILL.md",
+      "claude/skills/extract-design-system/SKILL.md",
+      "codex/skills/extract-design-system/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "feature-sliced-design",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/feature-sliced-design/SKILL.md",
+      "claude/skills/feature-sliced-design/SKILL.md",
+      "codex/skills/feature-sliced-design/SKILL.md"
+    ]
+  },
+  {
+    "decision": "merge",
+    "name": "fixing-accessibility",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/fixing-accessibility/SKILL.md",
+      "claude/skills/fixing-accessibility/SKILL.md",
+      "codex/skills/fixing-accessibility/SKILL.md"
+    ],
+    "target": "skills/accessibility/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "fixing-motion-performance",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/fixing-motion-performance/SKILL.md",
+      "claude/skills/fixing-motion-performance/SKILL.md",
+      "codex/skills/fixing-motion-performance/SKILL.md"
+    ]
+  },
+  {
+    "decision": "merge",
+    "name": "frontend-redesign-orchestrator",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/frontend-redesign-orchestrator/SKILL.md",
+      "claude/skills/frontend-redesign-orchestrator/SKILL.md",
+      "codex/skills/frontend-redesign-orchestrator/SKILL.md"
+    ],
+    "target": "skills/nexus-frontend/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "graphify",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/graphify/SKILL.md",
+      "claude/skills/graphify/SKILL.md",
+      "codex/skills/graphify/SKILL.md"
+    ]
+  },
+  {
+    "decision": "upstream",
+    "name": "grill-me",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "claude/skills/grill-me/SKILL.md",
+      "codex/skills/grill-me/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/grill-me/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "grill-with-docs",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "claude/skills/grill-with-docs/SKILL.md",
+      "codex/skills/grill-with-docs/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/grill-with-docs/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "grilling",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/grilling/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/grilling/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "handoff",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/handoff/SKILL.md"
+    ],
+    "target": "skills/nexus-handoff/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "impeccable",
+    "rationale": "Cursor copy adds license metadata and runtime path variants versus the shared agents/claude/codex hash; keep all sources and lock the retained upstream Impeccable tree.",
+    "relationship": "divergent",
+    "sources": [
+      "agents-skills/impeccable/SKILL.md",
+      "claude/skills/impeccable/SKILL.md",
+      "codex/skills/impeccable/SKILL.md",
+      "cursor/skills/impeccable/SKILL.md"
+    ],
+    "target": "upstream/impeccable/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "implement",
+    "rationale": "Claude copy is longer than Codex; retain both as Matt Pocock upstream primitives and extract unique guidance before dropping an entrypoint.",
+    "relationship": "divergent",
+    "sources": [
+      "claude/skills/implement/SKILL.md",
+      "codex/skills/implement/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/implement/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "improve-codebase-architecture",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/improve-codebase-architecture/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/improve-codebase-architecture/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "interface-review",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/interface-review/SKILL.md",
+      "claude/skills/interface-review/SKILL.md",
+      "codex/skills/interface-review/SKILL.md"
+    ],
+    "target": "skills/nexus-frontend/SKILL.md"
+  },
+  {
+    "decision": "obsolete",
+    "name": "limpeza-diaria-segura-mac",
+    "relationship": "unique",
+    "sources": [
+      "claude/scheduled-tasks/limpeza-diaria-segura-mac/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "napkin",
+    "rationale": "Claude copy is localized; agents-skills and Codex share a hash. Keep all sources as a focused reference, not a competing canonical skill.",
+    "relationship": "divergent",
+    "sources": [
+      "agents-skills/napkin/SKILL.md",
+      "claude/skills/napkin/SKILL.md",
+      "codex/skills/napkin/SKILL.md"
+    ]
+  },
+  {
+    "decision": "canonicalize",
+    "name": "nexus-frontend",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/nexus-frontend/SKILL.md",
+      "claude/skills/nexus-frontend/SKILL.md",
+      "codex/skills/nexus-frontend/SKILL.md"
+    ],
+    "target": "skills/nexus-frontend/SKILL.md"
+  },
+  {
+    "decision": "canonicalize",
+    "name": "nexus-ship",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "claude/skills/nexus-ship/SKILL.md",
+      "codex/skills/nexus-ship/SKILL.md",
+      "cursor/skills/nexus-ship/SKILL.md"
+    ],
+    "target": "skills/nexus-ship/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "owasp-security",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/owasp-security/SKILL.md"
+    ]
+  },
+  {
+    "decision": "upstream",
+    "name": "prototype",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/prototype/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/prototype/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "research",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/research/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/research/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "resolving-merge-conflicts",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/resolving-merge-conflicts/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/resolving-merge-conflicts/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "root-cause-tracing",
+    "rationale": "Claude copy is localized; agents-skills and Codex share a hash. Merge unique tracing heuristics into systematic-debugging plus root-cause-analyst; do not delete either source.",
+    "relationship": "divergent",
+    "sources": [
+      "agents-skills/root-cause-tracing/SKILL.md",
+      "claude/skills/root-cause-tracing/SKILL.md",
+      "codex/skills/root-cause-tracing/SKILL.md"
+    ],
+    "target": "agents/root-cause-analyst.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "setup-matt-pocock-skills",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/setup-matt-pocock-skills/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/setup-matt-pocock-skills/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "skills-pack",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "slides",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/slides/SKILL.md",
+      "claude/skills/slides/SKILL.md",
+      "cursor/skills/slides/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "software-architecture",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/software-architecture/SKILL.md"
+    ]
+  },
+  {
+    "decision": "merge",
+    "name": "source-command-branch",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/source-command-branch/SKILL.md",
+      "codex/skills/source-command-branch/SKILL.md"
+    ],
+    "target": "skills/nexus-ship/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "source-command-commit",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/source-command-commit/SKILL.md",
+      "codex/skills/source-command-commit/SKILL.md"
+    ],
+    "target": "skills/nexus-ship/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "source-command-plan",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/source-command-plan/SKILL.md",
+      "codex/skills/source-command-plan/SKILL.md"
+    ],
+    "target": "skills/nexus-workflow/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "source-command-pr",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/source-command-pr/SKILL.md",
+      "codex/skills/source-command-pr/SKILL.md"
+    ],
+    "target": "skills/nexus-ship/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "source-command-push",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/source-command-push/SKILL.md",
+      "codex/skills/source-command-push/SKILL.md"
+    ],
+    "target": "skills/nexus-ship/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "source-command-review",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/source-command-review/SKILL.md",
+      "codex/skills/source-command-review/SKILL.md"
+    ],
+    "target": "skills/nexus-quality/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "subagent-driven-development",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/subagent-driven-development/SKILL.md"
+    ],
+    "target": "upstream/superpowers/subagent-driven-development/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "systematic-debugging",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/systematic-debugging/SKILL.md"
+    ],
+    "target": "upstream/superpowers/systematic-debugging/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "tdd",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/tdd/SKILL.md"
+    ],
+    "target": "upstream/superpowers/test-driven-development/SKILL.md"
+  },
+  {
+    "decision": "merge",
+    "name": "tdd-workflow",
+    "rationale": "Claude and Codex copies diverge; merge unique Nexus workflow glue into nexus-workflow invoking Superpowers TDD, without deleting sources.",
+    "relationship": "divergent",
+    "sources": [
+      "claude/skills/tdd-workflow/SKILL.md",
+      "codex/skills/tdd-workflow/SKILL.md"
+    ],
+    "target": "skills/nexus-workflow/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "teach",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/teach/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/teach/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "test-driven-development",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/test-driven-development/SKILL.md"
+    ],
+    "target": "upstream/superpowers/test-driven-development/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "to-questionnaire",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/to-questionnaire/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/to-questionnaire/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "to-spec",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "claude/skills/to-spec/SKILL.md",
+      "codex/skills/to-spec/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/to-spec/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "to-tickets",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "claude/skills/to-tickets/SKILL.md",
+      "codex/skills/to-tickets/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/to-tickets/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "token-coach",
+    "relationship": "unique",
+    "sources": [
+      "claude/token-optimizer/skills/token-coach/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "token-optimizer",
+    "rationale": "Claude tree copy differs mainly in frontmatter quoting from the shared agents-skills/Codex hash. Keep all sources as a reference; not a canonical v4 skill.",
+    "relationship": "divergent",
+    "sources": [
+      "agents-skills/token-optimizer/SKILL.md",
+      "claude/token-optimizer/skills/token-optimizer/SKILL.md",
+      "codex/skills/token-optimizer/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "trail-of-bits-security",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/trail-of-bits-security/SKILL.md"
+    ]
+  },
+  {
+    "decision": "upstream",
+    "name": "triage",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/triage/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/triage/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "ui-craft-dense-dashboard",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/ui-craft-dense-dashboard/SKILL.md",
+      "claude/skills/ui-craft-dense-dashboard/SKILL.md",
+      "codex/skills/ui-craft-dense-dashboard/SKILL.md"
+    ]
+  },
+  {
+    "decision": "extract_then_remove_entrypoint",
+    "name": "ui-styling",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/ui-styling/SKILL.md",
+      "claude/skills/ui-styling/SKILL.md",
+      "cursor/skills/ui-styling/SKILL.md"
+    ],
+    "target": "skills/nexus-frontend/SKILL.md"
+  },
+  {
+    "decision": "extract_then_remove_entrypoint",
+    "name": "ui-ux-pro-max",
+    "rationale": "Three distinct hashes (Claude is substantially larger). Extract unique heuristics into nexus-frontend, then remove the broad entrypoint; do not delete any source in this task.",
+    "relationship": "divergent",
+    "sources": [
+      "agents-skills/ui-ux-pro-max/SKILL.md",
+      "claude/skills/ui-ux-pro-max/SKILL.md",
+      "codex/skills/ui-ux-pro-max/SKILL.md",
+      "cursor/skills/ui-ux-pro-max/SKILL.md"
+    ],
+    "target": "skills/nexus-frontend/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "variant",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/variant/SKILL.md",
+      "claude/skills/variant/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "varlock",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/varlock/SKILL.md"
+    ]
+  },
+  {
+    "decision": "upstream",
+    "name": "vercel-composition-patterns",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/vercel-composition-patterns/SKILL.md",
+      "claude/skills/vercel-composition-patterns/SKILL.md",
+      "codex/skills/vercel-composition-patterns/SKILL.md"
+    ],
+    "target": "upstream/vercel-composition-patterns/SKILL.md"
+  },
+  {
+    "decision": "upstream",
+    "name": "vercel-react-best-practices",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/vercel-react-best-practices/SKILL.md",
+      "claude/skills/vercel-react-best-practices/SKILL.md",
+      "codex/skills/vercel-react-best-practices/SKILL.md"
+    ],
+    "target": "upstream/vercel-react-best-practices/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "vercel-react-view-transitions",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/vercel-react-view-transitions/SKILL.md",
+      "claude/skills/vercel-react-view-transitions/SKILL.md",
+      "codex/skills/vercel-react-view-transitions/SKILL.md"
+    ]
+  },
+  {
+    "decision": "merge",
+    "name": "verification-loop",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "claude/skills/verification-loop/SKILL.md",
+      "codex/skills/verification-loop/SKILL.md"
+    ],
+    "target": "skills/nexus-verify/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "vibesec",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/vibesec/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "visual-validation",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/visual-validation/SKILL.md",
+      "claude/skills/visual-validation/SKILL.md",
+      "codex/skills/visual-validation/SKILL.md"
+    ]
+  },
+  {
+    "decision": "obsolete",
+    "name": "vuca-reengajamento-conversao",
+    "relationship": "unique",
+    "sources": [
+      "claude/scheduled-tasks/vuca-reengajamento-conversao/SKILL.md"
+    ]
+  },
+  {
+    "decision": "obsolete",
+    "name": "vuca-shadow-guards-flip-review",
+    "relationship": "unique",
+    "sources": [
+      "claude/scheduled-tasks/vuca-shadow-guards-flip-review/SKILL.md"
+    ]
+  },
+  {
+    "decision": "obsolete",
+    "name": "vuca-worktree-housekeeping",
+    "relationship": "unique",
+    "sources": [
+      "claude/scheduled-tasks/vuca-worktree-housekeeping/SKILL.md"
+    ]
+  },
+  {
+    "decision": "upstream",
+    "name": "wayfinder",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/wayfinder/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/wayfinder/SKILL.md"
+  },
+  {
+    "decision": "reference",
+    "name": "web-design-guidelines",
+    "relationship": "exact_duplicate",
+    "sources": [
+      "agents-skills/web-design-guidelines/SKILL.md",
+      "claude/skills/web-design-guidelines/SKILL.md",
+      "codex/skills/web-design-guidelines/SKILL.md"
+    ]
+  },
+  {
+    "decision": "reference",
+    "name": "webapp-testing",
+    "relationship": "unique",
+    "sources": [
+      "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/webapp-testing/SKILL.md"
+    ]
+  },
+  {
+    "decision": "upstream",
+    "name": "writing-great-skills",
+    "relationship": "unique",
+    "sources": [
+      "claude/skills/writing-great-skills/SKILL.md"
+    ],
+    "target": "upstream/matt-pocock/writing-great-skills/SKILL.md"
+  }
+]
