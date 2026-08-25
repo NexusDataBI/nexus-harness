@@ -221,6 +221,55 @@ class PortfolioMemoryTests(unittest.TestCase):
             self.assertEqual(text.count("<!-- NEXUS:GENERATED:END -->"), 1)
             self.assertIn("Status: paused", text)
 
+    def test_write_project_bridge_rejects_parent_traversal_without_changing_home(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "NexusMemory"
+            init_portfolio_vault(root)
+            home = root / "HOME.md"
+            original_home = home.read_text(encoding="utf-8")
+            bridge = ProjectBridge(
+                project_id="../HOME",
+                repository="github.com/example/repo-1",
+                canonical_memory_path=".nexus/memory",
+            )
+
+            with self.assertRaises(ValueError):
+                write_project_bridge(root, bridge)
+
+            self.assertEqual(home.read_text(encoding="utf-8"), original_home)
+
+    def test_write_project_bridge_rejects_unsafe_project_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "NexusMemory"
+            init_portfolio_vault(root)
+            for project_id in ("", "foo/bar", r"foo\bar"):
+                with self.subTest(project_id=project_id):
+                    bridge = ProjectBridge(
+                        project_id=project_id,
+                        repository="github.com/example/repo-1",
+                        canonical_memory_path=".nexus/memory",
+                    )
+                    with self.assertRaises(ValueError):
+                        write_project_bridge(root, bridge)
+
+    def test_write_project_bridge_rejects_resolved_path_outside_projects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "NexusMemory"
+            init_portfolio_vault(root)
+            home = root / "HOME.md"
+            original_home = home.read_text(encoding="utf-8")
+            (root / "projects" / "repo-1.md").symlink_to(home)
+            bridge = ProjectBridge(
+                project_id="repo-1",
+                repository="github.com/example/repo-1",
+                canonical_memory_path=".nexus/memory",
+            )
+
+            with self.assertRaises(ValueError):
+                write_project_bridge(root, bridge)
+
+            self.assertEqual(home.read_text(encoding="utf-8"), original_home)
+
     def test_search_memory_without_portfolio_is_project_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

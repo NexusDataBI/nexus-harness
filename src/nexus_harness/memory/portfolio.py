@@ -78,7 +78,13 @@ def load_portfolio_memories(vault_root: Path) -> list[MemoryRecord]:
 
 
 def write_project_bridge(vault_root: Path, bridge: ProjectBridge) -> Path:
-    path = Path(vault_root) / "projects" / f"{bridge.project_id}.md"
+    project_id = bridge.project_id
+    if not project_id or ".." in project_id or "/" in project_id or "\\" in project_id:
+        raise ValueError("unsafe project id")
+    projects_dir = Path(vault_root) / "projects"
+    path = projects_dir / f"{project_id}.md"
+    if not path.resolve().is_relative_to(projects_dir.resolve()):
+        raise ValueError("unsafe project id")
     start = _GENERATED_START
     end = _GENERATED_END
     generated = "\n".join(
