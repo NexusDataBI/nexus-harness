@@ -70,6 +70,33 @@ class FailureMemory:
             attempt=state.count,
         )
 
+    def to_dict(self) -> dict:
+        return {
+            "ceiling": self.ceiling,
+            "history": list(self.history),
+            "states": {
+                fingerprint: {
+                    "count": state.count,
+                    "last_diff_hash": state.last_diff_hash,
+                }
+                for fingerprint, state in self._states.items()
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict | None) -> "FailureMemory":
+        payload = payload or {}
+        memory = cls(ceiling=int(payload.get("ceiling", DEFAULT_CEILING)))
+        memory.history = list(payload.get("history") or [])
+        memory._states = {
+            fingerprint: _FingerprintState(
+                count=int(item.get("count", 0)),
+                last_diff_hash=item.get("last_diff_hash"),
+            )
+            for fingerprint, item in (payload.get("states") or {}).items()
+        }
+        return memory
+
 
 def fingerprint_failure(tool: str, exit_code: int, error: str) -> str:
     normalized = normalize_error(error)

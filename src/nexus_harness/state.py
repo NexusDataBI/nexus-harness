@@ -5,6 +5,8 @@ import json
 import os
 import tempfile
 
+from nexus_harness.failures import FailureMemory
+
 
 class StageStatus(StrEnum):
     PENDING = "PENDING"
@@ -35,6 +37,7 @@ class TaskState:
     tracking_required: bool | None = None
     current_diff_hash: str | None = None
     intent: str | None = None
+    failures: FailureMemory | dict | None = None
 
     @classmethod
     def new(cls, task_id: str, repo_id: str) -> "TaskState":
@@ -71,6 +74,12 @@ class TaskState:
             payload["current_diff_hash"] = self.current_diff_hash
         if self.intent is not None:
             payload["intent"] = self.intent
+        if self.failures is not None:
+            payload["failures"] = (
+                self.failures.to_dict()
+                if hasattr(self.failures, "to_dict")
+                else self.failures
+            )
         return payload
 
     @classmethod
@@ -98,7 +107,16 @@ class TaskState:
             tracking_required=payload.get("tracking_required"),
             current_diff_hash=payload.get("current_diff_hash"),
             intent=payload.get("intent"),
+            failures=_failures_from_payload(payload.get("failures")),
         )
+
+
+def _failures_from_payload(raw):
+    if raw is None:
+        return None
+    if isinstance(raw, FailureMemory):
+        return raw
+    return FailureMemory.from_dict(raw)
 
 
 def save_task_state(state: TaskState, path: Path) -> None:

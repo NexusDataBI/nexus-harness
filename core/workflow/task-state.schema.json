@@ -36,12 +36,37 @@
     },
     "tracking_required": { "type": "boolean" },
     "current_diff_hash": { "type": ["string", "null"] },
-    "intent": { "type": ["string", "null"] }
+    "intent": { "type": ["string", "null"] },
+    "failures": { "$ref": "#/$defs/failureMemory" }
   },
   "$defs": {
     "stageState": {
       "type": "string",
       "enum": ["PENDING", "PASS", "FAIL", "SKIP", "BLOCKED", "WAITING_APPROVAL"]
+    },
+    "failureMemory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ceiling": { "type": "integer", "minimum": 1 },
+        "history": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "states": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/fingerprintState" }
+        }
+      }
+    },
+    "fingerprintState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "last_diff_hash": { "type": ["string", "null"] }
+      }
     }
   }
 }

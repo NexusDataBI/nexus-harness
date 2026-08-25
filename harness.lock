@@ -33,7 +33,7 @@
     "core/workflow/classification.toml": "c222350b76584f0fc07bb3cffeb2230abe6a3750e4d2f43ef2b72d560ddfc5ef",
     "core/workflow/completion.toml": "001c72b936a41a6cc06eb1559ec9eeda4db22790111e3291255da2d6b52d0c75",
     "core/workflow/lifecycle.toml": "6cb063d489c2e6b31fdab8af7a58ac128b60dc036da473f27ab2748337aaa033",
-    "core/workflow/task-state.schema.json": "821ae94700860e01da259b0dc00e3187b4beea03e4ddebe0de64754526aaa22a",
+    "core/workflow/task-state.schema.json": "d5fa89fb0cc5c8613000309dd27f3801c8b57535e7a90b9899fe4f5382bf20d6",
     "profiles/default.toml": "b6d17e544bc1c72d6c4d7d741543cb603a2bb114957b10fb9138b72fe738993a",
     "skills/accessibility/SKILL.md": "7decc07e30af40cce0180ae0d4e33f43d22731764ed4817188d8470ce6083cb2",
     "skills/nexus-frontend/SKILL.md": "6b5f62763a76610c806c5100854baa03b4d95503fbc91ee5225dea71731dc178",

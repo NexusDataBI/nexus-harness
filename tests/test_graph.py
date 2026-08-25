@@ -1,7 +1,13 @@
+import json
 import unittest
+from pathlib import Path
 
 from nexus_harness.graph import GraphNode, TaskGraph
 from nexus_harness.state import StageStatus
+
+_GRAPH_NODE_SCHEMA = json.loads(
+    Path("core/graph/graph.schema.json").read_text(encoding="utf-8")
+)["$defs"]["node"]
 
 
 class GraphTests(unittest.TestCase):
@@ -101,6 +107,63 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(tuple(hit.evidence_outputs), ())
         self.assertEqual(miss.status, StageStatus.PASS)
         self.assertEqual(tuple(miss.evidence_outputs), ("ev-2",))
+
+    def test_invalidate_cascades_to_pass_dependents(self):
+        graph = TaskGraph(
+            [
+                GraphNode(
+                    "a",
+                    affected_paths=("apps/server/a.ts",),
+                    status=StageStatus.PASS,
+                    evidence_outputs=("ev-1",),
+                ),
+                GraphNode(
+                    "b",
+                    depends_on=("a",),
+                    status=StageStatus.PASS,
+                    evidence_outputs=("ev-2",),
+                ),
+            ]
+        )
+        graph.invalidate(("apps/server/a.ts",))
+        first = graph.get("a")
+        dependent = graph.get("b")
+        self.assertEqual(first.status, StageStatus.PENDING)
+        self.assertEqual(dependent.status, StageStatus.PENDING)
+        self.assertEqual(tuple(first.evidence_outputs), ())
+        self.assertEqual(tuple(dependent.evidence_outputs), ())
+
+    def test_graph_node_to_dict_uses_schema_dependencies(self):
+        node = GraphNode(
+            "a",
+            stage=1,
+            kind="implementation",
+            depends_on=("b",),
+            reads=("r.ts",),
+            writes=("w.ts",),
+            affected_paths=("w.ts",),
+            risk="medium",
+            execution_target="local",
+            estimated_cost=1.5,
+            status=StageStatus.PASS,
+            evidence_outputs=("ev-1",),
+        )
+        payload = node.to_dict()
+        self.assertIn("dependencies", payload)
+        self.assertNotIn("depends_on", payload)
+        self.assertTrue(set(_GRAPH_NODE_SCHEMA["required"]) <= set(payload))
+        self.assertEqual(payload["dependencies"], ["b"])
+        restored = GraphNode.from_dict(payload)
+        self.assertEqual(restored.depends_on, ("b",))
+        self.assertEqual(restored.id, "a")
+        self.assertEqual(restored.status, StageStatus.PASS)
+        self.assertEqual(restored.evidence_outputs, ("ev-1",))
+
+    def test_graph_node_from_dict_accepts_depends_on_or_dependencies(self):
+        from_schema = GraphNode.from_dict({"id": "a", "dependencies": ["b"]})
+        from_python = GraphNode.from_dict({"id": "a", "depends_on": ["c"]})
+        self.assertEqual(from_schema.depends_on, ("b",))
+        self.assertEqual(from_python.depends_on, ("c",))
 
 
 if __name__ == "__main__":

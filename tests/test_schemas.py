@@ -86,6 +86,16 @@ class SchemaContractTests(unittest.TestCase):
             )
         self.assertEqual(set(task_state_schema["$defs"]["stageState"]["enum"]), STATES)
 
+    def test_task_state_schema_extends_optional_failures_without_weakening(self):
+        schema = load_schema("core/workflow/task-state.schema.json")
+        self.assertEqual(
+            set(schema["required"]),
+            {"task_id", "repo_id", "stage", "acceptance", "stage_status"},
+        )
+        self.assertFalse(schema["additionalProperties"])
+        self.assertIn("failures", schema["properties"])
+        self.assertNotIn("failures", schema["required"])
+
 
 if __name__ == "__main__":
     unittest.main()

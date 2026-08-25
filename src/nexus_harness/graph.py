@@ -37,6 +37,42 @@ class GraphNode:
         if not isinstance(self.status, StageStatus):
             object.__setattr__(self, "status", StageStatus(self.status))
 
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "stage": self.stage,
+            "kind": self.kind,
+            "dependencies": list(self.depends_on),
+            "reads": list(self.reads),
+            "writes": list(self.writes),
+            "affected_paths": list(self.affected_paths),
+            "risk": self.risk,
+            "execution_target": self.execution_target,
+            "estimated_cost": self.estimated_cost,
+            "status": str(self.status),
+            "evidence_outputs": list(self.evidence_outputs),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict) -> "GraphNode":
+        dependencies = payload.get("dependencies")
+        if dependencies is None:
+            dependencies = payload.get("depends_on", ())
+        return cls(
+            id=payload["id"],
+            stage=payload.get("stage", 0),
+            kind=payload.get("kind", ""),
+            depends_on=dependencies,
+            reads=payload.get("reads", ()),
+            writes=payload.get("writes", ()),
+            affected_paths=payload.get("affected_paths", ()),
+            execution_target=payload.get("execution_target", "local"),
+            risk=payload.get("risk", "low"),
+            estimated_cost=payload.get("estimated_cost", 0),
+            status=payload.get("status", StageStatus.PENDING),
+            evidence_outputs=payload.get("evidence_outputs", ()),
+        )
+
 
 class TaskGraph:
     def __init__(self, nodes) -> None:
@@ -82,9 +118,25 @@ class TaskGraph:
 
     def invalidate(self, changed_paths) -> None:
         changed = set(changed_paths)
+        reset = {
+            node_id
+            for node_id, node in self._nodes.items()
+            if changed.intersection(node.affected_paths)
+        }
+        growing = True
+        while growing:
+            growing = False
+            for node_id, node in self._nodes.items():
+                if node_id in reset:
+                    continue
+                if node.status not in _READY_DEPENDENCY_STATUSES:
+                    continue
+                if any(dependency in reset for dependency in node.depends_on):
+                    reset.add(node_id)
+                    growing = True
         updated = {}
         for node_id, node in self._nodes.items():
-            if changed.intersection(node.affected_paths):
+            if node_id in reset:
                 updated[node_id] = replace(
                     node,
                     status=StageStatus.PENDING,

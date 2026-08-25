@@ -1,6 +1,9 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from nexus_harness.failures import FailureMemory
+from nexus_harness.state import TaskState, load_task_state, save_task_state
 
 
 class FailureTests(unittest.TestCase):
@@ -88,3 +91,29 @@ class FailureTests(unittest.TestCase):
         )
         self.assertEqual(first.fingerprint, second.fingerprint)
         self.assertEqual(second.action, "diagnose")
+
+    def test_to_dict_from_dict_preserves_ceiling(self):
+        memory = FailureMemory()
+        memory.record("vitest", 1, "AssertionError: expected 1 got 0")
+        restored = FailureMemory.from_dict(memory.to_dict())
+        result = restored.record("vitest", 1, "AssertionError: expected 1 got 0")
+        self.assertEqual(result.action, "diagnose")
+
+    def test_task_state_roundtrip_continues_ceiling(self):
+        memory = FailureMemory()
+        memory.record("vitest", 1, "AssertionError: expected 1 got 0")
+        diagnosed = memory.record("vitest", 1, "AssertionError: expected 1 got 0")
+        self.assertEqual(diagnosed.action, "diagnose")
+
+        state = TaskState.new("task-1", "repo-1")
+        state.failures = memory
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            save_task_state(state, path)
+            loaded = load_task_state(path)
+
+        restored = loaded.failures
+        if isinstance(restored, dict):
+            restored = FailureMemory.from_dict(restored)
+        next_result = restored.record("vitest", 1, "AssertionError: expected 1 got 0")
+        self.assertEqual(next_result.action, "blocked")

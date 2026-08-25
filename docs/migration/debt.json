@@ -50,6 +50,76 @@
       "target_plan": "plan-8",
       "resolution_condition": "Each pending extract copied, discarded with rationale, or blocked explicitly before source deletion.",
       "defer_reason": "Extract remains gitignored input. Spec forbids deleting divergent skills until unique content is preserved."
+    },
+    {
+      "id": "P2-D01",
+      "origin": "plan-2-final-review",
+      "severity": "medium",
+      "description": "core/workflow/completion.toml is not fully applied at runtime: required_approvals_recorded is unread; DONE_NOT_SHIPPED and shipping_is_not_implied are not distinct completion results.",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "evaluate_completion reads completion.toml; missing required approvals fail closed; READY_TO_SHIP stays distinct from DONE_NOT_SHIPPED; shipping is never implied by DONE.",
+      "defer_reason": "Approvals, ship, and adapters land in Plans 3/8. This round only closed freshness, finding status, and issue validity."
+    },
+    {
+      "id": "P2-D02",
+      "origin": "plan-2-final-review",
+      "severity": "medium",
+      "description": "evidence JSONL append is not atomic; Evidence does not persist base_commit required by spec §9 / evidence.toml.",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "append_evidence uses the same atomic replace pattern as save_task_state; each record stores base_commit plus existing command/exit/diff_hash/artifact/limitation.",
+      "defer_reason": "Ledger write path was out of this review-fix scope; freshness already keys on diff_hash."
+    },
+    {
+      "id": "P2-D03",
+      "origin": "plan-2-final-review",
+      "severity": "medium",
+      "description": "Ratchet and budget metrics fail-open when baseline is None; ratchet.toml [budget] default_tolerance is unused.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "Missing baseline is fail-closed for required ratchet/budget metrics, or documented as explicit bootstrap; default_tolerance is applied when Metric.tolerance is unset.",
+      "defer_reason": "Changing fail-open would break current quality tests and needs a policy ruling. Not a Done Gate freshness bug."
+    },
+    {
+      "id": "P2-D04",
+      "origin": "plan-2-final-review",
+      "severity": "medium",
+      "description": "Trivy normalize: unknown severity is counted nowhere; HIGH secret without Resolution does not block; non-dict payload is unhandled.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "UNKNOWN/INFO severity is counted or rejected; HIGH secrets follow policy; normalize_trivy fail-closes on non-object payloads.",
+      "defer_reason": "Scanner edge cases are not required to close the Done Gate hash bind. Trivy-only kernel already blocks CRITICAL and HIGH-with-fix."
+    },
+    {
+      "id": "P2-D05",
+      "origin": "plan-2-final-review",
+      "severity": "medium",
+      "description": "conflicts() is exact-path only (prefix write conflicts remain); ready_nodes() does not compose with conflicts(), so concurrent writers can both be ready.",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "Prefix/directory write overlap is a first-class conflict; ready_nodes excludes unresolved conflict pairs unless a merge strategy is declared.",
+      "defer_reason": "This round kept exact-path conflicts() and did not change scheduler composition. Cascade invalidation was the graph bug that had to land."
+    },
+    {
+      "id": "P2-D06",
+      "origin": "plan-2-final-review",
+      "severity": "low",
+      "description": "Stage 5 (implement) does not require a GitHub Issue; only the Done Gate checks issue when tracking_required.",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "If project-tracking requires an Issue before implement, advance_stage(5) fail-closes; otherwise document that Issue is a Done Gate-only check.",
+      "defer_reason": "Spec tracking is enforced at completion. GitHub Issue creation is Plan 3."
+    },
+    {
+      "id": "P2-D07",
+      "origin": "plan-2-final-review",
+      "severity": "medium",
+      "description": "Operational completion fields (quality_gate, security_gate, review_gate, verified/reviewed hashes, findings, evidence, skip_reason) are not in task-state schema or TaskState.to_dict. Load is fail-closed (no false DONE) but has no roundtrip.",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "Extend task-state.schema.json (R8) and persist those fields through save/load so a READY_TO_SHIP state survives restart without reconstructing gates in memory.",
+      "defer_reason": "This round persisted failures only. Extra completion fields stay in-memory to avoid a wide schema+lock change without Plan 3 adapters."
     }
   ]
 }
