@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from nexus_harness.memory.guard import MemoryGuardError, validate_memory_text
@@ -106,3 +107,65 @@ class MemoryGuardTests(unittest.TestCase):
             memory_root = root / ".nexus" / "memory" / "components"
             self.assertEqual(list(memory_root.glob("*.md")), [])
             self.assertEqual(list(memory_root.glob("*.json")), [])
+
+    def test_write_memory_rejects_secret_in_tag_without_echoing(self):
+        secret = "sk-abcdefghijklmnopqrstuvwxyz"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            draft = MemoryDraft(
+                type=MemoryType.COMPONENT,
+                scope=MemoryScope.PROJECT,
+                project_id="repo-1",
+                title="Safe title",
+                body="Safe body",
+                tags=(secret,),
+            )
+            with self.assertRaises(MemoryGuardError) as ctx:
+                write_memory(root, draft.to_record())
+            message = str(ctx.exception)
+            self.assertEqual(message, "memory rejected by guard rule: api_token")
+            self.assertNotIn(secret, message)
+            memory_root = root / ".nexus" / "memory" / "components"
+            self.assertEqual(list(memory_root.glob("*.md")), [])
+            self.assertEqual(list(memory_root.glob("*.json")), [])
+
+    def test_write_memory_rejects_secret_in_sidecar_strings(self):
+        secret = "sk-abcdefghijklmnopqrstuvwxyz"
+        safe = MemoryDraft(
+            type=MemoryType.COMPONENT,
+            scope=MemoryScope.PROJECT,
+            project_id="repo-1",
+            title="Safe title",
+            body="Safe body",
+            sources=(MemorySource(kind="note", ref="safe-ref"),),
+        )
+        cases = (
+            replace(safe.to_record(), related_paths=(secret,)),
+            replace(safe.to_record(), evidence_ids=(secret,)),
+            replace(safe.to_record(), project_id=secret),
+            replace(
+                safe.to_record(),
+                sources=(MemorySource(kind=secret, ref="safe-ref"),),
+            ),
+            replace(
+                safe.to_record(),
+                id="mem-lesson-sk-abcdefghijklmnopqrst-deadbeef",
+            ),
+        )
+        for record in cases:
+            with self.subTest(record=record):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    init_project_memory(root)
+                    with self.assertRaises(MemoryGuardError) as ctx:
+                        write_memory(root, record)
+                    message = str(ctx.exception)
+                    self.assertEqual(
+                        message, "memory rejected by guard rule: api_token"
+                    )
+                    self.assertNotIn(secret, message)
+                    self.assertNotIn("sk-abcdefghijklmnopqrst", message)
+                    memory_root = root / ".nexus" / "memory" / "components"
+                    self.assertEqual(list(memory_root.glob("*.md")), [])
+                    self.assertEqual(list(memory_root.glob("*.json")), [])

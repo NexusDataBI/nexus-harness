@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 
 from nexus_harness.config import load_toml
@@ -21,9 +22,27 @@ CATEGORY_BY_TYPE = {
     MemoryType.INCIDENT: "incidents",
 }
 
+_MEMORY_ID_RE = re.compile(r"^mem-[a-z]+-[a-z0-9-]+-[0-9a-f]{8}$")
+
 
 class MemoryStoreError(ValueError):
     """Raised when project memory files are missing, duplicated or invalid."""
+
+
+def _assert_safe_memory_id(memory_id: str) -> None:
+    if (
+        not memory_id
+        or ".." in memory_id
+        or "/" in memory_id
+        or "\\" in memory_id
+        or not _MEMORY_ID_RE.fullmatch(memory_id)
+    ):
+        raise MemoryStoreError("unsafe memory id")
+
+
+def _assert_inside_dir(path: Path, directory: Path) -> None:
+    if not path.resolve().is_relative_to(directory.resolve()):
+        raise MemoryStoreError("unsafe memory id")
 
 
 def _project_memory_root(project_root: Path) -> Path:
@@ -113,6 +132,7 @@ def init_project_memory(project_root: Path) -> Path:
 def write_memory(
     project_root: Path, record: MemoryRecord, *, replace: bool = False
 ) -> MemoryRecord:
+    _assert_safe_memory_id(record.id)
     validate_memory_record(record)
     existing_paths = [
         path for path in _sidecar_paths(project_root) if path.stem == record.id
@@ -143,6 +163,8 @@ def write_memory(
     json_path = category_dir / f"{record.id}.json"
     md_tmp = category_dir / f"{record.id}.md.tmp"
     json_tmp = category_dir / f"{record.id}.json.tmp"
+    for path in (md_path, json_path, md_tmp, json_tmp):
+        _assert_inside_dir(path, category_dir)
     try:
         _write_temp_file(md_tmp, _render_markdown(record))
         _write_temp_file(json_tmp, json.dumps(record.to_json_dict(), indent=2) + "\n")

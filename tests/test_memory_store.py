@@ -5,6 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
+from nexus_harness.memory.guard import MemoryGuardError
 from nexus_harness.memory.models import (
     MemoryDraft,
     MemoryScope,
@@ -211,3 +212,32 @@ class MemoryStoreTests(unittest.TestCase):
             self.assertFalse((category / f"{record.id}.json.tmp").exists())
             with self.assertRaises(MemoryStoreError):
                 read_memory(root, record.id)
+
+    def test_write_memory_rejects_path_escape_id(self):
+        unsafe_ids = (
+            "../../etc/passwd",
+            "mem-../x",
+            "",
+            "mem-foo/bar-abcd1234",
+            "mem-foo\\bar-abcd1234",
+            "..",
+        )
+        for memory_id in unsafe_ids:
+            with self.subTest(memory_id=memory_id):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    init_project_memory(root)
+                    before = {path for path in root.rglob("*") if path.is_file()}
+                    record = replace(_component_draft().to_record(), id=memory_id)
+                    with self.assertRaises((MemoryStoreError, MemoryGuardError)):
+                        write_memory(root, record)
+                    after = {path for path in root.rglob("*") if path.is_file()}
+                    self.assertEqual(after, before)
+                    memory_root = (root / ".nexus" / "memory").resolve()
+                    for path in after:
+                        self.assertTrue(
+                            path.resolve().is_relative_to(memory_root),
+                            f"file created outside .nexus/memory: {path}",
+                        )
+                    self.assertFalse((root / ".nexus" / "etc").exists())
+                    self.assertFalse((root / "etc").exists())

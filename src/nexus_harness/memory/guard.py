@@ -34,7 +34,15 @@ def validate_memory_text(text: str) -> None:
 
 
 def validate_memory_record(record: MemoryRecord) -> None:
-    validate_memory_text(record.title)
-    validate_memory_text(record.body)
+    texts = [record.id, record.title, record.body]
+    if record.project_id is not None:
+        texts.append(record.project_id)
     for source in record.sources:
-        validate_memory_text(source.ref)
+        texts.append(source.kind)
+        texts.append(source.ref)
+    texts.extend(record.evidence_ids)
+    texts.extend(record.related_paths)
+    texts.extend(record.tags)
+    texts.extend(record.supersedes)
+    for text in texts:
+        validate_memory_text(text)
