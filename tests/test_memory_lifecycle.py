@@ -155,6 +155,34 @@ class MemoryLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(draft.to_record().status, MemoryStatus.CANDIDATE)
 
+    def test_promote_to_portfolio_draft_sources_only_verified_project_ids(self):
+        verified = replace(
+            _decision_draft(
+                title="Use queue X",
+                sources=(MemorySource("adr", "ADR-001"),),
+            ).to_record(),
+            status=MemoryStatus.VERIFIED,
+            valid_at_commit="abc",
+        )
+        sibling_candidate = _decision_draft(
+            title="Use queue Y",
+            sources=(MemorySource("adr", "ADR-002"),),
+        ).to_record()
+        other_candidate = _decision_draft(
+            title="Use queue Z",
+            sources=(MemorySource("adr", "ADR-003"),),
+        ).to_record()
+        draft = promote_to_portfolio_draft(
+            (sibling_candidate, verified, other_candidate),
+            title="Cross-project queue choice",
+            body="Queue X is reusable across projects.",
+            tags=("queue",),
+        )
+        self.assertEqual(
+            draft.sources,
+            (MemorySource("project_memory", verified.id),),
+        )
+
     def test_pattern_needs_two_distinct_source_refs_unless_approved_spec_or_adr(self):
         single = MemoryDraft(
             type=MemoryType.PATTERN,
@@ -198,6 +226,22 @@ class MemoryLifecycleTests(unittest.TestCase):
             MemoryStatus.VERIFIED,
         )
 
+    def test_pattern_two_llm_summary_sources_cannot_verify(self):
+        record = MemoryDraft(
+            type=MemoryType.PATTERN,
+            scope=MemoryScope.PROJECT,
+            project_id="repo-1",
+            title="Idempotent webhook consumers",
+            body="Webhook consumers require stable idempotency keys.",
+            sources=(
+                MemorySource("llm_summary", "sum-1"),
+                MemorySource("llm_summary", "sum-2"),
+            ),
+        ).to_record()
+        with self.assertRaises(MemoryPromotionError):
+            verify_record(record, current_commit="abc")
+        self.assertEqual(record.status, MemoryStatus.CANDIDATE)
+
     def test_deterministic_evidence_failing_exit_or_diff_stays_unpromoted(self):
         record = MemoryDraft(
             type=MemoryType.INVARIANT,
@@ -229,4 +273,18 @@ class MemoryLifecycleTests(unittest.TestCase):
                 evidence_lookup=mismatched_diff,
                 current_diff="current-diff",
             )
+        self.assertEqual(record.status, MemoryStatus.CANDIDATE)
+
+    def test_deterministic_evidence_empty_evidence_ids_cannot_verify(self):
+        record = MemoryDraft(
+            type=MemoryType.INVARIANT,
+            scope=MemoryScope.PROJECT,
+            project_id="repo-1",
+            title="Migrations stay backward compatible",
+            body="Production migrations remain backward compatible.",
+            sources=(MemorySource("deterministic_evidence", "ev-77"),),
+            evidence_ids=(),
+        ).to_record()
+        with self.assertRaises(MemoryPromotionError):
+            verify_record(record, current_commit="abc")
         self.assertEqual(record.status, MemoryStatus.CANDIDATE)

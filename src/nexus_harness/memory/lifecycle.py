@@ -38,6 +38,7 @@ _TYPE_SOURCE_KEYS = {
 
 _DETERMINISTIC_KINDS = frozenset({"deterministic_evidence", "deterministic-evidence"})
 _PATTERN_AUTHORITY = frozenset({"approved_spec", "adr"})
+_NON_EVIDENCE_KINDS = frozenset({"llm_summary"})
 _PROMOTABLE = frozenset({MemoryStatus.CANDIDATE, MemoryStatus.STALE})
 
 
@@ -90,7 +91,7 @@ def _validate_deterministic_evidence(
             continue
         if not source.ref:
             raise MemoryPromotionError("deterministic evidence id missing")
-        if record.evidence_ids and source.ref not in record.evidence_ids:
+        if not record.evidence_ids or source.ref not in record.evidence_ids:
             raise MemoryPromotionError("deterministic evidence id missing")
         if evidence_lookup is None:
             continue
@@ -113,8 +114,14 @@ def _validate_sources(record: MemoryRecord, policy: dict) -> None:
         if any(source.kind in _PATTERN_AUTHORITY for source in record.sources):
             return
         min_refs = int(policy.get("pattern_min_independent_sources", 2))
-        distinct_refs = {source.ref for source in record.sources if source.ref}
-        if len(distinct_refs) < min_refs:
+        evidence_like = [
+            source
+            for source in record.sources
+            if source.kind not in _NON_EVIDENCE_KINDS
+        ]
+        distinct_refs = {source.ref for source in evidence_like if source.ref}
+        distinct_kinds = {source.kind for source in evidence_like if source.ref}
+        if len(distinct_refs) < min_refs or len(distinct_kinds) < min_refs:
             raise MemoryPromotionError("pattern requires independent sources")
         return
 
@@ -223,6 +230,8 @@ def promote_to_portfolio_draft(records, title, body, tags) -> MemoryDraft:
         project_id=None,
         title=title,
         body=body,
-        sources=tuple(MemorySource("project_memory", record.id) for record in records),
+        sources=tuple(
+            MemorySource("project_memory", record.id) for record in verified_project
+        ),
         tags=tuple(tags),
     )
