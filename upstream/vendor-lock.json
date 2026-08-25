@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "hash_method": "content_sha256_manifest: walk files under the imported directory; skip AppleDouble (any path part starting with ._) and .DS_Store; sort relative POSIX paths; each line is `{sha256(file_bytes)}  {relative_path}\\n`; revision is SHA-256 of the UTF-8 concatenation of those lines.",
+  "sources": [
+    {
+      "id": "design-motion-principles",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "d3adf5742bf61b74e1c66c78cecaa1f786b04554f2b14814ea8b84bf7d1327e2",
+      "canonical_path": "upstream/design-motion-principles",
+      "repository": "kylezantos/design-motion-principles"
+    },
+    {
+      "id": "vercel-react-best-practices",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "37c1ee962b0e34e374d96fb38b1a3864b6236ccd7d2843dfca98b17341b45ad3",
+      "canonical_path": "upstream/vercel-react-best-practices",
+      "repository": "vercel-labs/agent-skills"
+    },
+    {
+      "id": "vercel-composition-patterns",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "9167f419a4ba1e982f1325c34fc7682ea895c4dcd4e734e01280323fa3cfd71c",
+      "canonical_path": "upstream/vercel-composition-patterns",
+      "repository": "vercel-labs/agent-skills"
+    },
+    {
+      "id": "impeccable",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "8a0c2e5f859a4db445079ea053418b0a9c904769415449226c0380cd748cc32f",
+      "canonical_path": "upstream/impeccable",
+      "repository": "pbakaus/impeccable"
+    },
+    {
+      "id": "visual-validation",
+      "kind": "export",
+      "revision_kind": "content_sha256",
+      "revision": "7210fdfa7fa7e46dee2746c36096f7148946dc5cfef44f488415eb3541d295eb",
+      "canonical_path": "upstream/visual-validation",
+      "source_path": "legacy/v3-export/agents-skills/visual-validation"
+    },
+    {
+      "id": "fixing-motion-performance",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "791210708a1558f3a4e2c6253d97ae1f346bb88c9560380a0cdf0958a3ec3e9c",
+      "canonical_path": "upstream/fixing-motion-performance",
+      "repository": "ibelick/ui-skills"
+    },
+    {
+      "id": "feature-sliced-design",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "d138b503238e9042d6c292078e923a5eb3390e9abc2dcd13ec84c3c2d6a32462",
+      "canonical_path": "upstream/feature-sliced-design",
+      "repository": "feature-sliced/skills"
+    },
+    {
+      "id": "ui-craft-dense-dashboard",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "24d7bb0a6380af9f42b7871d202e3a7624464c4d4d75801aa1400ebfea29c1a9",
+      "canonical_path": "upstream/ui-craft-dense-dashboard",
+      "repository": "educlopez/ui-craft"
+    },
+    {
+      "id": "design-system",
+      "kind": "export",
+      "revision_kind": "content_sha256",
+      "revision": "57764d6b4765f751db919c57761f44278a07f6de56a638d71ded81dd4bce53bb",
+      "canonical_path": "upstream/design-system",
+      "source_path": "legacy/v3-export/agents-skills/design-system"
+    },
+    {
+      "id": "brand",
+      "kind": "export",
+      "revision_kind": "content_sha256",
+      "revision": "5dfa6a47eeb4a137b92ebb1fd0717626eae8f5331e602c7222e7f41aeec8cc95",
+      "canonical_path": "upstream/brand",
+      "source_path": "legacy/v3-export/agents-skills/brand"
+    },
+    {
+      "id": "extract-design-system",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "0b684037826cd40682b7bdfbfb7f92f25f672537b3a8271f701c6f10cb3927d9",
+      "canonical_path": "upstream/extract-design-system",
+      "repository": "arvindrk/extract-design-system"
+    },
+    {
+      "id": "variant",
+      "kind": "git",
+      "revision_kind": "content_sha256",
+      "revision": "594fff10e762bba7f6de8214c39eb1860a569ede2ac147e97a0e15e78a978ed6",
+      "canonical_path": "upstream/variant",
+      "repository": "jakubkrehel/skills"
+    },
+    {
+      "id": "superpowers",
+      "kind": "export",
+      "source_path": "legacy/v3-export/claude/reference/skills-pack/claude-skills-pack-completo/skill-sources",
+      "revision_kind": "content_sha256",
+      "revision": "01befa0dd39f52df0232e42055ad2b42b84875dcc46d188387c576d61779822e",
+      "canonical_path": "upstream/superpowers"
+    },
+    {
+      "id": "matt-pocock",
+      "kind": "export",
+      "source_path": "legacy/v3-export/claude/skills",
+      "revision_kind": "content_sha256",
+      "revision": "ddd7c94958d667aa167e3452b867c567060aeb15c474aead525b29b01ac0857e",
+      "canonical_path": "upstream/matt-pocock"
+    }
+  ]
+}
