@@ -30,6 +30,18 @@ class MigrationTests(unittest.TestCase):
                 apply_cleanup(plan, root)
             self.assertIn("outside", str(raised.exception).lower())
 
+    def test_apply_cleanup_refuses_frozen_v3_export_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "v3-export"
+            root.mkdir()
+            target = root / "._junk"
+            target.write_text("x", encoding="utf-8")
+            plan = cleanup_plan(root)
+            with self.assertRaises(ValueError) as raised:
+                apply_cleanup(plan, root)
+            self.assertIn("v3-export", str(raised.exception).lower())
+            self.assertTrue(target.exists())
+
     def test_apply_cleanup_deletes_appledouble_in_root(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

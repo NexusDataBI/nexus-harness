@@ -143,8 +143,22 @@ def _resolved_target(root: Path, candidate: Path) -> Path:
     return resolved
 
 
+FROZEN_ROOT_PARTS = frozenset({"inputs", "v3-export"})
+
+
+def _assert_safe_cleanup_root(root: Path) -> Path:
+    resolved = Path(root).resolve()
+    forbidden = FROZEN_ROOT_PARTS.intersection(resolved.parts)
+    if forbidden:
+        labels = " or ".join(sorted(forbidden))
+        raise ValueError(
+            f"Cleanup refused: root must not be inside frozen {labels} tree"
+        )
+    return resolved
+
+
 def apply_cleanup(plan: list[dict], root: Path) -> None:
-    root = Path(root)
+    root = _assert_safe_cleanup_root(root)
     for item in plan:
         if item.get("action") != "delete":
             continue
