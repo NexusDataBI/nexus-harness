@@ -1,0 +1,16 @@
+.worktrees/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/**
+!dist/.gitkeep
+docs/_bundle/
+legacy/v3-export/
+.superpowers/sdd/review-*.diff
+.superpowers/sdd/task-*-brief.md
+.superpowers/sdd/task-*-report.md
+.DS_Store
+.coverage
+htmlcov/
