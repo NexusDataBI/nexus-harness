@@ -15,16 +15,19 @@
     },
     "stage_status": {
       "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "enum": [
-          "PENDING",
-          "PASS",
-          "FAIL",
-          "SKIP",
-          "BLOCKED",
-          "WAITING_APPROVAL"
-        ]
+      "additionalProperties": false,
+      "required": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+      "properties": {
+        "0": { "$ref": "#/$defs/stageState" },
+        "1": { "$ref": "#/$defs/stageState" },
+        "2": { "$ref": "#/$defs/stageState" },
+        "3": { "$ref": "#/$defs/stageState" },
+        "4": { "$ref": "#/$defs/stageState" },
+        "5": { "$ref": "#/$defs/stageState" },
+        "6": { "$ref": "#/$defs/stageState" },
+        "7": { "$ref": "#/$defs/stageState" },
+        "8": { "$ref": "#/$defs/stageState" },
+        "9": { "$ref": "#/$defs/stageState" }
       }
     },
     "issue": {
@@ -33,5 +36,11 @@
     },
     "tracking_required": { "type": "boolean" },
     "current_diff_hash": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "stageState": {
+      "type": "string",
+      "enum": ["PENDING", "PASS", "FAIL", "SKIP", "BLOCKED", "WAITING_APPROVAL"]
+    }
   }
 }
