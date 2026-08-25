@@ -40,7 +40,11 @@
           "type": "string",
           "enum": ["vulnerability", "secret", "misconfiguration"]
         },
-        "fixed_version": { "type": ["string", "null"] }
+        "fixed_version": { "type": ["string", "null"] },
+        "remediation": { "type": ["string", "null"] },
+        "package": { "type": ["string", "null"] },
+        "installed_version": { "type": ["string", "null"] },
+        "blocked": { "type": "boolean" }
       }
     }
   }

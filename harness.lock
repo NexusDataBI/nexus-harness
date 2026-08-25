@@ -28,7 +28,7 @@
     "core/quality/ratchet.toml": "662df3dbf56265581da615741694b539627c051c0f1a3ca0ba56b78d1cc980d9",
     "core/security/infrastructure.toml": "d2c7a866c1ada36e992e14a6bfa14fda00e37c0a1fd3a323e05665a640089623",
     "core/security/policy.toml": "99da2c87b2789989071dca5ce7ac99cc82a1dedefff8bf3f70854cd717b032d2",
-    "core/security/security-report.schema.json": "9f2e154f504be150fc331bdd788634825d6303413ababb7a74b9a113a8723380",
+    "core/security/security-report.schema.json": "eff24870cb55133559e0d3f23741b7b8d478d13b9c4a7337bdb36bd2438823d7",
     "core/workflow/acceptance.schema.json": "ea59b49a65c9c4235a2992ce45cb0387213ae870c3281211a0e5ca4f086e50fd",
     "core/workflow/classification.toml": "c222350b76584f0fc07bb3cffeb2230abe6a3750e4d2f43ef2b72d560ddfc5ef",
     "core/workflow/completion.toml": "001c72b936a41a6cc06eb1559ec9eeda4db22790111e3291255da2d6b52d0c75",
