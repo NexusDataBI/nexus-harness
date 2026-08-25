@@ -120,8 +120,7 @@ def _validate_sources(record: MemoryRecord, policy: dict) -> None:
             if source.kind not in _NON_EVIDENCE_KINDS
         ]
         distinct_refs = {source.ref for source in evidence_like if source.ref}
-        distinct_kinds = {source.kind for source in evidence_like if source.ref}
-        if len(distinct_refs) < min_refs or len(distinct_kinds) < min_refs:
+        if len(distinct_refs) < min_refs:
             raise MemoryPromotionError("pattern requires independent sources")
         return
 

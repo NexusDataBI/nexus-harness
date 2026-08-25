@@ -242,6 +242,23 @@ class MemoryLifecycleTests(unittest.TestCase):
             verify_record(record, current_commit="abc")
         self.assertEqual(record.status, MemoryStatus.CANDIDATE)
 
+    def test_pattern_two_distinct_same_kind_evidence_refs_can_verify(self):
+        record = MemoryDraft(
+            type=MemoryType.PATTERN,
+            scope=MemoryScope.PROJECT,
+            project_id="repo-1",
+            title="Idempotent webhook consumers",
+            body="Webhook consumers require stable idempotency keys.",
+            sources=(
+                MemorySource("review_finding", "rev-1"),
+                MemorySource("review_finding", "rev-2"),
+            ),
+        ).to_record()
+
+        verified = verify_record(record, current_commit="abc")
+
+        self.assertEqual(verified.status, MemoryStatus.VERIFIED)
+
     def test_deterministic_evidence_failing_exit_or_diff_stays_unpromoted(self):
         record = MemoryDraft(
             type=MemoryType.INVARIANT,
