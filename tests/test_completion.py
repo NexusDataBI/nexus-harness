@@ -67,7 +67,32 @@ class CompletionTests(unittest.TestCase):
             ],
         }
         evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        state["evidence"] = [evidence]
         promote_acceptance(state, evidence)
+        self.assertEqual(state["acceptance"][0]["status"], "PASS")
+        self.assertEqual(state["acceptance"][0]["evidence"], "ev-1")
+
+    def test_cannot_promote_with_unrecorded_evidence_object(self):
+        state = {
+            "current_diff_hash": "abc",
+            "acceptance": [
+                {"id": "AC-1", "status": "FAIL", "statement": "does the thing"}
+            ],
+        }
+        evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        with self.assertRaisesRegex(ValueError, "recorded"):
+            promote_acceptance(state, evidence)
+        self.assertEqual(state["acceptance"][0]["status"], "FAIL")
+
+    def test_promote_acceptance_from_passed_ledger(self):
+        state = {
+            "current_diff_hash": "abc",
+            "acceptance": [
+                {"id": "AC-1", "status": "FAIL", "statement": "does the thing"}
+            ],
+        }
+        evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        promote_acceptance(state, evidence, ledger=[evidence])
         self.assertEqual(state["acceptance"][0]["status"], "PASS")
         self.assertEqual(state["acceptance"][0]["evidence"], "ev-1")
 
@@ -79,6 +104,7 @@ class CompletionTests(unittest.TestCase):
             ],
         }
         evidence = Evidence("ev-1", "vitest", 1, "abc", "tests failed")
+        state["evidence"] = [evidence]
         with self.assertRaises(ValueError):
             promote_acceptance(state, evidence)
         self.assertEqual(state["acceptance"][0]["status"], "FAIL")
@@ -127,6 +153,7 @@ class CompletionTests(unittest.TestCase):
             AcceptanceCriterion(id="AC-1", statement="does the thing"),
         ]
         evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        state.evidence = [evidence]
         promote_acceptance(state, evidence)
         self.assertEqual(state.acceptance[0].status, "PASS")
         self.assertEqual(state.acceptance[0].evidence, "ev-1")
@@ -137,7 +164,6 @@ class CompletionTests(unittest.TestCase):
         state.verified_diff_hash = "abc"
         state.reviewed_diff_hash = "abc"
         state.findings = []
-        state.evidence = [evidence]
         result = evaluate_completion(state)
         self.assertEqual(result.status, "READY_TO_SHIP")
 
@@ -154,6 +180,7 @@ class CompletionTests(unittest.TestCase):
             advance_stage(state, 8)
 
         evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        state.evidence = [evidence]
         promote_acceptance(state, evidence)
         state.quality_gate = "PASS"
         state.security_gate = "PASS"
@@ -161,7 +188,6 @@ class CompletionTests(unittest.TestCase):
         state.verified_diff_hash = "abc"
         state.reviewed_diff_hash = "abc"
         state.findings = []
-        state.evidence = [evidence]
         advanced = advance_stage(state, 8)
         self.assertEqual(advanced.stage, 8)
         self.assertEqual(evaluate_completion(advanced).status, "READY_TO_SHIP")

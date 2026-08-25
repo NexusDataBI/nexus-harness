@@ -50,11 +50,16 @@ def evaluate_completion(state) -> CompletionResult:
     return CompletionResult(status="READY_TO_SHIP", reasons=[])
 
 
-def promote_acceptance(state, evidence):
-    """Mark a criterion PASS only from existing, fresh, passing evidence."""
-    record = _as_evidence(evidence)
-    if record is None:
+def promote_acceptance(state, evidence, ledger=None):
+    """Mark a criterion PASS only from recorded, fresh, passing evidence."""
+    candidate = _as_evidence(evidence)
+    if candidate is None:
         raise ValueError("evidence does not exist")
+    record = _lookup_evidence(state, candidate.id)
+    if record is None:
+        record = _lookup_ledger(ledger, candidate.id)
+    if record is None:
+        raise ValueError("evidence is not recorded")
     if record.exit_code != 0:
         raise ValueError("evidence exit_code is not 0")
     current = _get(state, "current_diff_hash")
@@ -143,7 +148,11 @@ def _as_evidence(value) -> Evidence | None:
 
 
 def _ledger(state) -> list[Evidence]:
-    raw = _get(state, "evidence") or []
+    return _evidence_records(_get(state, "evidence"))
+
+
+def _evidence_records(raw) -> list[Evidence]:
+    raw = raw or []
     if isinstance(raw, Evidence):
         raw = [raw]
     items = []
@@ -155,9 +164,13 @@ def _ledger(state) -> list[Evidence]:
 
 
 def _lookup_evidence(state, evidence_id: str | None) -> Evidence | None:
+    return _lookup_ledger(_ledger(state), evidence_id)
+
+
+def _lookup_ledger(ledger, evidence_id: str | None) -> Evidence | None:
     if not evidence_id:
         return None
-    for record in _ledger(state):
+    for record in _evidence_records(ledger):
         if record.id == evidence_id:
             return record
     return None
