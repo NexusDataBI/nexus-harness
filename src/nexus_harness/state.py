@@ -69,6 +69,8 @@ class TaskState:
             payload["tracking_required"] = self.tracking_required
         if self.current_diff_hash is not None:
             payload["current_diff_hash"] = self.current_diff_hash
+        if self.intent is not None:
+            payload["intent"] = self.intent
         return payload
 
     @classmethod

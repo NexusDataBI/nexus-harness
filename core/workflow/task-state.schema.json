@@ -35,7 +35,8 @@
       "minimum": 1
     },
     "tracking_required": { "type": "boolean" },
-    "current_diff_hash": { "type": ["string", "null"] }
+    "current_diff_hash": { "type": ["string", "null"] },
+    "intent": { "type": ["string", "null"] }
   },
   "$defs": {
     "stageState": {

@@ -20,6 +20,17 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             advance_stage(state, 5)
 
+    def test_can_enter_implement_with_failing_acceptance(self):
+        state = TaskState.new("task-1", "repo-1")
+        state.stage = 4
+        state.acceptance = [
+            AcceptanceCriterion(id="AC-001", statement="does the thing"),
+        ]
+
+        advanced = advance_stage(state, 5)
+
+        self.assertEqual(advanced.stage, 5)
+
     def test_acceptance_criterion_defaults_to_fail(self):
         criterion = AcceptanceCriterion(id="AC-001", statement="does the thing")
         self.assertEqual(criterion.status, "FAIL")
@@ -43,6 +54,7 @@ class WorkflowTests(unittest.TestCase):
     def test_save_load_roundtrip(self):
         state = TaskState.new("task-1", "repo-1")
         state.stage = 3
+        state.intent = "inspect"
         state.acceptance = [
             AcceptanceCriterion(id="AC-001", statement="does the thing"),
         ]
@@ -57,6 +69,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(loaded.acceptance[0].id, "AC-001")
         self.assertEqual(loaded.acceptance[0].status, "FAIL")
         self.assertEqual(loaded.stage_status, state.stage_status)
+        self.assertEqual(loaded.intent, "inspect")
 
     def test_inspect_may_enter_implement_without_acceptance(self):
         state = TaskState.new("task-1", "repo-1")
@@ -66,24 +79,21 @@ class WorkflowTests(unittest.TestCase):
         advanced = advance_stage(state, 5)
         self.assertEqual(advanced.stage, 5)
 
-    def test_stage_8_rejects_empty_or_fail_acceptance_without_hook(self):
+    def test_stage_8_rejects_empty_acceptance(self):
         state = TaskState.new("task-1", "repo-1")
         state.stage = 7
         state.acceptance = []
         with self.assertRaisesRegex(ValueError, "completion gate not satisfied"):
             advance_stage(state, 8)
+
+    def test_stage_8_rejects_fail_acceptance(self):
+        state = TaskState.new("task-1", "repo-1")
+        state.stage = 7
         state.acceptance = [
             AcceptanceCriterion(id="AC-001", statement="does the thing"),
         ]
         with self.assertRaisesRegex(ValueError, "completion gate not satisfied"):
             advance_stage(state, 8)
-
-    def test_stage_8_allows_completion_check_hook(self):
-        state = TaskState.new("task-1", "repo-1")
-        state.stage = 7
-        state.acceptance = []
-        advanced = advance_stage(state, 8, completion_check=lambda _state: True)
-        self.assertEqual(advanced.stage, 8)
 
 
 if __name__ == "__main__":
