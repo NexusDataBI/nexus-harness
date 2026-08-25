@@ -1,0 +1,428 @@
+{
+  "after": {
+    "appledouble_count": 0,
+    "duplicate_file_count": 1217,
+    "file_count": 2317,
+    "redundant_bytes": 24248424,
+    "total_bytes": 38114819
+  },
+  "applied_to": "tempfile-copy-of-extract",
+  "before": {
+    "appledouble_count": 0,
+    "duplicate_file_count": 1296,
+    "file_count": 2398,
+    "redundant_bytes": 24976986,
+    "total_bytes": 38847022
+  },
+  "dry_run": true,
+  "planned_delete_count": 81,
+  "v4_working_copy_apply": "no-op",
+  "v4_working_copy_planned_deletes": [],
+  "would_clean": [
+    {
+      "action": "delete",
+      "path": "claude/hooks/pre-bash-firewall.sh.bak",
+      "reason": "bak"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/banner-design/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/baseline-ui/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/better-accessibility/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/better-colors/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/better-interface/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/better-layout/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/better-typography/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/better-ui/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/better-writing/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/brand/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/deploy/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/design-motion-principles/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/design-system/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/design-taste-frontend/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/design/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/explain-interface/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/extract-design-system/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/feature-sliced-design/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/fixing-accessibility/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/fixing-motion-performance/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/frontend-redesign-orchestrator/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/graphify/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/impeccable/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/interface-review/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/nexus-frontend/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/slides/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/ui-craft-dense-dashboard/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/ui-styling/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/variant/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/vercel-composition-patterns/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/vercel-react-best-practices/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/vercel-react-view-transitions/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/visual-validation/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "claude/skills/web-design-guidelines/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/baseline-ui/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/better-writing/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/deploy/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/design-motion-principles/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/design-taste-frontend/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/extract-design-system/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/feature-sliced-design/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/fixing-accessibility/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/fixing-motion-performance/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/frontend-redesign-orchestrator/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/graphify/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/grill-me/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/grill-with-docs/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/impeccable/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/interface-review/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/napkin/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/nexus-frontend/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/nexus-ship/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/root-cause-tracing/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/source-command-branch/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/source-command-commit/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/source-command-plan/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/source-command-pr/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/source-command-push/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/source-command-review/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/to-spec/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/to-tickets/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/token-optimizer/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/ui-craft-dense-dashboard/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/ui-ux-pro-max/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/vercel-composition-patterns/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/vercel-react-best-practices/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/vercel-react-view-transitions/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/verification-loop/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/visual-validation/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "codex/skills/web-design-guidelines/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "cursor/skills/banner-design/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "cursor/skills/brand/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "cursor/skills/design-system/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "cursor/skills/design/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "cursor/skills/nexus-ship/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "cursor/skills/slides/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "cursor/skills/ui-styling/SKILL.md",
+      "reason": "generated-skill-copy"
+    },
+    {
+      "action": "delete",
+      "path": "harness-sync/launchd.err.log",
+      "reason": "harness-sync"
+    },
+    {
+      "action": "delete",
+      "path": "harness-sync/launchd.out.log",
+      "reason": "harness-sync"
+    },
+    {
+      "action": "delete",
+      "path": "harness-sync/status.json",
+      "reason": "harness-sync"
+    }
+  ]
+}
