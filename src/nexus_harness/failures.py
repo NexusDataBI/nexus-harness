@@ -17,7 +17,7 @@ import re
 DEFAULT_CEILING = 3
 
 _TIMESTAMP_RE = re.compile(
-    r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?"
+    r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?"
 )
 _TEMP_PATH_RE = re.compile(
     r"(?:/private)?(?:/tmp|/var/folders)/[^\s:]+"
@@ -25,8 +25,8 @@ _TEMP_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 _HEX_ADDR_RE = re.compile(r"\b0x[0-9a-fA-F]+\b")
-_PID_RE = re.compile(r"\bpid[=:\s]+\d+\b", re.IGNORECASE)
-_VOLATILE_ID_RE = re.compile(r"\b\d{5,}\b")
+_PID_TID_RE = re.compile(r"\b(?:pid|tid)[=:\s]+\d+\b", re.IGNORECASE)
+_UNIX_TS_RE = re.compile(r"\b1[0-9]{9}(?:[0-9]{3})?\b")
 
 
 @dataclass
@@ -79,11 +79,18 @@ def fingerprint_failure(tool: str, exit_code: int, error: str) -> str:
 
 def normalize_error(error: str) -> str:
     text = _TIMESTAMP_RE.sub("<TS>", error)
-    text = _TEMP_PATH_RE.sub("<TMP>", text)
-    text = _PID_RE.sub("<PID>", text)
+    text = _TEMP_PATH_RE.sub(_keep_temp_basename, text)
+    text = _PID_TID_RE.sub("<PID>", text)
     text = _HEX_ADDR_RE.sub("<HEX>", text)
-    text = _VOLATILE_ID_RE.sub("<ID>", text)
+    text = _UNIX_TS_RE.sub("<TS>", text)
     return " ".join(text.split())
+
+
+def _keep_temp_basename(match: re.Match[str]) -> str:
+    path = match.group(0).rstrip("/\\")
+    separator = "\\" if "\\" in path else "/"
+    basename = path.rsplit(separator, 1)[-1]
+    return f"<TMP>{separator}{basename}"
 
 
 def _material_progress(previous: str | None, current: str | None) -> bool:

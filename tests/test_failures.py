@@ -51,3 +51,40 @@ class FailureTests(unittest.TestCase):
         )
         self.assertEqual(diagnosed.action, "diagnose")
         self.assertEqual(blocked.action, "blocked")
+
+    def test_assertion_expected_numbers_are_distinct_fingerprints(self):
+        memory = FailureMemory()
+        first = memory.record("pytest", 1, "AssertionError: expected 10000")
+        second = memory.record("pytest", 1, "AssertionError: expected 20000")
+        self.assertNotEqual(first.fingerprint, second.fingerprint)
+        self.assertEqual(second.action, "retry")
+
+    def test_temp_path_basenames_are_distinct_fingerprints(self):
+        memory = FailureMemory()
+        first = memory.record(
+            "pytest",
+            1,
+            "AssertionError in /tmp/pytest-of-user/pytest-123/test_a.py",
+        )
+        second = memory.record(
+            "pytest",
+            1,
+            "AssertionError in /tmp/pytest-of-user/pytest-123/test_b.py",
+        )
+        self.assertNotEqual(first.fingerprint, second.fingerprint)
+        self.assertEqual(second.action, "retry")
+
+    def test_asctime_millis_timestamps_share_fingerprint(self):
+        memory = FailureMemory()
+        first = memory.record(
+            "pytest",
+            1,
+            "2026-08-25 16:42:03,123 AssertionError: expected 1 got 0",
+        )
+        second = memory.record(
+            "pytest",
+            1,
+            "2026-08-25 16:43:11,987 AssertionError: expected 1 got 0",
+        )
+        self.assertEqual(first.fingerprint, second.fingerprint)
+        self.assertEqual(second.action, "diagnose")
