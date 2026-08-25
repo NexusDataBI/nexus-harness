@@ -159,6 +159,34 @@ class QualityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_baseline_change(base, proposed, measured)
 
+    def test_proposed_direction_cannot_flip_coverage_ratchet(self):
+        base = {"coverage": 80}
+        proposed = {"coverage": {"value": 70, "direction": "lower"}}
+        measured = {"coverage": 70}
+        with self.assertRaises(ValueError):
+            validate_baseline_change(base, proposed, measured)
+
+    def test_proposed_direction_cannot_flip_lint_warning_ratchet(self):
+        base = {"lint_warnings": 12}
+        proposed = {"lint_warnings": {"value": 20, "direction": "higher"}}
+        measured = {"lint_warnings": 20}
+        with self.assertRaises(ValueError):
+            validate_baseline_change(base, proposed, measured)
+
+    def test_proposed_direction_flip_is_rejected_even_for_better_value(self):
+        base = {"coverage": 80}
+        proposed = {"coverage": {"value": 85, "direction": "lower"}}
+        measured = {"coverage": 85}
+        with self.assertRaises(ValueError):
+            validate_baseline_change(base, proposed, measured)
+
+    def test_existing_base_direction_governs_custom_metric(self):
+        base = {"custom_metric": {"value": 80, "direction": "higher"}}
+        proposed = {"custom_metric": {"value": 70, "direction": "lower"}}
+        measured = {"custom_metric": 70}
+        with self.assertRaises(ValueError):
+            validate_baseline_change(base, proposed, measured, policy={"precision": {}})
+
     def test_stale_baseline_rejected_when_improvement_must_be_promoted(self):
         base = {"coverage": 80.0, "lint_warnings": 12}
         proposed = {"coverage": 80.0, "lint_warnings": 12}

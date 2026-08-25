@@ -159,15 +159,17 @@ def _entry_value(entry):
     return entry
 
 
-def _entry_direction(name: str, entry, directions: dict) -> str:
-    if isinstance(entry, dict) and entry.get("direction"):
-        return entry["direction"]
-    return directions.get(name, _DEFAULT_DIRECTIONS.get(name, "higher"))
+def _entry_direction(name: str, base_entry, policy_directions: dict) -> str:
+    if name in policy_directions:
+        return policy_directions[name]
+    if isinstance(base_entry, dict) and base_entry.get("direction"):
+        return base_entry["direction"]
+    return _DEFAULT_DIRECTIONS.get(name, "higher")
 
 
 def validate_baseline_change(base, proposed, measured, policy=None) -> None:
     policy = policy or load_ratchet_policy()
-    directions = {**_DEFAULT_DIRECTIONS, **policy.get("directions", {})}
+    policy_directions = policy.get("directions", {})
     precision = float(policy.get("precision", {}).get("default", _DEFAULT_PRECISION))
     promote = bool(policy.get("promote_improvements", True))
     names = set(base) | set(proposed) | set(measured)
@@ -177,9 +179,15 @@ def validate_baseline_change(base, proposed, measured, policy=None) -> None:
         measured_entry = measured.get(name)
         direction = _entry_direction(
             name,
-            proposed_entry if proposed_entry is not None else base_entry,
-            directions,
+            base_entry,
+            policy_directions,
         )
+        if (
+            isinstance(proposed_entry, dict)
+            and proposed_entry.get("direction") is not None
+            and proposed_entry["direction"] != direction
+        ):
+            raise ValueError(f"cannot change {name} baseline direction")
         if base_entry is not None and proposed_entry is not None:
             base_value = _entry_value(base_entry)
             proposed_value = _entry_value(proposed_entry)
