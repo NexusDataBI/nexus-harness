@@ -20,3 +20,18 @@ performance = "budget"
 [baseline]
 path = ".nexus/quality/baseline.json"
 update_in_same_pr_when_materially_improved = true
+
+[precision]
+default = 0.01
+
+[directions]
+coverage = "higher"
+lint_warnings = "lower"
+duplication = "lower"
+build_type_errors = "lower"
+failing_tests = "lower"
+critical_security = "lower"
+performance = "lower"
+
+[budget]
+default_tolerance = 0.0

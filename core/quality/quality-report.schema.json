@@ -12,6 +12,7 @@
       "enum": ["light", "standard", "strict", "critical"]
     },
     "diff_hash": { "type": ["string", "null"] },
+    "score": { "type": ["number", "null"] },
     "metrics": {
       "type": "array",
       "items": { "$ref": "#/$defs/metric" }
@@ -29,6 +30,8 @@
         "mode": { "type": "string", "enum": ["absolute", "ratchet", "budget"] },
         "direction": { "type": "string", "enum": ["lower", "higher"] },
         "required": { "type": "boolean" },
+        "threshold": { "type": ["number", "integer", "boolean", "null"] },
+        "tolerance": { "type": ["number", "integer"] },
         "status": { "type": "string", "enum": ["PASS", "FAIL"] }
       }
     }
