@@ -1,3 +1,4 @@
+from nexus_harness.completion import evaluate_completion
 from nexus_harness.state import StageStatus, TaskState
 
 
@@ -6,8 +7,9 @@ def _is_mutable(state: TaskState) -> bool:
 
 
 def check_completion(state: TaskState) -> None:
-    """Stub completion gate. Task 7 replaces this with completion.py."""
-    if not state.acceptance or any(item.status != "PASS" for item in state.acceptance):
+    """Stage 8 is the done-gate: evaluate_completion must be READY_TO_SHIP."""
+    result = evaluate_completion(state)
+    if result.status != "READY_TO_SHIP":
         raise ValueError("completion gate not satisfied")
 
 
