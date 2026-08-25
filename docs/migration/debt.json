@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "P1-D01",
+      "origin": "plan-1-final-review",
+      "severity": "medium",
+      "description": "Validator SSH and model-name regexes are broad (emails can look like SSH; opus/sonnet/haiku match non-model prose).",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "Tighten detectors without false positives on constitution/policy prose; add focused negative tests.",
+      "defer_reason": "Not required for workflow/graph/quality kernel. YAGNI for Plan 2."
+    },
+    {
+      "id": "P1-D02",
+      "origin": "plan-1-final-review",
+      "severity": "low",
+      "description": "JSON/TOML under upstream/ besides vendor-lock.json is not parse-validated.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "Doctor/release validation walks imported upstream machine files without treating them as canonical policy.",
+      "defer_reason": "Vendor copies are locked by content hash; Plan 2 does not change upstream import."
+    },
+    {
+      "id": "P1-D03",
+      "origin": "plan-1-task-4-review",
+      "severity": "low",
+      "description": "nexus-frontend modes still name some legacy entrypoints (interface-review, explain-interface, web-design-guidelines, design-taste-frontend).",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "Replace leftover names with canonical skills/upstream paths when adapters render frontend routing.",
+      "defer_reason": "Routing copy, not workflow kernel. Unique heuristics already inlined."
+    },
+    {
+      "id": "P1-D04",
+      "origin": "plan-1-task-6-review",
+      "severity": "low",
+      "description": "migrate CLI --dry-run is a no-op (store_true with default True).",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "Expose explicit --apply vs default dry-run without changing fail-closed cleanup.",
+      "defer_reason": "Cleanup already dry-run-first; Plan 2 does not extend migrate."
+    },
+    {
+      "id": "P1-D05",
+      "origin": "plan-1-task-4",
+      "severity": "medium",
+      "description": "Unique heuristics listed in docs/migration/unique-heuristics.md are not fully materialized into the v4 tree.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "Each pending extract copied, discarded with rationale, or blocked explicitly before source deletion.",
+      "defer_reason": "Extract remains gitignored input. Spec forbids deleting divergent skills until unique content is preserved."
+    }
+  ]
+}
