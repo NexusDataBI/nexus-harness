@@ -13,6 +13,7 @@ class CompletionResult:
 
 def evaluate_completion(state) -> CompletionResult:
     reasons: list[str] = []
+    current = _get(state, "current_diff_hash")
 
     if _get(state, "tracking_required") and not _has_issue(state):
         reasons.append("issue required when tracking_required")
@@ -25,6 +26,10 @@ def evaluate_completion(state) -> CompletionResult:
         reasons.append("quality_gate is not PASS")
     if _gate(state, "security_gate") != "PASS":
         reasons.append("security_gate is not PASS")
+    if not _gate_fresh(state, "quality_gate", current):
+        reasons.append("quality report is not fresh")
+    if not _gate_fresh(state, "security_gate", current):
+        reasons.append("security report is not fresh")
 
     review = _gate(state, "review_gate")
     if review == "SKIP":
@@ -36,7 +41,6 @@ def evaluate_completion(state) -> CompletionResult:
     if _confirmed_blocker_or_high(state):
         reasons.append("confirmed blocker/high finding")
 
-    current = _get(state, "current_diff_hash")
     if not _acceptance_evidence_fresh(state, current):
         reasons.append("acceptance evidence is not fresh")
 
@@ -82,14 +86,34 @@ def _get(state, key, default=None):
 
 def _has_issue(state) -> bool:
     issue = _get(state, "issue")
-    return issue is not None and issue != 0
+    try:
+        return issue is not None and int(issue) >= 1
+    except (TypeError, ValueError):
+        return False
 
 
 def _gate(state, key):
     value = _get(state, key)
     if value is None:
         return None
+    if isinstance(value, dict):
+        return value.get("gate")
     return getattr(value, "gate", value)
+
+
+def _report_diff_hash(value):
+    if value is None or isinstance(value, str):
+        return None
+    if isinstance(value, dict):
+        return value.get("diff_hash")
+    return getattr(value, "diff_hash", None)
+
+
+def _gate_fresh(state, key, current_diff_hash) -> bool:
+    report_hash = _report_diff_hash(_get(state, key))
+    if report_hash is None:
+        return True
+    return report_hash == current_diff_hash
 
 
 def _skip_reason(state) -> str:
@@ -206,7 +230,13 @@ def _confirmed_blocker_or_high(state) -> bool:
 
 def _finding_confirmed(finding) -> bool:
     if isinstance(finding, dict):
+        status = finding.get("status")
+        if status is not None:
+            return str(status).strip().lower() == "confirmed"
         return bool(finding.get("confirmed"))
+    status = getattr(finding, "status", None)
+    if status is not None:
+        return str(status).strip().lower() == "confirmed"
     return bool(getattr(finding, "confirmed", False))
 
 

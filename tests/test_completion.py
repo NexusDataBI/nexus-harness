@@ -2,6 +2,8 @@ import unittest
 
 from nexus_harness.completion import evaluate_completion, promote_acceptance
 from nexus_harness.evidence import Evidence
+from nexus_harness.quality import QualityReport
+from nexus_harness.security import SecurityReport
 from nexus_harness.state import AcceptanceCriterion, TaskState
 from nexus_harness.workflow import advance_stage
 
@@ -58,6 +60,75 @@ class CompletionTests(unittest.TestCase):
         self.assertTrue(
             any("finding" in reason or "high" in reason for reason in result.reasons)
         )
+
+    def test_status_confirmed_high_finding_blocks_done(self):
+        result = evaluate_completion(
+            _ready_state(findings=[{"severity": "high", "status": "confirmed"}])
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("finding" in reason or "high" in reason for reason in result.reasons)
+        )
+
+    def test_status_suspected_or_rejected_high_finding_does_not_block(self):
+        for status in ("suspected", "rejected"):
+            result = evaluate_completion(
+                _ready_state(findings=[{"severity": "high", "status": status}])
+            )
+            self.assertEqual(
+                result.status,
+                "READY_TO_SHIP",
+                msg=f"status={status} reasons={result.reasons}",
+            )
+
+    def test_stale_quality_report_diff_hash_blocks_done(self):
+        state = _ready_state(
+            current_diff_hash="def",
+            verified_diff_hash="def",
+            reviewed_diff_hash="def",
+            evidence=[{"id": "ev-1", "exit_code": 0, "diff_hash": "def"}],
+            quality_gate=QualityReport(gate="PASS", diff_hash="abc"),
+        )
+        result = evaluate_completion(state)
+        self.assertEqual(result.status, "FAIL")
+        self.assertNotEqual(result.status, "READY_TO_SHIP")
+        self.assertTrue(
+            any("quality" in reason and "fresh" in reason for reason in result.reasons)
+        )
+
+    def test_stale_security_report_diff_hash_blocks_done(self):
+        state = _ready_state(
+            current_diff_hash="def",
+            verified_diff_hash="def",
+            reviewed_diff_hash="def",
+            evidence=[{"id": "ev-1", "exit_code": 0, "diff_hash": "def"}],
+            security_gate=SecurityReport(gate="PASS", diff_hash="abc"),
+        )
+        result = evaluate_completion(state)
+        self.assertEqual(result.status, "FAIL")
+        self.assertNotEqual(result.status, "READY_TO_SHIP")
+        self.assertTrue(
+            any("security" in reason and "fresh" in reason for reason in result.reasons)
+        )
+
+    def test_stale_quality_dict_diff_hash_blocks_done(self):
+        state = _ready_state(
+            current_diff_hash="def",
+            verified_diff_hash="def",
+            reviewed_diff_hash="def",
+            evidence=[{"id": "ev-1", "exit_code": 0, "diff_hash": "def"}],
+            quality_gate={"gate": "PASS", "diff_hash": "abc"},
+        )
+        result = evaluate_completion(state)
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("quality" in reason and "fresh" in reason for reason in result.reasons)
+        )
+
+    def test_negative_issue_does_not_satisfy_tracking(self):
+        result = evaluate_completion(_ready_state(issue=-1))
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(any("issue" in reason for reason in result.reasons))
 
     def test_promote_acceptance_from_fresh_evidence(self):
         state = {
