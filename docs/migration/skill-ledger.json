@@ -14,7 +14,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/aws-skills/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "obsolete",
@@ -22,7 +23,8 @@
     "relationship": "unique",
     "sources": [
       "claude/scheduled-tasks/babysitting-prs/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -32,7 +34,8 @@
       "agents-skills/banner-design/SKILL.md",
       "claude/skills/banner-design/SKILL.md",
       "cursor/skills/banner-design/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -42,7 +45,8 @@
       "agents-skills/baseline-ui/SKILL.md",
       "claude/skills/baseline-ui/SKILL.md",
       "codex/skills/baseline-ui/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "upstream",
@@ -70,7 +74,8 @@
     "sources": [
       "agents-skills/better-colors/SKILL.md",
       "claude/skills/better-colors/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -79,7 +84,8 @@
     "sources": [
       "agents-skills/better-interface/SKILL.md",
       "claude/skills/better-interface/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -88,7 +94,8 @@
     "sources": [
       "agents-skills/better-layout/SKILL.md",
       "claude/skills/better-layout/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -97,7 +104,8 @@
     "sources": [
       "agents-skills/better-typography/SKILL.md",
       "claude/skills/better-typography/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -106,7 +114,8 @@
     "sources": [
       "agents-skills/better-ui/SKILL.md",
       "claude/skills/better-ui/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -116,7 +125,8 @@
       "agents-skills/better-writing/SKILL.md",
       "claude/skills/better-writing/SKILL.md",
       "codex/skills/better-writing/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -126,7 +136,8 @@
       "agents-skills/brand/SKILL.md",
       "claude/skills/brand/SKILL.md",
       "cursor/skills/brand/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "obsolete",
@@ -134,7 +145,8 @@
     "relationship": "unique",
     "sources": [
       "claude/scheduled-tasks/calibracao-score-engajamento/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -142,7 +154,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/changelog-generator/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "merge",
@@ -170,7 +183,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/content-research-writer/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -178,7 +192,8 @@
     "relationship": "unique",
     "sources": [
       "claude/tools/context-mode/skills/context-mode/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -186,7 +201,8 @@
     "relationship": "unique",
     "sources": [
       "claude/tools/context-mode/skills/ctx-cloud-setup/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -194,7 +210,8 @@
     "relationship": "unique",
     "sources": [
       "claude/tools/context-mode/skills/ctx-cloud-status/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -202,7 +219,8 @@
     "relationship": "unique",
     "sources": [
       "claude/tools/context-mode/skills/ctx-doctor/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -210,7 +228,8 @@
     "relationship": "unique",
     "sources": [
       "claude/tools/context-mode/skills/ctx-stats/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -218,7 +237,8 @@
     "relationship": "unique",
     "sources": [
       "claude/tools/context-mode/skills/ctx-upgrade/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "merge",
@@ -239,7 +259,8 @@
       "agents-skills/design/SKILL.md",
       "claude/skills/design/SKILL.md",
       "cursor/skills/design/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "upstream",
@@ -260,7 +281,8 @@
       "agents-skills/design-system/SKILL.md",
       "claude/skills/design-system/SKILL.md",
       "cursor/skills/design-system/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "merge",
@@ -309,7 +331,8 @@
       "agents-skills/extract-design-system/SKILL.md",
       "claude/skills/extract-design-system/SKILL.md",
       "codex/skills/extract-design-system/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -319,7 +342,8 @@
       "agents-skills/feature-sliced-design/SKILL.md",
       "claude/skills/feature-sliced-design/SKILL.md",
       "codex/skills/feature-sliced-design/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "merge",
@@ -340,7 +364,8 @@
       "agents-skills/fixing-motion-performance/SKILL.md",
       "claude/skills/fixing-motion-performance/SKILL.md",
       "codex/skills/fixing-motion-performance/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "merge",
@@ -361,7 +386,8 @@
       "agents-skills/graphify/SKILL.md",
       "claude/skills/graphify/SKILL.md",
       "codex/skills/graphify/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "upstream",
@@ -451,7 +477,8 @@
     "relationship": "unique",
     "sources": [
       "claude/scheduled-tasks/limpeza-diaria-segura-mac/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -462,7 +489,8 @@
       "agents-skills/napkin/SKILL.md",
       "claude/skills/napkin/SKILL.md",
       "codex/skills/napkin/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "canonicalize",
@@ -492,7 +520,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/owasp-security/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "upstream",
@@ -548,7 +577,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -558,7 +588,8 @@
       "agents-skills/slides/SKILL.md",
       "claude/skills/slides/SKILL.md",
       "cursor/skills/slides/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -566,7 +597,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/software-architecture/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "merge",
@@ -719,7 +751,8 @@
     "relationship": "unique",
     "sources": [
       "claude/token-optimizer/skills/token-coach/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -730,7 +763,8 @@
       "agents-skills/token-optimizer/SKILL.md",
       "claude/token-optimizer/skills/token-optimizer/SKILL.md",
       "codex/skills/token-optimizer/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -738,7 +772,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/trail-of-bits-security/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "upstream",
@@ -757,7 +792,8 @@
       "agents-skills/ui-craft-dense-dashboard/SKILL.md",
       "claude/skills/ui-craft-dense-dashboard/SKILL.md",
       "codex/skills/ui-craft-dense-dashboard/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "extract_then_remove_entrypoint",
@@ -790,7 +826,8 @@
     "sources": [
       "agents-skills/variant/SKILL.md",
       "claude/skills/variant/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -798,7 +835,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/varlock/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "upstream",
@@ -830,7 +868,8 @@
       "agents-skills/vercel-react-view-transitions/SKILL.md",
       "claude/skills/vercel-react-view-transitions/SKILL.md",
       "codex/skills/vercel-react-view-transitions/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "merge",
@@ -848,7 +887,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/vibesec/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -858,7 +898,8 @@
       "agents-skills/visual-validation/SKILL.md",
       "claude/skills/visual-validation/SKILL.md",
       "codex/skills/visual-validation/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "obsolete",
@@ -866,7 +907,8 @@
     "relationship": "unique",
     "sources": [
       "claude/scheduled-tasks/vuca-reengajamento-conversao/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "obsolete",
@@ -874,7 +916,8 @@
     "relationship": "unique",
     "sources": [
       "claude/scheduled-tasks/vuca-shadow-guards-flip-review/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "obsolete",
@@ -882,7 +925,8 @@
     "relationship": "unique",
     "sources": [
       "claude/scheduled-tasks/vuca-worktree-housekeeping/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "upstream",
@@ -901,7 +945,8 @@
       "agents-skills/web-design-guidelines/SKILL.md",
       "claude/skills/web-design-guidelines/SKILL.md",
       "codex/skills/web-design-guidelines/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "reference",
@@ -909,7 +954,8 @@
     "relationship": "unique",
     "sources": [
       "claude/reference/skills-pack/claude-skills-pack-completo/skill-sources/webapp-testing/SKILL.md"
-    ]
+    ],
+    "target": null
   },
   {
     "decision": "upstream",

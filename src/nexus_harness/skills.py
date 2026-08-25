@@ -256,7 +256,6 @@ def build_skill_ledger(root: Path) -> list[dict]:
                 "Same-name sources have divergent hashes; keep all listed "
                 "copies and extract unique heuristics before any removal.",
             )
-        if target is not None:
-            entry["target"] = target
+        entry["target"] = target
         ledger.append(entry)
     return ledger

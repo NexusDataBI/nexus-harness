@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,6 +7,8 @@ from nexus_harness.skills import (
     discover_skill_files,
     group_exact_duplicates,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class SkillTests(unittest.TestCase):
@@ -61,3 +64,27 @@ class SkillTests(unittest.TestCase):
             self.assertEqual(impeccable["decision"], "upstream")
             self.assertIn("rationale", impeccable)
             self.assertEqual(len(impeccable["sources"]), 2)
+
+    def test_obsolete_unique_skill_emits_null_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "claude/scheduled-tasks/babysitting-prs/SKILL.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("scheduled task", encoding="utf-8")
+
+            ledger = build_skill_ledger(root)
+            entry = next(item for item in ledger if item["name"] == "babysitting-prs")
+
+            self.assertEqual(entry["decision"], "obsolete")
+            self.assertEqual(entry["relationship"], "unique")
+            self.assertIn("target", entry)
+            self.assertIsNone(entry["target"])
+
+    def test_committed_skill_ledger_has_target_on_every_entry(self):
+        ledger_path = REPO_ROOT / "docs/migration/skill-ledger.json"
+        with ledger_path.open(encoding="utf-8") as handle:
+            ledger = json.load(handle)
+
+        self.assertGreater(len(ledger), 0)
+        for entry in ledger:
+            self.assertIn("target", entry, msg=f"missing target on {entry['name']}")
