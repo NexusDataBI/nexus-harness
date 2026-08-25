@@ -1,6 +1,22 @@
 # Unique heuristics — Task 4 extraction status
 
-Canonical skills absorbed the unique lifecycle, a11y, and frontend-routing guidance. Remaining extract work (do not delete export sources until these are resolved):
+Canonical skills absorbed the unique lifecycle, a11y, and frontend-routing guidance. Remaining extract work (do not delete export sources until these are resolved).
+
+## Superpowers vs vendor-lock
+
+Superpowers **are** in `upstream/vendor-lock.json` (`id: superpowers`, `canonical_path: upstream/superpowers`). The import is **partial**: only TDD, systematic-debugging, and subagent-driven-development (SDD) existed in the v3 export. No fake upstream copies were invented for the rest.
+
+`nexus-workflow` names Superpowers primitives that were **not** in the v3 export and must be loaded from the host runtime until a later plan imports them:
+
+- `brainstorming`
+- `writing-plans`
+- `using-git-worktrees`
+- `verification-before-completion`
+- `requesting-code-review`
+- `receiving-code-review`
+- `finishing-a-development-branch`
+
+## Pending extract
 
 | Source                                                                                                                                                           | Relationship         | Status                                                                                    |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------- |
@@ -12,4 +28,3 @@ Canonical skills absorbed the unique lifecycle, a11y, and frontend-routing guida
 | `tdd-workflow`                                                                                                                                                   | divergent            | Runner/plan-as-data glue in `nexus-workflow`; TDD loop stays Superpowers                  |
 | `root-cause-tracing`                                                                                                                                             | divergent            | Pending `agents/root-cause-analyst.md` (not this task)                                    |
 | `napkin`                                                                                                                                                         | divergent            | Reference only; not a canonical skill                                                     |
-| Superpowers primitives missing from v3 export                                                                                                                    | —                    | See Task 4 report; omitted from `vendor-lock.json`                                        |

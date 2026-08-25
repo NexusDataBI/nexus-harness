@@ -253,8 +253,12 @@ def _check_generated_drift(root: Path, errors: list[str]) -> None:
     except json.JSONDecodeError:
         return
     current = build_lock(root)
+    if recorded.get("canonical_hashes") != current["canonical_hashes"]:
+        errors.append("canonical hash drift vs harness.lock")
     if recorded.get("generated_hashes") != current["generated_hashes"]:
         errors.append("generated hash drift vs harness.lock")
+    if recorded.get("adapter_versions") != current["adapter_versions"]:
+        errors.append("adapter version drift vs harness.lock")
 
 
 def validate_repository(root: Path) -> ValidationResult:

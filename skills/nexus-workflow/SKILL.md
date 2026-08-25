@@ -87,8 +87,15 @@ Only when requested or explicitly approved. Route to `nexus-ship`. Do not merge 
 
 ## Superpowers primitives (invoke, do not copy)
 
+Present under `upstream/superpowers/` (vendor-lock; partial v3 export):
+
+- `test-driven-development`
+- `systematic-debugging`
+- `subagent-driven-development`
+
+Named here but **not imported** — absent from the v3 Superpowers tree. Load from the host runtime until a later plan imports them; do not invent fake copies:
+
 - `brainstorming`, `writing-plans`
-- `test-driven-development`, `systematic-debugging`
 - `using-git-worktrees`
 - `verification-before-completion`
 - `requesting-code-review`, `receiving-code-review`

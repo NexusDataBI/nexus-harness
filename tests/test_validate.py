@@ -106,6 +106,85 @@ class ValidateTests(unittest.TestCase):
                 msg=result.errors,
             )
 
+    def test_canonical_hash_drift_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            (root / "core" / "constitution.md").write_text(
+                "NEXUS WORKFLOW IS MANDATORY.\nstale\n",
+                encoding="utf-8",
+            )
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any(
+                    "canonical" in error.lower() and "drift" in error.lower()
+                    for error in result.errors
+                ),
+                msg=result.errors,
+            )
+
+    def test_adapter_version_drift_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            lock_path = root / "harness.lock"
+            payload = json.loads(lock_path.read_text(encoding="utf-8"))
+            payload["adapter_versions"]["claude"] = 99
+            lock_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any(
+                    "adapter" in error.lower() and "drift" in error.lower()
+                    for error in result.errors
+                ),
+                msg=result.errors,
+            )
+
+    def test_lock_includes_profiles_in_canonical_hashes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            payload = json.loads((root / "harness.lock").read_text(encoding="utf-8"))
+            self.assertIn("profiles/default.toml", payload["canonical_hashes"])
+
+    def test_ip_production_target_in_core_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            (root / "core" / "policies" / "production.toml").write_text(
+                'host = "203.0.113.10"\n',
+                encoding="utf-8",
+            )
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any("production target" in error.lower() for error in result.errors),
+                msg=result.errors,
+            )
+
+    def test_extra_skill_dir_fails_uniqueness(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            extra = root / "skills" / "extra-skill"
+            extra.mkdir()
+            (extra / "SKILL.md").write_text("# extra\n", encoding="utf-8")
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any("canonical skills" in error.lower() for error in result.errors),
+                msg=result.errors,
+            )
+
+    def test_appledouble_under_inputs_does_not_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            frozen = root / "inputs" / "copy"
+            frozen.mkdir(parents=True)
+            (frozen / "._junk").write_text("meta", encoding="utf-8")
+            (root / "inputs" / "._also").write_text("meta", encoding="utf-8")
+            result = validate_repository(root)
+            self.assertEqual(result.errors, ())
+
 
 if __name__ == "__main__":
     unittest.main()

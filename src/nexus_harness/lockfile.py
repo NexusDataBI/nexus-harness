@@ -30,6 +30,7 @@ def build_lock(root: Path) -> dict[str, object]:
     canonical_hashes = {
         **_tree_hashes(root, "core"),
         **_tree_hashes(root, "skills"),
+        **_tree_hashes(root, "profiles"),
     }
     upstream_lock = root / "upstream" / "vendor-lock.json"
     if upstream_lock.is_file():
