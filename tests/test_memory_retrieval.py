@@ -7,7 +7,9 @@ from unittest.mock import patch
 from nexus_harness.memory.models import (
     MemoryConfidence,
     MemoryDraft,
+    MemoryRecord,
     MemoryScope,
+    MemorySensitivity,
     MemoryStatus,
     MemoryType,
 )
@@ -22,6 +24,81 @@ from nexus_harness.memory.store import (
     load_project_memories,
     write_memory,
 )
+
+
+def _draft(title: str, **overrides) -> MemoryDraft:
+    payload = {
+        "type": MemoryType.LESSON,
+        "scope": MemoryScope.PROJECT,
+        "project_id": "repo-1",
+        "title": title,
+        "body": "Recall boundary behavior.",
+    }
+    payload.update(overrides)
+    return MemoryDraft(**payload)
+
+
+def _verified_record(title: str, **overrides) -> MemoryRecord:
+    payload = {
+        "status": MemoryStatus.VERIFIED,
+        "confidence": MemoryConfidence.HIGH,
+        "verified_at": "2026-08-25T00:00:00Z",
+    }
+    payload.update(overrides)
+    return replace(_draft(title).to_record(), **payload)
+
+
+class MemoryRetrievalExclusionTests(unittest.TestCase):
+    def _search_with(self, excluded_record):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_root = root / "project"
+            cache_home = root / "cache"
+            init_project_memory(project_root)
+            included = write_memory(
+                project_root,
+                _verified_record("Recall included control"),
+            )
+            write_memory(project_root, excluded_record)
+
+            hits = search_memory(
+                project_root,
+                "recall",
+                MemoryQueryContext(project_id="repo-1", include_stale=False),
+                cache_home=cache_home,
+            )
+
+            return included.id, [hit.record.id for hit in hits]
+
+    def test_normal_recall_excludes_candidate_from_default_draft_record(self):
+        candidate = _draft("Recall candidate excluded").to_record()
+
+        included_id, hit_ids = self._search_with(candidate)
+
+        self.assertEqual(hit_ids, [included_id])
+        self.assertNotIn(candidate.id, hit_ids)
+
+    def test_normal_recall_excludes_confidential_even_when_verified(self):
+        confidential = _verified_record(
+            "Recall confidential excluded",
+            sensitivity=MemorySensitivity.CONFIDENTIAL,
+        )
+
+        included_id, hit_ids = self._search_with(confidential)
+
+        self.assertEqual(hit_ids, [included_id])
+        self.assertNotIn(confidential.id, hit_ids)
+
+    def test_normal_recall_excludes_stale_when_include_stale_is_false(self):
+        stale = replace(
+            _draft("Recall stale excluded").to_record(),
+            status=MemoryStatus.STALE,
+        )
+
+        included_id, hit_ids = self._search_with(stale)
+
+        self.assertEqual(hit_ids, [included_id])
+        self.assertNotIn(stale.id, hit_ids)
 
 
 def _verified(record):
