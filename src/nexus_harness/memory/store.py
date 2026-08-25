@@ -116,6 +116,21 @@ def _cleanup_temps(*paths: Path) -> None:
             pass
 
 
+def atomic_write_json(path: Path, payload) -> Path:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    tmp = destination.with_name(destination.name + ".tmp")
+    _assert_inside_dir(destination, destination.parent)
+    _assert_inside_dir(tmp, destination.parent)
+    try:
+        _write_temp_file(tmp, json.dumps(payload, indent=2) + "\n")
+        os.replace(tmp, destination)
+    except Exception:
+        _cleanup_temps(tmp)
+        raise
+    return destination
+
+
 def init_project_memory(project_root: Path) -> Path:
     memory_root = _project_memory_root(project_root)
     memory_root.mkdir(parents=True, exist_ok=True)

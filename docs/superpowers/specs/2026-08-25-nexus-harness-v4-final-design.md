@@ -41,16 +41,16 @@ The system has five permanent responsibilities:
 
 ## 3. Final minimal tool stack
 
-| Responsibility | Primary tool | Cost policy |
-|---|---|---|
-| Work tracking, Issues, Projects, PRs, Actions, registry | GitHub | Existing account |
-| Product analytics, session replay, error/runtime intelligence | PostHog Cloud | Free tier first; hard spend limit |
-| Format/lint/static style quality for JS/TS | Biome | Free/open source |
-| Unit + integration + coverage for JS/TS | Vitest | Free/open source |
-| E2E + browser + screenshots + visual regression | Playwright | Free/open source |
-| Security scan for source/deps/secrets/IaC/images/SBOM | Trivy | Free/open source |
-| CI compute | Personal Nexus VPS | Already paid |
-| Production runtime | Per-client VM | Isolated from CI |
+| Responsibility                                                | Primary tool       | Cost policy                       |
+| ------------------------------------------------------------- | ------------------ | --------------------------------- |
+| Work tracking, Issues, Projects, PRs, Actions, registry       | GitHub             | Existing account                  |
+| Product analytics, session replay, error/runtime intelligence | PostHog Cloud      | Free tier first; hard spend limit |
+| Format/lint/static style quality for JS/TS                    | Biome              | Free/open source                  |
+| Unit + integration + coverage for JS/TS                       | Vitest             | Free/open source                  |
+| E2E + browser + screenshots + visual regression               | Playwright         | Free/open source                  |
+| Security scan for source/deps/secrets/IaC/images/SBOM         | Trivy              | Free/open source                  |
+| CI compute                                                    | Personal Nexus VPS | Already paid                      |
+| Production runtime                                            | Per-client VM      | Isolated from CI                  |
 
 The harness does not add Jira, Linear, Trello, Slack, Sentry, Datadog, New Relic, Grafana, Codecov, Semgrep, Gitleaks, Knip, Stryker or ArchContract to the baseline. A project may retain an existing tool when removal would reduce quality, but the harness does not introduce overlapping tools by default.
 
@@ -831,3 +831,7 @@ The v4 migration is complete when:
 18. GitHub Issues/PRs/Project status remain synchronized with lifecycle;
 19. PostHog runtime problems can be triaged into deduplicated Issues;
 20. `nexus doctor` and smoke/eval suites pass for Claude, Cursor and Codex.
+
+## 23. Approved architecture amendment — Nexus Memory
+
+Durable engineering memory is defined by `docs/superpowers/specs/2026-08-25-nexus-harness-v4-25-memory-architecture.md`. Plan 2.5 is executed after Workflow/Graph/Quality and before Runtime Adapters/Hooks. For memory-specific architecture, provenance, retrieval, freshness and runtime integration decisions, the Plan 2.5 memory spec is the binding extension of this document.

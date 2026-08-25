@@ -1,7 +1,7 @@
 # Nexus Memory Contract for Plan 3 Runtime Adapters & Hooks
 
 **Status before Plan 2.5:** approved target contract  
-**Status after Plan 2.5:** implementation must validate this document against the actual public memory API before Plan 3 begins.
+**Status after Plan 2.5:** public API validated against `nexus_harness.memory`. Plan 3 consumes these exports; it does not own storage.
 
 ## Purpose
 
@@ -12,15 +12,52 @@ Plan 3 generates runtime-specific Claude/Cursor/Codex configuration and hooks. I
 Plan 3 expects these responsibilities to be importable from `nexus_harness.memory`:
 
 ```python
-session_recall
-checkpoint_memory_candidates
-restore_memory_candidates
-consolidate_memory
-collect_memory_candidates
-memory_doctor
+from nexus_harness.memory import (
+    load_project_memories,
+    write_memory,
+    verify_memory,
+    supersede_memory,
+    compute_memory_freshness,
+    search_memory,
+    build_context_capsule,
+    collect_memory_candidates,
+    init_portfolio_vault,
+    memory_doctor,
+    session_recall,
+    checkpoint_memory_candidates,
+    restore_memory_candidates,
+    consolidate_memory,
+)
 ```
 
 Storage/layout internals and SQLite tables are not runtime-adapter APIs.
+
+## Hook contract
+
+```text
+SessionStart
+→ restore Plan 2 state when present
+→ session_recall()
+→ inject bounded capsule
+
+UserPromptSubmit / new classified task
+→ refresh WARM retrieval only when domain/affected paths materially change
+
+PreCompact
+→ checkpoint Plan 2 structured state
+→ checkpoint_memory_candidates()
+
+compact SessionStart
+→ restore structured state
+→ rebuild capsule from canonical memory
+
+TaskCompleted after Completion Gate PASS
+→ collect_memory_candidates()
+→ consolidate_memory()
+
+SessionEnd
+→ flush candidate checkpoint only
+```
 
 ## Hook lifecycle
 
@@ -169,6 +206,10 @@ memory unavailable
 → report controlled limitation
 → continue using current repo/spec/operational state
 ```
+
+- recall/index failure degrades to no-memory/lexical fallback and is reported;
+- memory failure does not bypass or alter Completion Gate;
+- no runtime may create its own canonical memory database.
 
 Never fabricate remembered context when memory retrieval fails.
 
