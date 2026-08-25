@@ -110,9 +110,12 @@ def _report_diff_hash(value):
 
 
 def _gate_fresh(state, key, current_diff_hash) -> bool:
-    report_hash = _report_diff_hash(_get(state, key))
-    if report_hash is None:
+    value = _get(state, key)
+    if isinstance(value, str):
         return True
+    report_hash = _report_diff_hash(value)
+    if report_hash is None or str(report_hash).strip() == "":
+        return False
     return report_hash == current_diff_hash
 
 
@@ -231,11 +234,11 @@ def _confirmed_blocker_or_high(state) -> bool:
 def _finding_confirmed(finding) -> bool:
     if isinstance(finding, dict):
         status = finding.get("status")
-        if status is not None:
+        if status is not None and str(status).strip():
             return str(status).strip().lower() == "confirmed"
         return bool(finding.get("confirmed"))
     status = getattr(finding, "status", None)
-    if status is not None:
+    if status is not None and str(status).strip():
         return str(status).strip().lower() == "confirmed"
     return bool(getattr(finding, "confirmed", False))
 

@@ -81,6 +81,42 @@ class CompletionTests(unittest.TestCase):
                 msg=f"status={status} reasons={result.reasons}",
             )
 
+    def test_quality_report_without_diff_hash_is_not_fresh(self):
+        result = evaluate_completion(
+            _ready_state(quality_gate=QualityReport(gate="PASS"))
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("quality" in reason and "fresh" in reason for reason in result.reasons)
+        )
+
+    def test_security_report_without_diff_hash_is_not_fresh(self):
+        result = evaluate_completion(
+            _ready_state(security_gate=SecurityReport(gate="PASS"))
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("security" in reason and "fresh" in reason for reason in result.reasons)
+        )
+
+    def test_quality_report_with_matching_diff_hash_is_ready(self):
+        result = evaluate_completion(
+            _ready_state(quality_gate=QualityReport(gate="PASS", diff_hash="abc"))
+        )
+        self.assertEqual(result.status, "READY_TO_SHIP")
+        self.assertEqual(result.reasons, [])
+
+    def test_blank_status_falls_through_to_confirmed_flag(self):
+        result = evaluate_completion(
+            _ready_state(
+                findings=[{"severity": "high", "confirmed": True, "status": ""}]
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("finding" in reason or "high" in reason for reason in result.reasons)
+        )
+
     def test_stale_quality_report_diff_hash_blocks_done(self):
         state = _ready_state(
             current_diff_hash="def",

@@ -112,8 +112,8 @@ class FailureTests(unittest.TestCase):
             save_task_state(state, path)
             loaded = load_task_state(path)
 
-        restored = loaded.failures
-        if isinstance(restored, dict):
-            restored = FailureMemory.from_dict(restored)
-        next_result = restored.record("vitest", 1, "AssertionError: expected 1 got 0")
+        self.assertIsInstance(loaded.failures, FailureMemory)
+        next_result = loaded.failures.record(
+            "vitest", 1, "AssertionError: expected 1 got 0"
+        )
         self.assertEqual(next_result.action, "blocked")
