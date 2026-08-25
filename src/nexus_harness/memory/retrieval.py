@@ -19,6 +19,7 @@ from nexus_harness.memory.models import (
     MemoryStatus,
     MemoryType,
 )
+from nexus_harness.memory.portfolio import load_portfolio_memories
 from nexus_harness.memory.store import load_project_memories
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -130,7 +131,7 @@ def search_memory(
 ) -> list[MemoryHit]:
     records = list(load_project_memories(project_root))
     if portfolio_root is not None:
-        records.extend(_load_portfolio_records(portfolio_root))
+        records.extend(load_portfolio_memories(portfolio_root))
 
     eligible = [record for record in records if _is_eligible(record, context)]
     candidates = eligible
@@ -161,17 +162,6 @@ def search_memory(
         )
     hits.sort(key=_hit_sort_key)
     return hits[:50]
-
-
-def _load_portfolio_records(portfolio_root: Path) -> list[MemoryRecord]:
-    try:
-        from nexus_harness.memory import portfolio as portfolio_mod
-    except ImportError:
-        return []
-    loader = getattr(portfolio_mod, "load_portfolio_memories", None)
-    if loader is None:
-        return []
-    return list(loader(portfolio_root))
 
 
 def _is_eligible(record: MemoryRecord, context: MemoryQueryContext) -> bool:
