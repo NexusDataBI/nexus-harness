@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import ipaddress
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -41,6 +41,16 @@ Nexus Harness is the source of truth for lifecycle state and completion.
 _HOSTNAME = re.compile(r"^[A-Za-z0-9.-]+$")
 
 
+def _is_valid_hostname(value: str) -> bool:
+    if len(value) > 253 or not _HOSTNAME.fullmatch(value):
+        return False
+    labels = value.split(".")
+    return all(
+        0 < len(label) <= 63 and label[0].isalnum() and label[-1].isalnum()
+        for label in labels
+    )
+
+
 def _allowed_hosts(root: Path) -> list[str]:
     path = root / "profiles" / "active.toml"
     if not path.is_file():
@@ -57,7 +67,7 @@ def _allowed_hosts(root: Path) -> list[str]:
         return []
     hosts = set()
     for value in values:
-        if not isinstance(value, str) or not _HOSTNAME.fullmatch(value):
+        if not isinstance(value, str) or not _is_valid_hostname(value):
             continue
         try:
             ipaddress.ip_address(value)

@@ -80,6 +80,24 @@ class CursorAdapterTests(unittest.TestCase):
             )
         self.assertEqual(sandbox["networkPolicy"]["allowedHosts"], ["api.example.test"])
 
+    def test_hostname_labels_must_be_valid_and_bounded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "profiles").mkdir()
+            too_long = ".".join(["a" * 63] * 4)
+            (root / "profiles" / "active.toml").write_text(
+                '[network]\nallowed_hosts = [".", "-foo.example", '
+                '"foo-.example", "foo..example", '
+                f'"{too_long}", "api.example.com"]\n',
+                encoding="utf-8",
+            )
+            sandbox = json.loads(
+                {item.relative_path: item.content for item in render(root)}[
+                    "cursor/sandbox.json"
+                ]
+            )
+        self.assertEqual(sandbox["networkPolicy"]["allowedHosts"], ["api.example.com"])
+
     def test_malformed_network_section_fails_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
