@@ -1,5 +1,9 @@
 import json
+import importlib.util
+import sys
+import types
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from nexus_harness.runtime_claude import render
@@ -65,3 +69,25 @@ class ClaudeAdapterTests(unittest.TestCase):
         output = "\n".join(self.files.values())
         self.assertIn("completion gate", output.lower())
         self.assertIn("exit 2", output.lower())
+
+    def test_completion_hook_propagates_dispatch_exit_code(self):
+        module_spec = importlib.util.spec_from_file_location(
+            "claude_event", Path("hooks/claude_event.py")
+        )
+        wrapper = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(wrapper)
+        common_hooks = types.ModuleType("nexus_harness.hooks")
+        common_hooks.dispatch = lambda event, completion_gate: 2
+        with patch.dict(sys.modules, {"nexus_harness.hooks": common_hooks}):
+            with patch.object(
+                sys,
+                "argv",
+                ["claude_event.py", "--event", "TaskCompleted", "--completion-gate"],
+            ):
+                self.assertEqual(wrapper.main(), 2)
+
+    def test_rendered_wrapper_matches_source_wrapper(self):
+        self.assertEqual(
+            self.files["hooks/claude_event.py"],
+            Path("hooks/claude_event.py").read_text(encoding="utf-8"),
+        )

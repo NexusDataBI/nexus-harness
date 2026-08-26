@@ -55,14 +55,20 @@ def main() -> int:
         from nexus_harness.hooks import dispatch
     except ImportError:
         # The common hook engine is installed by the hooks integration task.
-        return 0
+        return 2 if args.completion_gate else 0
     try:
-        dispatch(args.event, completion_gate=args.completion_gate)
+        result = dispatch(args.event, completion_gate=args.completion_gate)
     except Exception:
         if args.completion_gate:
             return 2
         return 0
-    return 0
+    if result is None:
+        return 2 if args.completion_gate else 0
+    exit_code = getattr(result, "exit_code", result)
+    try:
+        return int(exit_code)
+    except (TypeError, ValueError):
+        return 2 if args.completion_gate else 0
 
 
 if __name__ == "__main__":
