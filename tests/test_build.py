@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -16,6 +17,62 @@ SCHEMA_PATH = REPO_ROOT / "core" / "ci" / "deploy-manifest.schema.json"
 EXAMPLE_REPO = "Rubens-Marques/SDR-Plataform"
 COMMIT = "9e6f3ccc19dee64c03e771c87a01679d4ab9a98e"
 VALID_DIGEST = "sha256:" + ("a" * 64)
+
+
+def _schema_rejects(payload: dict) -> bool:
+    """True if payload violates deploy-manifest.schema.json documented constraints.
+
+    Uses the schema file's patterns/required/additionalProperties — stdlib only,
+    no jsonschema dependency. Keep patterns in the schema accurate.
+    """
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return True
+    if schema.get("additionalProperties") is False:
+        allowed = set(schema.get("properties", {}))
+        if set(payload) - allowed:
+            return True
+    for key in schema.get("required", []):
+        if key not in payload:
+            return True
+    for key, prop in schema.get("properties", {}).items():
+        if key not in payload:
+            continue
+        value = payload[key]
+        if prop.get("type") == "string" and not isinstance(value, str):
+            return True
+        if prop.get("type") == "string" and prop.get("minLength"):
+            if len(value) < int(prop["minLength"]):
+                return True
+        if prop.get("type") == "array" and not isinstance(value, list):
+            return True
+    artifacts = payload.get("artifacts")
+    if not isinstance(artifacts, list):
+        return True
+    artifact_schema = schema["$defs"]["artifact"]
+    image_pat = re.compile(artifact_schema["properties"]["image"]["pattern"])
+    digest_pat = re.compile(artifact_schema["properties"]["digest"]["pattern"])
+    required_art = set(artifact_schema.get("required", []))
+    allow_extra = artifact_schema.get("additionalProperties", True)
+    for item in artifacts:
+        if not isinstance(item, dict):
+            return True
+        if allow_extra is False and set(item) - set(
+            artifact_schema.get("properties", {})
+        ):
+            return True
+        if required_art - set(item):
+            return True
+        image = item.get("image", "")
+        digest = item.get("digest", "")
+        if not isinstance(image, str) or not image_pat.fullmatch(image):
+            return True
+        if not isinstance(digest, str) or not digest_pat.fullmatch(digest):
+            return True
+        service = item.get("service", "")
+        if not isinstance(service, str) or not service:
+            return True
+    return False
 
 
 class BuildTests(unittest.TestCase):
@@ -91,6 +148,56 @@ class BuildTests(unittest.TestCase):
         self.assertFalse(artifact["additionalProperties"])
         digest_schema = artifact["properties"]["digest"]
         self.assertIn("sha256:", digest_schema.get("pattern", ""))
+        image_schema = artifact["properties"]["image"]
+        image_pat = image_schema.get("pattern", "")
+        self.assertTrue(image_pat, "image must have a pattern forbidding tag/digest")
+        self.assertRegex("ghcr.io/acme/web", image_pat)
+        self.assertIsNone(re.fullmatch(image_pat, "ghcr.io/acme/web:latest"))
+        self.assertIsNone(
+            re.fullmatch(image_pat, "ghcr.io/acme/web@sha256:" + ("a" * 64))
+        )
+
+    def test_schema_rejects_image_with_latest_tag(self):
+        payload = {
+            "repository": EXAMPLE_REPO,
+            "commit": COMMIT,
+            "artifacts": [
+                {
+                    "service": "web",
+                    "image": "ghcr.io/acme/web:latest",
+                    "digest": VALID_DIGEST,
+                }
+            ],
+        }
+        self.assertTrue(_schema_rejects(payload))
+
+    def test_schema_rejects_empty_digest(self):
+        payload = {
+            "repository": EXAMPLE_REPO,
+            "commit": COMMIT,
+            "artifacts": [
+                {
+                    "service": "web",
+                    "image": "ghcr.io/acme/web",
+                    "digest": "",
+                }
+            ],
+        }
+        self.assertTrue(_schema_rejects(payload))
+
+    def test_schema_accepts_valid_manifest(self):
+        payload = {
+            "repository": EXAMPLE_REPO,
+            "commit": COMMIT,
+            "artifacts": [
+                {
+                    "service": "web",
+                    "image": "ghcr.io/rubens-marques/sdr-plataform-web",
+                    "digest": VALID_DIGEST,
+                }
+            ],
+        }
+        self.assertFalse(_schema_rejects(payload))
 
     def test_plan_only_builds_affected_images(self):
         affected = AffectedPlan(
@@ -136,7 +243,12 @@ class BuildTests(unittest.TestCase):
             f"--tag=ghcr.io/rubens-marques/sdr-plataform-web:{COMMIT}",
             argv,
         )
+        self.assertTrue(
+            any(a.startswith("--metadata-file=") for a in argv),
+            "build must capture digest via --metadata-file, not post-push inspect",
+        )
         self.assertIn("--push", argv)
+        self.assertNotIn("imagetools", argv)
         server = plan[1]
         self.assertIn(
             "ghcr.io/rubens-marques/sdr-plataform-server:buildcache",
@@ -157,7 +269,7 @@ class BuildTests(unittest.TestCase):
             "ghcr.io/rubens-marques/sdr-plataform-figma-worker",
         )
 
-    def test_build_records_registry_digest_via_injected_runner(self):
+    def test_build_records_digest_from_buildx_metadata_file(self):
         digests = {
             "ghcr.io/rubens-marques/sdr-plataform-web": "sha256:" + ("b" * 64),
             "ghcr.io/rubens-marques/sdr-plataform-server": "sha256:" + ("c" * 64),
@@ -168,12 +280,28 @@ class BuildTests(unittest.TestCase):
             calls.append(tuple(argv))
             joined = " ".join(argv)
             if "buildx" in argv and "build" in argv:
+                meta_arg = next(
+                    (a for a in argv if a.startswith("--metadata-file=")),
+                    None,
+                )
+                self.assertIsNotNone(
+                    meta_arg, "build argv must include --metadata-file"
+                )
+                meta_path = Path(meta_arg.split("=", 1)[1])
+                digest = None
+                for image, value in digests.items():
+                    if f"--tag={image}:" in joined or f"{image}:" in joined:
+                        digest = value
+                        break
+                self.assertIsNotNone(digest, f"unknown image in build: {joined}")
+                meta_path.parent.mkdir(parents=True, exist_ok=True)
+                meta_path.write_text(
+                    json.dumps({"containerimage.digest": digest}),
+                    encoding="utf-8",
+                )
                 return 0, "", ""
-            if "imagetools" in argv and "inspect" in argv:
-                for image, digest in digests.items():
-                    if image in joined:
-                        return 0, digest + "\n", ""
-                return 1, "", "unknown image"
+            if "imagetools" in argv:
+                return 1, "", "inspect must not be used for digest identity"
             return 1, "", f"unexpected: {joined}"
 
         affected = AffectedPlan(
@@ -199,13 +327,14 @@ class BuildTests(unittest.TestCase):
             digests[by_service["server"]["image"]],
         )
         self.assertNotIn("latest", json.dumps(manifest))
-        # One build/push per image; inspect resolves digest — no second push.
+        # One build/push per image; digest from metadata file — no imagetools inspect.
         build_calls = [c for c in calls if "build" in c and "buildx" in c]
         inspect_calls = [c for c in calls if "imagetools" in c]
         self.assertEqual(len(build_calls), 2)
-        self.assertEqual(len(inspect_calls), 2)
+        self.assertEqual(len(inspect_calls), 0)
         for call in build_calls:
             self.assertEqual(call.count("--push"), 1)
+            self.assertTrue(any(a.startswith("--metadata-file=") for a in call))
 
     def test_empty_affected_images_yields_empty_artifacts(self):
         manifest = build_affected_images(

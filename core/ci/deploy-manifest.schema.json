@@ -35,7 +35,8 @@
         "image": {
           "type": "string",
           "minLength": 1,
-          "description": "Registry repository path without tag; production identity is digest."
+          "pattern": "^[^:@\\s]+(/[^:@\\s]+)+$",
+          "description": "Registry repository path without tag or digest (no :latest, no :sha, no @sha256); production identity lives in digest."
         },
         "digest": {
           "type": "string",
