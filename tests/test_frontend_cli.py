@@ -119,6 +119,53 @@ class FrontendCaptureCliTests(unittest.TestCase):
             self.assertEqual(code, 2)
             runner.assert_not_called()
 
+    def test_frontend_capture_rejects_parent_task_id_without_runner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = _write_frontend_profile(root)
+            runner = Mock(side_effect=AssertionError("runner must not run"))
+            code = main(
+                [
+                    "--project-root",
+                    str(root),
+                    "frontend",
+                    "capture",
+                    "--route",
+                    "/inbox",
+                    "--task-id",
+                    "../evil",
+                ],
+                runner=runner,
+                profile_path=profile,
+                artifact_root=root / "artifacts",
+            )
+            self.assertEqual(code, 2)
+            runner.assert_not_called()
+            self.assertFalse((root / "evil").exists())
+
+    def test_frontend_capture_rejects_absolute_task_id_without_runner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = _write_frontend_profile(root)
+            runner = Mock(side_effect=AssertionError("runner must not run"))
+            code = main(
+                [
+                    "--project-root",
+                    str(root),
+                    "frontend",
+                    "capture",
+                    "--route",
+                    "/inbox",
+                    "--task-id",
+                    "/tmp/out",
+                ],
+                runner=runner,
+                profile_path=profile,
+                artifact_root=root / "artifacts",
+            )
+            self.assertEqual(code, 2)
+            runner.assert_not_called()
+
     def test_frontend_capture_discovers_single_profile(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

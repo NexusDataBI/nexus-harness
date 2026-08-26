@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,7 @@ from unittest.mock import Mock
 from nexus_harness.devserver import parse_frontend_section
 from nexus_harness.evidence import read_evidence
 from nexus_harness.playwright import (
+    build_capture_argv,
     capture_route,
     render_playwright_config,
     validate_route,
@@ -272,6 +274,18 @@ class PlaywrightCaptureTests(unittest.TestCase):
                 runner=runner,
             )
         runner.assert_not_called()
+
+    def test_capture_escapes_route_for_playwright_grep(self):
+        route = "/inbox(.*)"
+        argv = build_capture_argv(
+            config_path=self.root / "playwright" / "nexus.config.ts",
+            spec_path=self.root / "playwright" / "capture.spec.ts",
+            output_dir=self.root / "playwright" / "output",
+            route=route,
+        )
+        grep_at = argv.index("--grep")
+        self.assertEqual(argv[grep_at + 1], re.escape(route))
+        self.assertNotEqual(argv[grep_at + 1], route)
 
 
 class PlaywrightBaselineTests(unittest.TestCase):

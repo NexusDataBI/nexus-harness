@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -28,6 +29,23 @@ from nexus_harness.tooling import run_quality
 
 GitDiffFn = Callable[[str, str, Path], tuple[str, ...]]
 Runner = Callable[..., tuple[int, str, str]]
+
+_CAPTURE_TASK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+def _validate_capture_task_id(task_id: str | None) -> str:
+    from nexus_harness.safe import PathSafetyError
+
+    tid = (task_id or "adhoc").strip() or "adhoc"
+    if (
+        ".." in tid
+        or "/" in tid
+        or "\\" in tid
+        or "\x00" in tid
+        or not _CAPTURE_TASK_ID.fullmatch(tid)
+    ):
+        raise PathSafetyError("unsafe task id")
+    return tid
 
 
 class _Parser(argparse.ArgumentParser):
@@ -315,7 +333,7 @@ def cmd_frontend_capture(
 ) -> int:
     from nexus_harness.devserver import FrontendConfig, FrontendConfigError
     from nexus_harness.playwright import PlaywrightError, capture_route
-    from nexus_harness.safe import PathSafetyError
+    from nexus_harness.safe import PathSafetyError, confine
     from nexus_harness.state import load_task_state
 
     try:
@@ -333,21 +351,21 @@ def cmd_frontend_capture(
         print("profile has no [frontend] table")
         return 2
 
-    tid = (task_id or "adhoc").strip() or "adhoc"
-    out_root = (
-        Path(artifact_root)
-        if artifact_root is not None
-        else project_root / ".nexus" / "tasks" / tid / "evidence"
-    )
-    task_state = None
-    state_file = project_root / ".nexus" / "tasks" / tid / "state.json"
-    if state_file.is_file():
-        try:
-            task_state = load_task_state(state_file)
-        except (OSError, ValueError, TypeError, KeyError):
-            task_state = None
-
     try:
+        tid = _validate_capture_task_id(task_id)
+        tasks_root = project_root / ".nexus" / "tasks"
+        out_root = (
+            Path(artifact_root)
+            if artifact_root is not None
+            else confine(tasks_root / tid / "evidence", tasks_root)
+        )
+        task_state = None
+        state_file = tasks_root / tid / "state.json"
+        if state_file.is_file():
+            try:
+                task_state = load_task_state(state_file)
+            except (OSError, ValueError, TypeError, KeyError):
+                task_state = None
         result = capture_route(
             route,
             config=frontend,
