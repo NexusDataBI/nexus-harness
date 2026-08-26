@@ -197,40 +197,40 @@ def _excluded_by_authority(
     context: MemoryQueryContext,
     findings: list[dict[str, str]] | None,
 ) -> bool:
-    excluded = False
     memory_strength = TruthStrength(_provenance_strength(record, freshness))
-    for contradiction in context.contradictions:
-        if contradiction.memory_id != record.id:
-            continue
-        resolution = resolve_contradiction(
-            [
-                (record.id, memory_strength),
-                (
-                    f"authority:{contradiction.pointer or contradiction.authority.name}",
-                    contradiction.authority,
-                ),
-            ]
+    contradictions = tuple(
+        contradiction
+        for contradiction in context.contradictions
+        if contradiction.memory_id == record.id
+    )
+    if not contradictions:
+        return False
+    items = [
+        (record.id, memory_strength),
+        *(
+            (
+                f"authority:{contradiction.pointer or contradiction.authority.name}",
+                contradiction.authority,
+            )
+            for contradiction in contradictions
+        ),
+    ]
+    resolution = resolve_contradiction(items)
+    equal_memory_tie = resolution.requires_adjudication and any(
+        contradiction.authority == memory_strength for contradiction in contradictions
+    )
+    should_exclude = record.id in resolution.excluded or equal_memory_tie
+    if should_exclude and findings is not None:
+        findings.extend(
+            {
+                "code": "memory_contradiction",
+                "memory_id": record.id,
+                "authority": contradiction.authority.name,
+                "pointer": contradiction.pointer,
+            }
+            for contradiction in contradictions
         )
-        authority_is_leader = contradiction.authority == max(
-            memory_strength, contradiction.authority
-        )
-        should_exclude = record.id in resolution.excluded or (
-            resolution.requires_adjudication
-            and authority_is_leader
-            and contradiction.authority == TruthStrength.CURRENT_REPO
-        )
-        if should_exclude:
-            excluded = True
-            if findings is not None:
-                findings.append(
-                    {
-                        "code": "memory_contradiction",
-                        "memory_id": record.id,
-                        "authority": contradiction.authority.name,
-                        "pointer": contradiction.pointer,
-                    }
-                )
-    return excluded
+    return should_exclude
 
 
 def _is_eligible(record: MemoryRecord, context: MemoryQueryContext) -> bool:
