@@ -94,6 +94,19 @@ class GitHub:
             cmd.extend(["--remove-label", label])
         return _issue_from_stdout(_run(cmd), fallback_number=int(number))
 
+    def view_issue(self, repo: str, number: int) -> Issue:
+        cmd = [
+            "gh",
+            "issue",
+            "view",
+            str(number),
+            "--repo",
+            _repo(repo),
+            "--json",
+            "number,url,title,state",
+        ]
+        return _issue_from_stdout(_run(cmd), fallback_number=int(number))
+
     def find_issue(self, repo: str, query: str) -> Issue | None:
         cmd = [
             "gh",

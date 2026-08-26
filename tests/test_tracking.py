@@ -2,26 +2,12 @@ import unittest
 
 from nexus_harness.github import Issue
 from nexus_harness.state import TaskState
-from nexus_harness.tracking import ensure_issue, issue_body, tracking_required
-
-BUG_RCA_SECTIONS = (
-    "Reproduction",
-    "Proximate Cause",
-    "Root Cause",
-    "Escape Cause",
-    "Regression Guard",
-    "Preventive Control",
-)
-CONTRACT_SECTIONS = (
-    "Summary",
-    "Type",
-    "Priority",
-    "Project/Area",
-    "Problem or desired outcome",
-    "Acceptance Criteria",
-    "Risk/Environment",
-    "Evidence links when bug/incident",
-    "Dependencies",
+from nexus_harness.tracking import (
+    BUG_RCA_SECTIONS,
+    CONTRACT_SECTIONS,
+    ensure_issue,
+    issue_body,
+    tracking_required,
 )
 
 
@@ -96,6 +82,36 @@ class TrackingTests(unittest.TestCase):
         self.assertEqual(result.issue, 12)
         self.assertEqual(result.url, "https://github.com/x/y/issues/12")
         self.assertEqual(github.viewed, [("x/y", 12)])
+        self.assertEqual(github.created, [])
+
+    def test_closed_existing_issue_falls_through_to_search(self):
+        github = FakeGitHub()
+        github.view_result = Issue(
+            number=12,
+            url="https://github.com/x/y/issues/12",
+            title="Fix login",
+            state="CLOSED",
+        )
+        github.search_result = Issue(
+            number=44,
+            url="https://github.com/x/y/issues/44",
+            title="Fix login",
+            state="OPEN",
+        )
+        state = _state(issue=12)
+
+        result = ensure_issue(
+            state,
+            github,
+            title="Fix login",
+            work_type="change",
+            fingerprint="login-500",
+        )
+
+        self.assertEqual(state.issue, 44)
+        self.assertEqual(result.issue, 44)
+        self.assertEqual(github.viewed, [("x/y", 12)])
+        self.assertEqual(github.searched, [("x/y", "login-500")])
         self.assertEqual(github.created, [])
 
     def test_search_hit_links_and_does_not_create(self):

@@ -88,6 +88,22 @@ class GitHubTests(unittest.TestCase):
         self.assertIn("updated", cmd)
 
     @patch("nexus_harness.github.subprocess.run")
+    def test_view_issue_uses_json_fields(self, run):
+        _ok(
+            run,
+            '{"number":12,"url":"https://github.com/x/y/issues/12","title":"Bug","state":"OPEN"}',
+        )
+        issue = GitHub().view_issue("x/y", 12)
+        self.assertEqual(issue.number, 12)
+        cmd, kwargs = _cmd(run)
+        self.assertFalse(kwargs.get("shell", False))
+        self.assertEqual(cmd[:3], ["gh", "issue", "view"])
+        self.assertIn("12", cmd)
+        self.assertTrue(
+            any(part == "--json" or part.startswith("--json") for part in cmd)
+        )
+
+    @patch("nexus_harness.github.subprocess.run")
     def test_find_issue_returns_first_json_match(self, run):
         _ok(
             run,

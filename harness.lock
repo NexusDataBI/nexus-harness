@@ -108,7 +108,7 @@
     "dist/src/nexus_harness/deploy_manifest.py": "41fa83e031c7e3858226239c85053c0a23edb6754013c6faa413c217ba0d212b",
     "dist/src/nexus_harness/evidence.py": "cc310526408aba4e335a29870d5e9e19dddfd62397ebf089e704f5f4417328ef",
     "dist/src/nexus_harness/failures.py": "c84cd5d35e227639dd0bb6665b8ca56a912a9aee89c9853db77d81f134de9283",
-    "dist/src/nexus_harness/github.py": "117c9a5777d8ea1e1da88cbb31d45fe58f9b083d4781bdea0be1aed53bae4f8f",
+    "dist/src/nexus_harness/github.py": "eea83803ba75f03093b006822b35f0ed68cec48d83eaa3627ab5ddda61f38794",
     "dist/src/nexus_harness/graph.py": "5dbc8a8a5eda70bbd3ebc28eb25267eee887efd1819934e822dd4ba9120e0d8e",
     "dist/src/nexus_harness/hooks.py": "a044ca685e302f01fc086eca3fca830cb0aaabda32ddab15baaa635d00a1a6b5",
     "dist/src/nexus_harness/infra.py": "473167148990e58e4ba49e21b747d2151be6d7c96f35fd787acbe7ae862dbce4",
