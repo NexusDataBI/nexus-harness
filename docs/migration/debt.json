@@ -156,7 +156,7 @@
       "origin": "plan-2.5-final-review",
       "severity": "low",
       "description": "session_recall still raises on schema-invalid JSON objects (KeyError/enum); only MemoryStoreError and JSONDecodeError degrade to empty capsule.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "session_recall catches all sidecar parse/model errors and returns an empty capsule plus a structured finding.",
       "defer_reason": "Corrupt non-JSON already degrades. Schema-invalid objects are doctor FAIL, not the happy path."

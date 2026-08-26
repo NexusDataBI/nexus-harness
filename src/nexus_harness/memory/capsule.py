@@ -38,6 +38,7 @@ class ContextCapsule:
     warm: str
     warnings: str
     item_count: int
+    findings: tuple[dict[str, str], ...] = ()
 
     @property
     def text(self) -> str:
@@ -73,6 +74,7 @@ def build_context_capsule(
     hits: Sequence[MemoryHit],
     hot_memory_ids: Sequence[str],
     policy: CapsulePolicy,
+    findings: Sequence[dict[str, str]] = (),
 ) -> ContextCapsule:
     ranked = _dedupe_ranked(hits)
     hot_ids = set(hot_memory_ids)
@@ -105,6 +107,11 @@ def build_context_capsule(
                 warning_blocks.append(
                     f"- {hit.record.id} was excluded because it is stale."
                 )
+    for finding in findings:
+        warning_blocks.append(
+            f"- {finding.get('path', 'memory record')} was excluded because its "
+            "sidecar is invalid."
+        )
 
     return ContextCapsule(
         project_id=project_id,
@@ -113,6 +120,7 @@ def build_context_capsule(
         warm="\n".join(warm_blocks),
         warnings="\n".join(warning_blocks),
         item_count=len(used),
+        findings=tuple(findings),
     )
 
 

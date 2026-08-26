@@ -79,6 +79,52 @@ def load_portfolio_memories(vault_root: Path) -> list[MemoryRecord]:
     return sorted(records, key=lambda record: record.id)
 
 
+def load_portfolio_memories_tolerant(
+    vault_root: Path, findings: list[dict[str, str]]
+) -> list[MemoryRecord]:
+    records: list[MemoryRecord] = []
+    seen_ids: set[str] = set()
+    for category in _PORTFOLIO_CATEGORIES:
+        directory = Path(vault_root) / category
+        if not directory.is_dir():
+            continue
+        for path in sorted(
+            path
+            for path in directory.iterdir()
+            if path.is_file()
+            and path.suffix == ".json"
+            and not path.name.endswith(".tmp")
+        ):
+            if not _is_complete_pair(path):
+                continue
+            try:
+                record = MemoryRecord.from_json_dict(
+                    json.loads(path.read_text(encoding="utf-8"))
+                )
+            except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+                findings.append(
+                    {
+                        "code": "memory_record_excluded",
+                        "path": str(path),
+                        "message": "record was excluded because its sidecar is invalid",
+                    }
+                )
+                continue
+            if record.scope != MemoryScope.PORTFOLIO or record.id in seen_ids:
+                if record.id in seen_ids:
+                    findings.append(
+                        {
+                            "code": "memory_record_excluded",
+                            "path": str(path),
+                            "message": "record was excluded because its memory id is duplicated",
+                        }
+                    )
+                continue
+            seen_ids.add(record.id)
+            records.append(record)
+    return sorted(records, key=lambda record: record.id)
+
+
 def write_project_bridge(vault_root: Path, bridge: ProjectBridge) -> Path:
     project_id = bridge.project_id
     if not project_id or ".." in project_id or "/" in project_id or "\\" in project_id:

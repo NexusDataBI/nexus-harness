@@ -232,3 +232,36 @@ def load_project_memories(project_root: Path) -> list[MemoryRecord]:
     if len(ids) != len(set(ids)):
         raise MemoryStoreError("duplicate memory id")
     return sorted(records, key=lambda r: r.id)
+
+
+def load_project_memories_tolerant(
+    project_root: Path, findings: list[dict[str, str]]
+) -> list[MemoryRecord]:
+    records: list[MemoryRecord] = []
+    seen_ids: set[str] = set()
+    for path in _sidecar_paths(project_root):
+        if not _is_complete_pair(path):
+            continue
+        try:
+            record = _load_sidecar(path)
+        except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+            findings.append(
+                {
+                    "code": "memory_record_excluded",
+                    "path": str(path),
+                    "message": "record was excluded because its sidecar is invalid",
+                }
+            )
+            continue
+        if record.id in seen_ids:
+            findings.append(
+                {
+                    "code": "memory_record_excluded",
+                    "path": str(path),
+                    "message": "record was excluded because its memory id is duplicated",
+                }
+            )
+            continue
+        seen_ids.add(record.id)
+        records.append(record)
+    return sorted(records, key=lambda r: r.id)

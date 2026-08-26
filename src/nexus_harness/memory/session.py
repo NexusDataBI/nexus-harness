@@ -50,6 +50,7 @@ def session_recall(
         include_stale=True,
     )
     policy = load_capsule_policy()
+    findings: list[dict[str, str]] = []
     try:
         hits = search_memory(
             Path(project_root),
@@ -57,14 +58,23 @@ def session_recall(
             context,
             portfolio_root=portfolio_root,
             cache_home=cache_home,
+            findings=findings,
         )
-    except (MemoryStoreError, json.JSONDecodeError):
+    except (MemoryStoreError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        findings.append(
+            {
+                "code": "memory_record_excluded",
+                "path": str(project_root),
+                "message": "record was excluded because its sidecar is invalid",
+            }
+        )
         return build_context_capsule(
             project_id=project_id,
             diff_hash=None,
             hits=(),
             hot_memory_ids=(),
             policy=policy,
+            findings=findings,
         )
     return build_context_capsule(
         project_id=project_id,
@@ -72,6 +82,7 @@ def session_recall(
         hits=hits,
         hot_memory_ids=_hot_memory_ids(hits, policy.max_items),
         policy=policy,
+        findings=findings,
     )
 
 

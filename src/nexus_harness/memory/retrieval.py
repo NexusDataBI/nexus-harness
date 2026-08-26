@@ -19,8 +19,14 @@ from nexus_harness.memory.models import (
     MemoryStatus,
     MemoryType,
 )
-from nexus_harness.memory.portfolio import load_portfolio_memories
-from nexus_harness.memory.store import load_project_memories
+from nexus_harness.memory.portfolio import (
+    load_portfolio_memories,
+    load_portfolio_memories_tolerant,
+)
+from nexus_harness.memory.store import (
+    load_project_memories,
+    load_project_memories_tolerant,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _POLICY_PATH = _REPO_ROOT / "core" / "memory" / "retrieval-policy.toml"
@@ -128,10 +134,27 @@ def search_memory(
     *,
     portfolio_root: Path | None = None,
     cache_home: Path | None = None,
+    findings: list[dict[str, str]] | None = None,
 ) -> list[MemoryHit]:
-    records = list(load_project_memories(project_root))
+    load = (
+        load_project_memories_tolerant
+        if findings is not None
+        else load_project_memories
+    )
+    records = list(
+        load(project_root, findings) if findings is not None else load(project_root)
+    )
     if portfolio_root is not None:
-        records.extend(load_portfolio_memories(portfolio_root))
+        portfolio_load = (
+            load_portfolio_memories_tolerant
+            if findings is not None
+            else load_portfolio_memories
+        )
+        records.extend(
+            portfolio_load(portfolio_root, findings)
+            if findings is not None
+            else portfolio_load(portfolio_root)
+        )
 
     eligible = [record for record in records if _is_eligible(record, context)]
     fts_ids: set[str] = set()
