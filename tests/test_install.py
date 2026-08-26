@@ -1,0 +1,114 @@
+import hashlib
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from nexus_harness.install import atomic_install, detect_drift
+
+
+class InstallTests(unittest.TestCase):
+    def test_existing_install_is_backed_up_before_replace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "dist"
+            target = root / "installed"
+            source.mkdir()
+            target.mkdir()
+            (source / "a").write_text("new")
+            (target / "a").write_text("old")
+
+            backup = atomic_install(source, target)
+
+            self.assertEqual((target / "a").read_text(), "new")
+            self.assertEqual((backup / "a").read_text(), "old")
+
+    def test_user_owned_file_survives_replacement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "dist"
+            target = root / "installed"
+            source.mkdir()
+            target.mkdir()
+            (source / "generated.txt").write_text("generated")
+            (target / "generated.txt").write_text("old")
+            (target / "user.txt").write_text("keep")
+
+            atomic_install(source, target)
+
+            self.assertEqual((target / "generated.txt").read_text(), "generated")
+            self.assertEqual((target / "user.txt").read_text(), "keep")
+
+    def test_failed_final_rename_restores_current_install(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "dist"
+            target = root / "installed"
+            source.mkdir()
+            target.mkdir()
+            (source / "a").write_text("new")
+            (target / "a").write_text("old")
+
+            real_replace = __import__("os").replace
+
+            def fail_staging_rename(old, new):
+                if Path(old).name.startswith(".installed.staging-"):
+                    raise OSError("simulated rename failure")
+                return real_replace(old, new)
+
+            with patch(
+                "nexus_harness.install.os.replace", side_effect=fail_staging_rename
+            ):
+                with self.assertRaises(OSError):
+                    atomic_install(source, target)
+
+            self.assertEqual((target / "a").read_text(), "old")
+
+    def test_drift_classifies_missing_modified_and_extra(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            installed = root / "installed"
+            installed.mkdir()
+            (installed / "same").write_text("same")
+            (installed / "changed").write_text("changed")
+            (installed / "extra").write_text("extra")
+            lock = {
+                "generated_hashes": {
+                    "dist/same": hashlib.sha256(b"same").hexdigest(),
+                    "dist/changed": hashlib.sha256(b"original").hexdigest(),
+                    "dist/missing": hashlib.sha256(b"missing").hexdigest(),
+                }
+            }
+
+            report = detect_drift(installed, lock)
+
+            self.assertEqual(report.missing, ("missing",))
+            self.assertEqual(report.modified, ("changed",))
+            self.assertEqual(report.extra, ("extra",))
+            self.assertTrue(report.has_drift)
+
+    def test_drift_is_clean_for_matching_install(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            installed = root / "installed"
+            installed.mkdir()
+            (installed / "a").write_text("content")
+            lock_path = root / "harness.lock"
+            lock_path.write_text(
+                json.dumps(
+                    {
+                        "generated_hashes": {
+                            "dist/a": hashlib.sha256(b"content").hexdigest()
+                        }
+                    }
+                )
+            )
+
+            report = detect_drift(installed, lock_path)
+
+            self.assertFalse(report.has_drift)
+
+
+if __name__ == "__main__":
+    unittest.main()

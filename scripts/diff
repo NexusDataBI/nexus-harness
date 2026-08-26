@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ $# -ne 2 ]]; then
+  echo "usage: scripts/diff INSTALLED HARNESS_LOCK" >&2
+  exit 2
+fi
+PYTHONPATH="$ROOT/src" exec python3 -m nexus_harness.install diff "$@"

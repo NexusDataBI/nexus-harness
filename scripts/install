@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ $# -ne 2 ]]; then
+  echo "usage: scripts/install SOURCE TARGET" >&2
+  exit 2
+fi
+PYTHONPATH="$ROOT/src" exec python3 -m nexus_harness.install install "$@"

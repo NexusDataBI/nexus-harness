@@ -1,0 +1,161 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import time
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Mapping
+
+
+@dataclass(frozen=True)
+class DriftReport:
+    missing: tuple[str, ...] = ()
+    modified: tuple[str, ...] = ()
+    extra: tuple[str, ...] = ()
+
+    @property
+    def has_drift(self) -> bool:
+        return bool(self.missing or self.modified or self.extra)
+
+
+def _digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _files(root: Path) -> dict[str, Path]:
+    if not root.is_dir():
+        return {}
+    return {
+        path.relative_to(root).as_posix(): path
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def _fsync_file(path: Path) -> None:
+    with path.open("rb") as handle:
+        os.fsync(handle.fileno())
+
+
+def _fsync_tree(root: Path) -> None:
+    for path in _files(root).values():
+        _fsync_file(path)
+    fd = os.open(root, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _rollback_path(target: Path) -> Path:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    candidate = target.parent / f"{target.name}.rollback-{stamp}"
+    suffix = 0
+    while candidate.exists():
+        suffix += 1
+        candidate = target.parent / f"{target.name}.rollback-{stamp}-{suffix}"
+    return candidate
+
+
+def atomic_install(source: Path, target: Path) -> Path:
+    """Install *source* at *target*, retaining a sibling rollback tree.
+
+    Files not present in the generated source are copied into staging from the
+    current target. This keeps user-owned files intact while generated files
+    are replaced as one directory rename.
+    """
+    source = Path(source)
+    target = Path(target)
+    if not source.is_dir():
+        raise ValueError(f"generated source is not a directory: {source}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = target.parent / f".{target.name}.staging-{os.getpid()}-{time.time_ns()}"
+    backup = _rollback_path(target)
+    try:
+        shutil.copytree(source, staging)
+        if target.is_dir():
+            source_files = _files(source)
+            for relative, path in _files(target).items():
+                if relative not in source_files:
+                    destination = staging / relative
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(path, destination)
+        _fsync_tree(staging)
+        if target.exists():
+            os.replace(target, backup)
+        try:
+            os.replace(staging, target)
+        except Exception:
+            if backup.exists() and not target.exists():
+                os.replace(backup, target)
+            raise
+        fd = os.open(target.parent, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        return backup
+    except Exception:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise
+
+
+def _expected_hashes(lock: Mapping[str, object]) -> dict[str, str]:
+    raw = lock.get("generated_hashes", {})
+    if not isinstance(raw, Mapping):
+        raise ValueError("harness.lock generated_hashes must be an object")
+    expected: dict[str, str] = {}
+    for relative, digest in raw.items():
+        relative = str(relative)
+        expected[relative.removeprefix("dist/")] = str(digest)
+    return expected
+
+
+def detect_drift(installed: Path, lock: Path | Mapping[str, object]) -> DriftReport:
+    installed = Path(installed)
+    payload = (
+        json.loads(Path(lock).read_text(encoding="utf-8"))
+        if isinstance(lock, (str, Path))
+        else dict(lock)
+    )
+    expected = _expected_hashes(payload)
+    actual_files = _files(installed)
+    actual = {relative: _digest(path) for relative, path in actual_files.items()}
+    missing = sorted(set(expected) - set(actual))
+    modified = sorted(
+        relative
+        for relative in set(expected) & set(actual)
+        if expected[relative] != actual[relative]
+    )
+    extra = sorted(set(actual) - set(expected))
+    return DriftReport(tuple(missing), tuple(modified), tuple(extra))
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Install or inspect generated harness files"
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    install_parser = subparsers.add_parser("install")
+    install_parser.add_argument("source", type=Path)
+    install_parser.add_argument("target", type=Path)
+    diff_parser = subparsers.add_parser("diff")
+    diff_parser.add_argument("installed", type=Path)
+    diff_parser.add_argument("lock", type=Path)
+    args = parser.parse_args(argv)
+    if args.command == "install":
+        print(atomic_install(args.source, args.target))
+        return 0
+    report = detect_drift(args.installed, args.lock)
+    print(json.dumps(asdict(report), sort_keys=True))
+    return 1 if report.has_drift else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
