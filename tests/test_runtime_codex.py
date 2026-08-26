@@ -34,7 +34,8 @@ class CodexAdapterTests(unittest.TestCase):
         config = self.files["codex/config.toml"]
         self.assertIn("sandbox", config)
         self.assertIn("approval", config)
-        self.assertIn("plugins", config)
+        self.assertIn("sandbox_mode", config)
+        self.assertNotIn('paths = ["./plugins"]', config)
         self.assertIn("workspace", config)
         self.assertNotIn("trust", config.lower())
         self.assertNotIn("model", config.lower())

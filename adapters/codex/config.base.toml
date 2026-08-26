@@ -1,7 +1,4 @@
 # Codex runtime defaults; project-neutral by design.
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
-
-[plugins]
-enabled = true
-paths = ["./plugins"]
+# Plugins are not globally declared.
