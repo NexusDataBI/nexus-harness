@@ -193,6 +193,16 @@
       "target_plan": "plan-8",
       "resolution_condition": "Split adapter hashes from engine hashes, or hash only render_all() outputs plus a single engine archive digest.",
       "defer_reason": "Non-empty generated_hashes and installable engine were the repair requirement. Hash partitioning is release hygiene."
+    },
+    {
+      "id": "P5-D01",
+      "origin": "plan-5-final-review",
+      "severity": "low",
+      "description": "GitHub hierarchy parent_issue/child_issues is not persisted in TaskState; restart recovery relies on GitHub/Project authority rather than local TaskState roundtrip.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "Either persist hierarchy references in TaskState or explicitly prove and document GitHub as the sole recoverable hierarchy authority across restart.",
+      "defer_reason": "Does not affect Plan 6 frontend visual quality or bounded Issue tracking."
     }
   ]
 }
