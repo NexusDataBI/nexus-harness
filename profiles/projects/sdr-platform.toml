@@ -55,6 +55,19 @@ visual_paths = ["apps/web/**"]
 command = ["npm", "run", "dev", "-w", "apps/web"]
 timeout_seconds = 60
 
+[frontend.playwright]
+video = false
+
+[[frontend.viewports]]
+name = "desktop"
+width = 1280
+height = 800
+
+[[frontend.viewports]]
+name = "mobile"
+width = 390
+height = 844
+
 [[frontend.routes]]
 path = "/"
 name = "home"

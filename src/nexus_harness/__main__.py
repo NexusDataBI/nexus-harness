@@ -5,6 +5,7 @@ Subcommands used by the Quality Gate workflow template:
 - ``ci affected --base SHA --head SHA --output PATH``
 - ``quality run --profile NAME --from-affected PATH``
 - ``images build --from-affected PATH``
+- ``frontend capture --route /path [--task-id TASK]``
 """
 
 from __future__ import annotations
@@ -292,7 +293,75 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="plan only; do not invoke docker",
     )
+
+    frontend = sub.add_parser("frontend", help="frontend visual QA")
+    frontend_sub = frontend.add_subparsers(dest="frontend_cmd", required=True)
+    capture = frontend_sub.add_parser(
+        "capture", help="capture Playwright visual evidence for a route"
+    )
+    capture.add_argument("--route", required=True)
+    capture.add_argument("--task-id", default=None)
     return parser
+
+
+def cmd_frontend_capture(
+    *,
+    route: str,
+    project_root: Path,
+    task_id: str | None = None,
+    runner: Runner | None = None,
+    profile_path: Path | None = None,
+    artifact_root: Path | None = None,
+) -> int:
+    from nexus_harness.devserver import FrontendConfig, FrontendConfigError
+    from nexus_harness.playwright import PlaywrightError, capture_route
+    from nexus_harness.safe import PathSafetyError
+    from nexus_harness.state import load_task_state
+
+    try:
+        profile_file = profile_path or _discover_ci_profile(project_root)
+        profile = load_ci_profile(profile_file)
+    except SystemExit as exc:
+        print(exc.args[0] if exc.args else "no CI profile found")
+        return 2
+    except FrontendConfigError as exc:
+        print(exc.failure.message)
+        return 2
+
+    frontend = profile.frontend
+    if not isinstance(frontend, FrontendConfig):
+        print("profile has no [frontend] table")
+        return 2
+
+    tid = (task_id or "adhoc").strip() or "adhoc"
+    out_root = (
+        Path(artifact_root)
+        if artifact_root is not None
+        else project_root / ".nexus" / "tasks" / tid / "evidence"
+    )
+    task_state = None
+    state_file = project_root / ".nexus" / "tasks" / tid / "state.json"
+    if state_file.is_file():
+        try:
+            task_state = load_task_state(state_file)
+        except (OSError, ValueError, TypeError, KeyError):
+            task_state = None
+
+    try:
+        result = capture_route(
+            route,
+            config=frontend,
+            artifact_root=out_root,
+            runner=runner,
+            task_id=tid,
+            task_state=task_state,
+            project_root=project_root,
+        )
+    except (PlaywrightError, PathSafetyError) as exc:
+        print(str(exc))
+        return 2
+    print(f"wrote playwright capture → {result.output_dir}")
+    return 0 if result.ok else 1
 
 
 def main(
@@ -301,6 +370,7 @@ def main(
     git_diff: GitDiffFn | None = None,
     runner: Runner | None = None,
     profile_path: Path | None = None,
+    artifact_root: Path | None = None,
 ) -> int:
     parser = build_parser()
     try:
@@ -333,6 +403,15 @@ def main(
             runner=runner,
             profile_path=profile_path,
             dry_run=bool(getattr(args, "dry_run", False)),
+        )
+    if args.group == "frontend" and getattr(args, "frontend_cmd", None) == "capture":
+        return cmd_frontend_capture(
+            route=args.route,
+            task_id=getattr(args, "task_id", None),
+            project_root=root,
+            runner=runner,
+            profile_path=profile_path,
+            artifact_root=artifact_root,
         )
     return 2
 

@@ -45,6 +45,18 @@ class FrontendRoute:
 
 
 @dataclass(frozen=True)
+class Viewport:
+    name: str
+    width: int
+    height: int
+
+
+@dataclass(frozen=True)
+class PlaywrightSpec:
+    video: bool = False
+
+
+@dataclass(frozen=True)
 class DevServerSpec:
     command: tuple[str, ...]
     timeout_seconds: int = 60
@@ -57,6 +69,8 @@ class FrontendConfig:
     dev_server: DevServerSpec
     visual_paths: tuple[str, ...] = ()
     routes: tuple[FrontendRoute, ...] = ()
+    viewports: tuple[Viewport, ...] = ()
+    playwright: PlaywrightSpec = PlaywrightSpec()
 
 
 @dataclass(frozen=True)
@@ -187,6 +201,14 @@ def parse_frontend_section(raw: object) -> FrontendParseResult:
     if isinstance(spec, DevServerFailure):
         return FrontendParseResult(ok=False, failure=spec)
 
+    viewports = _parse_viewports(raw.get("viewports"))
+    if isinstance(viewports, DevServerFailure):
+        return FrontendParseResult(ok=False, failure=viewports)
+
+    playwright = _parse_playwright(raw.get("playwright"))
+    if isinstance(playwright, DevServerFailure):
+        return FrontendParseResult(ok=False, failure=playwright)
+
     return FrontendParseResult(
         ok=True,
         config=FrontendConfig(
@@ -195,6 +217,8 @@ def parse_frontend_section(raw: object) -> FrontendParseResult:
             dev_server=spec,
             visual_paths=visual_paths,
             routes=routes,
+            viewports=viewports,
+            playwright=playwright,
         ),
     )
 
@@ -390,6 +414,65 @@ def _parse_dev_server(raw: object) -> DevServerSpec | DevServerFailure:
             evidence={"timeout_seconds": timeout},
         )
     return DevServerSpec(command=argv, timeout_seconds=timeout)
+
+
+def _parse_playwright(raw: object) -> PlaywrightSpec | DevServerFailure:
+    if raw is None:
+        return PlaywrightSpec()
+    if not isinstance(raw, dict):
+        return DevServerFailure(
+            code="malformed_command",
+            message="frontend.playwright must be a table",
+            evidence={"type": type(raw).__name__},
+        )
+    video = raw.get("video", False)
+    if not isinstance(video, bool):
+        return DevServerFailure(
+            code="malformed_command",
+            message="frontend.playwright.video must be a boolean",
+            evidence={"video": video},
+        )
+    return PlaywrightSpec(video=video)
+
+
+def _parse_viewports(raw: object) -> tuple[Viewport, ...] | DevServerFailure:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        return DevServerFailure(
+            code="malformed_command",
+            message="frontend.viewports must be an array of tables",
+            evidence={"type": type(raw).__name__},
+        )
+    viewports: list[Viewport] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            return DevServerFailure(
+                code="malformed_command",
+                message="frontend.viewports entries must be tables",
+            )
+        name = item.get("name")
+        width = item.get("width")
+        height = item.get("height")
+        if not isinstance(name, str) or not name.strip():
+            return DevServerFailure(
+                code="malformed_command",
+                message="frontend.viewports[].name is required",
+            )
+        if isinstance(width, bool) or not isinstance(width, int) or width < 1:
+            return DevServerFailure(
+                code="malformed_command",
+                message="frontend.viewports[].width must be a positive integer",
+                evidence={"width": width},
+            )
+        if isinstance(height, bool) or not isinstance(height, int) or height < 1:
+            return DevServerFailure(
+                code="malformed_command",
+                message="frontend.viewports[].height must be a positive integer",
+                evidence={"height": height},
+            )
+        viewports.append(Viewport(name=name.strip(), width=width, height=height))
+    return tuple(viewports)
 
 
 def _parse_routes(raw: object) -> tuple[FrontendRoute, ...] | DevServerFailure:
