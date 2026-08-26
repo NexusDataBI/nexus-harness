@@ -54,6 +54,9 @@ something the runner binary gives you for free.
 - Private-repository GitHub runner **registration token** (ephemeral; create
   from the repo/org settings at install time)
 - Runner binary version chosen at install time (not pinned in this repo)
+- `RUNNER_SHA256` — operator-supplied SHA-256 of the runner tarball for that
+  version/arch (required; never commit a live digest as a secret substitute;
+  do not rely on fetching checksums from an unpinned URL as the only check)
 
 ### Rootless Docker (required)
 
@@ -73,22 +76,29 @@ against the system socket — it only prints a louder warning before failing.
 ## Install
 
 ```bash
-# On the CI host (example — supply your own version and token; never commit them)
+# On the CI host (example — supply your own version, digest, and token; never commit them)
 export RUNNER_VERSION=2.321.0
+export RUNNER_SHA256=<64-char-hex-of-actions-runner-linux-ARCH-VERSION.tar.gz>
 export RUNNER_REPO_URL=https://github.com/ORG/PRIVATE_REPO
 export RUNNER_TOKEN=...   # or pipe the token on stdin
 
 sudo -E ./install.sh
 # stdin alternative:
-# printf '%s' "$RUNNER_TOKEN" | sudo RUNNER_VERSION=... RUNNER_REPO_URL=... ./install.sh
+# printf '%s' "$RUNNER_TOKEN" | sudo RUNNER_VERSION=... RUNNER_SHA256=... \
+#   RUNNER_REPO_URL=... ./install.sh
 ```
 
 The installer is idempotent: re-running skips existing `nexus-ci` user creation,
 reuses matching runner version under `/opt/nexus-runner`, and skips
 `config.sh` when `.runner` is already present.
 
-`RUNNER_VERSION` is **required**. Tokens are read from `RUNNER_TOKEN` /
-`GITHUB_RUNNER_TOKEN` / `REGISTRATION_TOKEN` or stdin and are never echoed.
+`RUNNER_VERSION` and `RUNNER_SHA256` are **required**. The downloaded runner
+tarball is verified with `sha256sum` before `tar`; mismatch or a missing digest
+fails closed (no extract). Obtain the digest from a trusted channel for the
+chosen release (e.g. GitHub release assets / release notes you already trust),
+not by treating an unpinned checksum URL as the sole integrity check. Tokens
+are read from `RUNNER_TOKEN` / `GITHUB_RUNNER_TOKEN` / `REGISTRATION_TOKEN` or
+stdin and are never echoed.
 
 ## systemd
 

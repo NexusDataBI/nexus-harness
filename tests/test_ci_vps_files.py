@@ -103,6 +103,34 @@ class InstallShPolicyTests(unittest.TestCase):
             "RUNNER_VERSION" in text or "GITHUB_RUNNER_VERSION" in text,
         )
 
+    def test_runner_tarball_requires_sha256_before_tar(self):
+        """Downloaded runner archive must be verified; never tar without a digest check."""
+        text = self.install
+        self.assertIn("RUNNER_SHA256", text)
+        self.assertRegex(text, r"require_runner_sha256|RUNNER_SHA256 must be set")
+        self.assertRegex(text, r"sha256sum|SHA-256|sha256", re.IGNORECASE)
+        # Digest check must appear before tar extract of the runner tarball.
+        verify_pos = text.find("verify_runner_tarball")
+        if verify_pos < 0:
+            verify_pos = text.lower().find("sha256sum")
+        tar_pos = text.find("tar -xzf")
+        self.assertGreaterEqual(
+            verify_pos, 0, "install.sh must verify SHA-256 of the runner tarball"
+        )
+        self.assertGreaterEqual(
+            tar_pos, 0, "install.sh must extract the runner tarball"
+        )
+        self.assertLess(
+            verify_pos,
+            tar_pos,
+            "SHA-256 verification must run before tar extract",
+        )
+        # Fail closed on missing digest (no silent skip).
+        self.assertRegex(
+            text,
+            r"RUNNER_SHA256.*must be set|die.*RUNNER_SHA256",
+        )
+
     def test_token_from_stdin_or_env_never_echoed(self):
         text = self.install
         # Accept env and/or stdin sources for registration token.

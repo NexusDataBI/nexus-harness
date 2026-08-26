@@ -4,6 +4,9 @@
 #
 # Required env:
 #   RUNNER_VERSION          GitHub Actions runner binary version (e.g. 2.321.0)
+#   RUNNER_SHA256           SHA-256 digest of the runner tarball for that version/arch
+#                           (operator-supplied; never committed; not fetched from an
+#                           unpinned URL as the only check)
 # Optional env:
 #   RUNNER_TOKEN            Registration token (else read silently from stdin)
 #   RUNNER_REPO_URL         Private repo URL for registration (required to configure)
@@ -14,10 +17,11 @@
 #                           set up rootless instead.
 #
 # Usage:
-#   sudo RUNNER_VERSION=2.321.0 RUNNER_REPO_URL=https://github.com/ORG/REPO \
-#     RUNNER_TOKEN=... ./install.sh
+#   sudo RUNNER_VERSION=2.321.0 RUNNER_SHA256=<hex> \
+#     RUNNER_REPO_URL=https://github.com/ORG/REPO RUNNER_TOKEN=... ./install.sh
 #   # or:
-#   printf '%s' "$TOKEN" | sudo RUNNER_VERSION=... RUNNER_REPO_URL=... ./install.sh
+#   printf '%s' "$TOKEN" | sudo RUNNER_VERSION=... RUNNER_SHA256=... \
+#     RUNNER_REPO_URL=... ./install.sh
 
 set -euo pipefail
 
@@ -43,6 +47,29 @@ require_runner_version() {
   if [[ -z "${RUNNER_VERSION:-}" ]]; then
     die "RUNNER_VERSION must be set (GitHub Actions runner release version)"
   fi
+}
+
+require_runner_sha256() {
+  # Digest must come from the operator (env), not from an unpinned checksum URL.
+  local digest="${RUNNER_SHA256:-}"
+  if [[ -z "${digest}" ]]; then
+    die "RUNNER_SHA256 must be set (SHA-256 of the runner tarball for RUNNER_VERSION/arch)"
+  fi
+  if [[ ! "${digest}" =~ ^[0-9a-fA-F]{64}$ ]]; then
+    die "RUNNER_SHA256 must be a 64-character hex SHA-256 digest"
+  fi
+}
+
+verify_runner_tarball() {
+  local archive="$1"
+  local expected
+  expected="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
+  local actual
+  actual="$(sha256sum "${archive}" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')"
+  if [[ "${actual}" != "${expected}" ]]; then
+    die "runner tarball SHA-256 mismatch (expected ${expected}, got ${actual})"
+  fi
+  log "runner tarball SHA-256 verified"
 }
 
 read_registration_token() {
@@ -147,8 +174,11 @@ install_runner_binary() {
   # shellcheck disable=SC2064
   trap "rm -rf '${tmp}'" RETURN
 
+  local expected_sha="${RUNNER_SHA256}"
   log "downloading GitHub Actions runner v${version} (${arch})"
   curl -fsSL -o "${tmp}/${tarball}" "${url}"
+  # Fail closed: never extract without a matching operator-supplied digest.
+  verify_runner_tarball "${tmp}/${tarball}" "${expected_sha}"
   # Clear previous binary tree but keep .credentials* if already configured (idempotent re-run of binary only).
   find "${RUNNER_DIR}" -mindepth 1 -maxdepth 1 \
     ! -name '.credentials' ! -name '.credentials_rsaparams' \
@@ -221,6 +251,7 @@ EOF
 main() {
   require_root
   require_runner_version
+  require_runner_sha256
   read_registration_token
   install_os_packages
   ensure_nexus_user
