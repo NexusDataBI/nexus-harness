@@ -113,7 +113,7 @@
     "dist/src/nexus_harness/infra.py": "473167148990e58e4ba49e21b747d2151be6d7c96f35fd787acbe7ae862dbce4",
     "dist/src/nexus_harness/install.py": "cd8d981a943ebdc8129f56ae0e2f528ce90717155b6663cdf1ae4a7d690ec267",
     "dist/src/nexus_harness/inventory.py": "4a356a3f204472343a30bebc8094cfb60638733b806c96824f1550602eb640ec",
-    "dist/src/nexus_harness/lockfile.py": "cf7b879f2e13bc05a35012619a27dfe765d654d13bc32566fe1acbabb2fc57c0",
+    "dist/src/nexus_harness/lockfile.py": "ad8b911af55f04bc28a6524a0daebe57cb052d11c4e84f8b847ba28d40cf90a3",
     "dist/src/nexus_harness/memory/__init__.py": "94e1aacbd76067d16f50c5b029c3764c335d1cf7eafc8ff8954def190bb5148f",
     "dist/src/nexus_harness/memory/capsule.py": "1f6656908f4134706192902f3e1b162fa588ca9f85b39cb69bee798f9451ce79",
     "dist/src/nexus_harness/memory/cli.py": "9acf9dbbb675d6f3684eca83769ff59e86abd86cb5a679cf6abd36326c63f473",

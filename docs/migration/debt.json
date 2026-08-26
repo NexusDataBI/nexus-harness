@@ -176,10 +176,13 @@
       "origin": "plans-1-3-repair-gate",
       "severity": "medium",
       "description": "PreToolUse production and destructive detection is substring matching on tool/path/command/url, not a command parser. Equivalent encodings can slip past until a structured command policy exists.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-4",
       "resolution_condition": "Canonical production/filesystem/network policies are evaluated against a parsed command/argv model, still fail-closed on invalid sensitive payloads.",
-      "defer_reason": "Repair gate closed the no-op PreToolUse and fail-closed invalid payloads. A parser is Plan 4 CI/VPS policy depth, not required to stop READY_TO_SHIP on string PASS reports."
+      "defer_reason": "Repair gate closed the no-op PreToolUse and fail-closed invalid payloads. A parser is Plan 4 CI/VPS policy depth, not required to stop READY_TO_SHIP on string PASS reports.",
+      "resolution_commit": "1fc9d4df9629a6c3daf74c8e8a173d46e639759e",
+      "resolution_description": "PreToolUse now classifies CommandIntent from argv (preferred) or shlex-parsed command strings, unwraps sh/bash/zsh -c wrappers, and applies production/destructive policy to executable/subcommand intent. Prose such as echo production documentation is not treated as production. Malformed sensitive commands fail closed. Parser does not execute commands.",
+      "tests": ["tests/test_pretool_command.py"]
     },
     {
       "id": "P3-R02",

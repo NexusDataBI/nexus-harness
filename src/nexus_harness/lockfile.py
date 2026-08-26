@@ -107,13 +107,3 @@ def write_lock(root: Path, destination: Path | None = None) -> Path:
     output = destination or root / "harness.lock"
     output.write_text(serialize_lock(build_lock(root)), encoding="utf-8")
     return output
-
-
-def serialize_lock(lock: Mapping[str, object]) -> str:
-    return json.dumps(lock, indent=2, sort_keys=True) + "\n"
-
-
-def write_lock(root: Path, destination: Path | None = None) -> Path:
-    output = destination or root / "harness.lock"
-    output.write_text(serialize_lock(build_lock(root)), encoding="utf-8")
-    return output
