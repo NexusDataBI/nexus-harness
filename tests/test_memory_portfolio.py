@@ -294,6 +294,38 @@ class PortfolioMemoryTests(unittest.TestCase):
                 all(hit.record.scope == MemoryScope.PROJECT for hit in hits)
             )
 
+    def test_load_portfolio_memories_skips_orphan_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "NexusMemory"
+            init_portfolio_vault(root)
+            complete = _write_pair(
+                root / "lessons",
+                _portfolio_record("Complete lesson", MemoryType.LESSON),
+            )
+            orphan = _portfolio_record("Orphan pattern", MemoryType.PATTERN)
+            (root / "patterns" / f"{orphan.id}.json").write_text(
+                json.dumps(orphan.to_json_dict(), indent=2) + "\n",
+                encoding="utf-8",
+            )
+            loaded = load_portfolio_memories(root)
+            self.assertEqual([item.id for item in loaded], [complete.id])
+
+    def test_load_portfolio_memories_skips_orphan_markdown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "NexusMemory"
+            init_portfolio_vault(root)
+            complete = _write_pair(
+                root / "decisions",
+                _portfolio_record("Complete decision", MemoryType.DECISION),
+            )
+            orphan = _portfolio_record("Orphan lesson", MemoryType.LESSON)
+            (root / "lessons" / f"{orphan.id}.md").write_text(
+                f"# {orphan.title}\n",
+                encoding="utf-8",
+            )
+            loaded = load_portfolio_memories(root)
+            self.assertEqual([item.id for item in loaded], [complete.id])
+
     def test_search_memory_loads_portfolio_when_root_supplied(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

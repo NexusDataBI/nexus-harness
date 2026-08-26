@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from nexus_harness.memory.models import MemoryRecord, MemoryScope
-from nexus_harness.memory.store import MemoryStoreError
+from nexus_harness.memory.store import MemoryStoreError, _is_complete_pair
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _TEMPLATE_DIR = _REPO_ROOT / "templates" / "memory" / "portfolio-vault"
@@ -65,6 +65,8 @@ def load_portfolio_memories(vault_root: Path) -> list[MemoryRecord]:
             and not path.name.endswith(".tmp")
         )
         for path in paths:
+            if not _is_complete_pair(path):
+                continue
             record = MemoryRecord.from_json_dict(
                 json.loads(path.read_text(encoding="utf-8"))
             )

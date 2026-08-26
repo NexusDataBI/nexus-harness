@@ -146,10 +146,10 @@
       "origin": "plan-2.5-final-review",
       "severity": "medium",
       "description": "load_portfolio_memories still reads orphan JSON sidecars; project store no longer does.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "Portfolio loader requires complete md+json pairs, matching project store §37.",
-      "defer_reason": "Project recall is fail-closed. Vault loader is unused unless portfolio_root is passed."
+      "defer_reason": "Resolved: load_portfolio_memories skips JSON without sibling .md via store._is_complete_pair."
     },
     {
       "id": "P25-D04",
