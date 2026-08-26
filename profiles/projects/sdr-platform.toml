@@ -1,0 +1,37 @@
+# Fail-closed: any match marks every component affected.
+global_paths = [
+  "package.json",
+  "package-lock.json",
+  "tsconfig.base.json",
+  "docker-compose.dev.yml",
+  "deploy/**",
+]
+
+[project]
+id = "sdr-platform"
+repository = "Rubens-Marques/SDR-Plataform"
+
+[components.design_system]
+paths = ["design-system/**"]
+checks = ["biome", "vitest"]
+images = []
+
+[components.web]
+paths = ["apps/web/**"]
+depends_on = ["design_system"]
+checks = ["biome", "typecheck-web", "vitest-web", "playwright-web"]
+images = ["web"]
+
+[components.server]
+paths = ["apps/server/**"]
+checks = ["biome", "typecheck-server", "vitest-server", "trivy-source"]
+images = ["server"]
+
+[components.figma_worker]
+paths = [
+  "apps/server/Dockerfile.figma-worker",
+  "apps/server/src/**/figma/**",
+  "apps/server/figma-plugin/**",
+]
+checks = ["trivy-source"]
+images = ["figma-worker"]
