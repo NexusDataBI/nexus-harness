@@ -1,0 +1,17 @@
+{
+  "protectedPaths": [
+    ".env",
+    ".env.*",
+    ".git",
+    ".git/**",
+    "secrets",
+    "secrets/**",
+    "*.pem",
+    "*.key"
+  ],
+  "type": "workspace_readwrite",
+  "networkPolicy": {
+    "allowedHosts": [],
+    "default": "deny"
+  }
+}
