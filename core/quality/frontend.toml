@@ -1,0 +1,29 @@
+[motion]
+required = false
+ask_before_animating = true
+prefers_reduced_motion = true
+avoid_hover_scale_everywhere = true
+avoid_decorative_stagger = true
+avoid_bounce_for_productivity = true
+avoid_layout_shift = true
+must_not_block_interaction = true
+
+[async]
+review_loading = true
+review_empty = true
+review_error = true
+review_disabled = true
+review_transition = true
+
+[skeleton]
+only_when_wait_meaningful = true
+only_when_shape_predictable = true
+
+[progress]
+only_when_measurable = true
+
+[optimistic]
+only_when_rollback_safe = true
+
+[lazy]
+non_critical_routes_components_media = true

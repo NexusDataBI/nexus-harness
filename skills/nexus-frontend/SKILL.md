@@ -79,7 +79,7 @@ Visual evidence is stale after relevant UI changes. A compile is not completion.
 
 ## Motion policy (Nexus, not a copy of Motion Principles)
 
-Animate only when motion improves comprehension. Skeletons only when content shape is predictable. Respect `prefers-reduced-motion`. Avoid decorative hover-scale/stagger. Review loading, empty, error, and transition states. Details live in `design-motion-principles`.
+Animate only when motion improves comprehension. Skeletons only when content shape is predictable. Respect `prefers-reduced-motion`. Avoid decorative hover-scale/stagger. Review loading, empty, error, and transition states. Nexus contract: [references/motion-policy.md](references/motion-policy.md). Source of truth is the locked `upstream/design-motion-principles` recorded in `upstream/vendor-lock.json`. Do not copy that skill into runtime roots.
 
 ## Accessibility
 
