@@ -34,10 +34,19 @@ Nexus Harness is the source of truth for workflow state and completion.
 
 
 def render(root: Path) -> tuple[RenderedFile, ...]:
-    del root
+    root = Path(root)
+    constitution_path = root / "core" / "constitution.md"
+    if not constitution_path.is_file():
+        constitution_path = (
+            Path(__file__).resolve().parents[2] / "core" / "constitution.md"
+        )
+    constitution = constitution_path.read_text(encoding="utf-8").rstrip()
     config = _CONFIG_SOURCE.read_text(encoding="utf-8")
     return (
-        RenderedFile("AGENTS.md", generated_markdown(_AGENTS).encode("utf-8")),
+        RenderedFile(
+            "AGENTS.md",
+            generated_markdown(f"{constitution}\n\n{_AGENTS}").encode("utf-8"),
+        ),
         RenderedFile(
             "codex/config.toml",
             f"{generated_toml_header()}{config}".encode("utf-8"),
