@@ -17,6 +17,7 @@ class Component:
     depends_on: tuple[str, ...] = ()
     checks: tuple[str, ...] = ()
     images: tuple[str, ...] = ()
+    exclude: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,12 @@ def _any_match(changed_path: str, patterns: Sequence[str]) -> bool:
     return any(path_matches(changed_path, pattern) for pattern in patterns)
 
 
+def _component_matches(changed_path: str, component: Component) -> bool:
+    if component.exclude and _any_match(changed_path, component.exclude):
+        return False
+    return _any_match(changed_path, component.paths)
+
+
 def resolve_affected(
     changed_paths: Sequence[str],
     components: Sequence[Component],
@@ -78,6 +85,7 @@ def resolve_affected(
     Unknown/non-global paths never expand to the full monorepo. Only
     ``global_paths`` (fail-closed critical files) mark every component.
     Dependents are closed transitively via ``depends_on``.
+    Paths matching a component's ``exclude`` do not select that component.
     """
     by_name = {component.name: component for component in components}
     affected: set[str] = set()
@@ -90,7 +98,7 @@ def resolve_affected(
 
         matched = False
         for component in components:
-            if _any_match(changed, component.paths):
+            if _component_matches(changed, component):
                 affected.add(component.name)
                 matched = True
         if not matched:
@@ -141,6 +149,24 @@ def _as_str_tuple(value: object) -> tuple[str, ...]:
     raise TypeError(f"expected string list, got {type(value)!r}")
 
 
+def _resolve_global_paths(data: dict, project: dict) -> tuple[str, ...]:
+    """Read fail-closed paths from root or ``[project]``; conflict → raise."""
+    top = _as_str_tuple(data.get("global_paths"))
+    if not top:
+        top = _as_str_tuple(data.get("fail_closed_paths"))
+
+    nested = _as_str_tuple(project.get("global_paths"))
+    if not nested:
+        nested = _as_str_tuple(project.get("fail_closed_paths"))
+
+    if top and nested and top != nested:
+        raise ValueError(
+            "conflicting global_paths: top-level and project-level differ "
+            f"({top!r} vs {nested!r})"
+        )
+    return top or nested
+
+
 def load_ci_profile(path: Path | str) -> CiProfile:
     """Load a data-driven CI profile (components + fail-closed global paths)."""
     data = load_toml(Path(path))
@@ -160,13 +186,13 @@ def load_ci_profile(path: Path | str) -> CiProfile:
                 depends_on=_as_str_tuple(raw.get("depends_on")),
                 checks=_as_str_tuple(raw.get("checks")),
                 images=_as_str_tuple(raw.get("images")),
+                exclude=_as_str_tuple(raw.get("exclude")),
             )
         )
 
-    global_paths = _as_str_tuple(data.get("global_paths"))
-    if not global_paths:
-        # Alternate key used in profiles for fail-closed critical paths.
-        global_paths = _as_str_tuple(data.get("fail_closed_paths"))
+    global_paths = _resolve_global_paths(
+        data, project if isinstance(project, dict) else {}
+    )
 
     return CiProfile(
         project_id=project_id,

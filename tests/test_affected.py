@@ -1,3 +1,4 @@
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -111,6 +112,10 @@ class AffectedTests(unittest.TestCase):
             Component(
                 "server",
                 ("apps/server/**",),
+                exclude=(
+                    "apps/server/Dockerfile.figma-worker",
+                    "apps/server/figma-plugin/**",
+                ),
                 checks=("server-test",),
                 images=("server",),
             ),
@@ -131,6 +136,99 @@ class AffectedTests(unittest.TestCase):
         )
         self.assertIn("figma_worker", plan.components)
         self.assertIn("figma-worker", plan.images)
+        self.assertNotIn("server", plan.components)
+        self.assertNotIn("server", plan.images)
+
+    def test_figma_plugin_change_does_not_select_server_image(self):
+        components = [
+            Component(
+                "server",
+                ("apps/server/**",),
+                exclude=(
+                    "apps/server/Dockerfile.figma-worker",
+                    "apps/server/figma-plugin/**",
+                ),
+                checks=("server-test",),
+                images=("server",),
+            ),
+            Component(
+                "figma_worker",
+                (
+                    "apps/server/Dockerfile.figma-worker",
+                    "apps/server/src/**/figma/**",
+                    "apps/server/figma-plugin/**",
+                ),
+                checks=("trivy-source",),
+                images=("figma-worker",),
+            ),
+        ]
+        plan = resolve_affected(
+            ["apps/server/figma-plugin/src/code.ts"],
+            components,
+        )
+        self.assertEqual(plan.components, ("figma_worker",))
+        self.assertEqual(plan.images, ("figma-worker",))
+        self.assertNotIn("server", plan.components)
+        self.assertNotIn("server", plan.images)
+
+    def test_shared_figma_source_may_affect_server_and_figma_worker(self):
+        components = [
+            Component(
+                "server",
+                ("apps/server/**",),
+                exclude=(
+                    "apps/server/Dockerfile.figma-worker",
+                    "apps/server/figma-plugin/**",
+                ),
+                checks=("server-test",),
+                images=("server",),
+            ),
+            Component(
+                "figma_worker",
+                (
+                    "apps/server/Dockerfile.figma-worker",
+                    "apps/server/src/**/figma/**",
+                    "apps/server/figma-plugin/**",
+                ),
+                checks=("trivy-source",),
+                images=("figma-worker",),
+            ),
+        ]
+        plan = resolve_affected(
+            ["apps/server/src/modules/proposals/figma/render.ts"],
+            components,
+        )
+        self.assertEqual(set(plan.components), {"server", "figma_worker"})
+        self.assertEqual(set(plan.images), {"server", "figma-worker"})
+
+    def test_server_main_does_not_select_figma_worker(self):
+        components = [
+            Component(
+                "server",
+                ("apps/server/**",),
+                exclude=(
+                    "apps/server/Dockerfile.figma-worker",
+                    "apps/server/figma-plugin/**",
+                ),
+                checks=("server-test",),
+                images=("server",),
+            ),
+            Component(
+                "figma_worker",
+                (
+                    "apps/server/Dockerfile.figma-worker",
+                    "apps/server/src/**/figma/**",
+                    "apps/server/figma-plugin/**",
+                ),
+                checks=("trivy-source",),
+                images=("figma-worker",),
+            ),
+        ]
+        plan = resolve_affected(["apps/server/src/main.ts"], components)
+        self.assertEqual(plan.components, ("server",))
+        self.assertEqual(plan.images, ("server",))
+        self.assertNotIn("figma_worker", plan.components)
+        self.assertNotIn("figma-worker", plan.images)
 
     def test_load_sdr_platform_profile(self):
         profile = load_ci_profile(SDR_PROFILE)
@@ -150,6 +248,10 @@ class AffectedTests(unittest.TestCase):
         design = next(c for c in profile.components if c.name == "design_system")
         self.assertEqual(design.paths, ("design-system/**",))
         self.assertEqual(design.images, ())
+
+        server = next(c for c in profile.components if c.name == "server")
+        self.assertIn("apps/server/Dockerfile.figma-worker", server.exclude)
+        self.assertIn("apps/server/figma-plugin/**", server.exclude)
 
         figma = next(c for c in profile.components if c.name == "figma_worker")
         self.assertIn("apps/server/Dockerfile.figma-worker", figma.paths)
@@ -171,6 +273,58 @@ class AffectedTests(unittest.TestCase):
         self.assertIn("web", plan.components)
         self.assertNotIn("server", plan.components)
         self.assertEqual(plan.images, ("web",))
+
+        dockerfile_plan = resolve_affected(
+            ["apps/server/Dockerfile.figma-worker"],
+            profile.components,
+            global_paths=profile.global_paths,
+        )
+        self.assertIn("figma_worker", dockerfile_plan.components)
+        self.assertNotIn("server", dockerfile_plan.components)
+        self.assertEqual(dockerfile_plan.images, ("figma-worker",))
+
+    def test_load_global_paths_nested_under_project(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "nested-global.toml"
+            path.write_text(
+                "[project]\n"
+                'id = "demo"\n'
+                'repository = "org/demo"\n'
+                'global_paths = ["package.json", "deploy/**"]\n'
+                "\n"
+                "[components.web]\n"
+                'paths = ["apps/web/**"]\n'
+                'images = ["web"]\n',
+                encoding="utf-8",
+            )
+            profile = load_ci_profile(path)
+            self.assertEqual(profile.global_paths, ("package.json", "deploy/**"))
+            plan = resolve_affected(
+                ["package.json"],
+                profile.components,
+                global_paths=profile.global_paths,
+            )
+            self.assertEqual(plan.components, ("web",))
+            self.assertEqual(plan.images, ("web",))
+
+    def test_conflicting_global_paths_raise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "conflict-global.toml"
+            path.write_text(
+                'global_paths = ["package.json"]\n'
+                "\n"
+                "[project]\n"
+                'id = "demo"\n'
+                'repository = "org/demo"\n'
+                'global_paths = ["deploy/**"]\n'
+                "\n"
+                "[components.web]\n"
+                'paths = ["apps/web/**"]\n'
+                'images = ["web"]\n',
+                encoding="utf-8",
+            )
+            with self.assertRaises(ValueError):
+                load_ci_profile(path)
 
 
 if __name__ == "__main__":

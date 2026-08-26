@@ -12,7 +12,17 @@
       "required": ["id", "repository"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "repository": { "type": "string", "minLength": 1 }
+        "repository": { "type": "string", "minLength": 1 },
+        "global_paths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Fail-closed paths nested under [project] (tomllib footgun fallback)."
+        },
+        "fail_closed_paths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Alias for project.global_paths."
+        }
       }
     },
     "global_paths": {
@@ -53,6 +63,11 @@
         "images": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Paths that match paths but must not select this component."
         }
       }
     }

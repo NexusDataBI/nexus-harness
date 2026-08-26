@@ -24,6 +24,10 @@ images = ["web"]
 
 [components.server]
 paths = ["apps/server/**"]
+exclude = [
+  "apps/server/Dockerfile.figma-worker",
+  "apps/server/figma-plugin/**",
+]
 checks = ["biome", "typecheck-server", "vitest-server", "trivy-source"]
 images = ["server"]
 
