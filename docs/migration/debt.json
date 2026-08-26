@@ -26,7 +26,7 @@
       "origin": "plan-1-task-4-review",
       "severity": "low",
       "description": "nexus-frontend modes still name some legacy entrypoints (interface-review, explain-interface, web-design-guidelines, design-taste-frontend).",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "Replace leftover names with canonical skills/upstream paths when adapters render frontend routing.",
       "defer_reason": "Routing copy, not workflow kernel. Unique heuristics already inlined."

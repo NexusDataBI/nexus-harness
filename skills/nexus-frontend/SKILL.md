@@ -11,15 +11,15 @@ Single frontend entrypoint. Routes to locked upstream specialists. Does not copy
 
 Choose **one** primary mode:
 
-| Mode              | Use when                                        | Routes                                                             |
-| ----------------- | ----------------------------------------------- | ------------------------------------------------------------------ |
-| `implement`       | Build or change UI in an existing visual world  | source of truth + stack policy + one surface specialist            |
-| `redesign`        | Multi-surface or replacement visual world       | discover → audit → authority → implement → visual-validate         |
-| `audit`           | Focused interface critique                      | `interface-review` / Impeccable critique / `web-design-guidelines` |
-| `explain`         | Explain how an interface works                  | `explain-interface`                                                |
-| `visual-validate` | Material visual change needs vision-in-the-loop | `visual-validation`                                                |
-| `design-system`   | Tokens, components, extraction, variants        | `design-system`, `brand`, `extract-design-system`, `variant`       |
-| `polish`          | Craft pass after direction exists               | Impeccable; `baseline-ui` / `better-*` as focused references       |
+| Mode              | Use when                                        | Routes                                                                     |
+| ----------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| `implement`       | Build or change UI in an existing visual world  | source of truth + stack policy + one surface specialist                    |
+| `redesign`        | Multi-surface or replacement visual world       | discover → audit → authority → implement → visual-validate                 |
+| `audit`           | Focused interface critique                      | Impeccable critique / `visual-validation` / `accessibility` as appropriate |
+| `explain`         | Explain how an interface works                  | nexus-frontend `explain` mode                                              |
+| `visual-validate` | Material visual change needs vision-in-the-loop | `visual-validation`                                                        |
+| `design-system`   | Tokens, components, extraction, variants        | `design-system`, `brand`, `extract-design-system`, `variant`               |
+| `polish`          | Craft pass after direction exists               | Impeccable; `baseline-ui` / `better-*` as focused references               |
 
 ## Source of truth (precedence)
 
@@ -39,7 +39,7 @@ Never silently override project brand or an explicit visual target.
 
 Load budget: 1 source of truth + 1 surface specialist + 0–1 technical specialist + `visual-validation` at the end of material visual work.
 
-- **marketing:** `design-taste-frontend` (anti-slop). Unique heuristic: declare a one-line Design Read before generating; do not default to AI-purple / three-card heroes / Inter+slate. Deny `ui-craft-dense-dashboard`.
+- **marketing:** Impeccable critique/craft plus `design-motion-principles` or `vercel-react-best-practices` as appropriate. Anti-slop heuristic: declare a one-line Design Read before generating; do not default to AI-purple / three-card heroes / Inter+slate. Deny `ui-craft-dense-dashboard`.
 - **data-dense:** `ui-craft-dense-dashboard`. Deny Taste.
 - **motion:** `design-motion-principles` owns decisions; `fixing-motion-performance` and `accessibility` afterward when quality requires it. Do not copy motion recipes here.
 - **React/Next:** `vercel-react-best-practices`, `vercel-composition-patterns`. Vercel skills are engineering guidance, never a hosting target. `feature-sliced-design` only for large architecture — not landings or small apps.
