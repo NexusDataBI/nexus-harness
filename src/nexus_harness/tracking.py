@@ -109,7 +109,10 @@ def ensure_issue(
         if current is not None and _is_open(current):
             return _bind(state, current, created=False)
 
-    found = github.find_issue(target_repo, fingerprint or title)
+    found = None
+    query = (fingerprint or "").strip()
+    if query:
+        found = github.find_issue(target_repo, query)
     if found is not None and _positive(found.number) and _is_open(found):
         return _bind(state, found, created=False)
 

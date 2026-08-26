@@ -15,6 +15,7 @@ from nexus_harness.config import load_toml
 _CORE_FIELDS = (
     Path(__file__).resolve().parents[2] / "core" / "project" / "project-fields.toml"
 )
+_SELECT_FIELDS = frozenset({"Status", "Quality", "Security"})
 _FIELD_ORDER = ("Status", "Quality", "Security")
 _GATE_FAILURES = frozenset({"BLOCKED", "FAIL"})
 
@@ -84,6 +85,7 @@ def sync_project_item(
     item_id: str,
     field_ids: Mapping[str, str],
     current_fields: Mapping[str, object] | None = None,
+    option_ids: Mapping[str, Mapping[str, str]] | None = None,
     stage,
     gate_status,
     event: str | None = None,
@@ -110,16 +112,29 @@ def sync_project_item(
         )
 
     ids = dict(field_ids)
+    options = option_ids or {}
     for name in changed:
         field_id = ids.get(name)
         if not field_id:
             raise ValueError(f"missing field id for {name}")
-        github.project_item_update(
-            item_id,
-            project_id,
-            field_id,
-            text=str(desired[name]),
-        )
+        value = str(desired[name])
+        if name in _SELECT_FIELDS:
+            option_id = dict(options.get(name) or {}).get(value)
+            if not option_id:
+                raise ValueError(f"missing option id for {name}={value}")
+            github.project_item_update(
+                item_id,
+                project_id,
+                field_id,
+                single_select_option_id=option_id,
+            )
+        else:
+            github.project_item_update(
+                item_id,
+                project_id,
+                field_id,
+                text=value,
+            )
     return ProjectSyncResult(
         status=desired["Status"],
         updated=changed,

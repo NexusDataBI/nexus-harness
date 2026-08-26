@@ -74,6 +74,8 @@ class HierarchyTests(unittest.TestCase):
             work_type="feature",
             parent=10,
             children=(11, 12),
+            parent_id="I_parent",
+            child_ids=("I_child_11", "I_child_12"),
             authorize_remote_mutation=True,
         )
 
@@ -89,10 +91,29 @@ class HierarchyTests(unittest.TestCase):
                 call.args[1] if len(call.args) > 1 else call.kwargs.get("variables")
             )
             self.assertIn("addSubIssue", query)
-            self.assertEqual(variables["parent"], 10)
-            self.assertEqual(variables["repo"], "x/y")
+            self.assertIn("$parent: ID!", query)
+            self.assertNotIn("Int!", query)
+            self.assertNotIn("$repo", query)
+            self.assertEqual(variables["parent"], "I_parent")
+            self.assertNotIn("repo", variables)
             linked.append(variables["child"])
-        self.assertEqual(linked, [11, 12])
+        self.assertEqual(linked, ["I_child_11", "I_child_12"])
+
+    def test_numeric_issue_numbers_are_not_sent_as_graphql_ids(self):
+        github = Mock(spec=GitHub)
+        result = apply_hierarchy(
+            github,
+            repo="x/y",
+            scope="architectural",
+            work_type="feature",
+            parent=10,
+            children=(11, 12),
+            authorize_remote_mutation=True,
+        )
+        self.assertFalse(result.linked)
+        self.assertEqual(result.parent, 10)
+        self.assertEqual(result.children, (11, 12))
+        github.api_graphql.assert_not_called()
 
     def test_apply_hierarchy_does_not_create_empty_children(self):
         github = Mock(spec=GitHub)
@@ -146,6 +167,7 @@ class HierarchyTests(unittest.TestCase):
 
         self.assertEqual(result.parent, 10)
         self.assertEqual(result.children, (11,))
+        self.assertFalse(result.linked)
         self.assertEqual(state.issue, 10)
         self.assertEqual(getattr(state, "parent_issue", None), 10)
         self.assertEqual(getattr(state, "child_issues", None), (11,))

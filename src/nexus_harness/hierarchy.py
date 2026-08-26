@@ -17,10 +17,10 @@ _FEATURE_TYPES = frozenset({"feature", "story"})
 _ARCHITECTURAL_SCOPES = frozenset({"architectural", "long-horizon", "longhorizon"})
 
 _ADD_SUB_ISSUE = """
-mutation($parent: Int!, $child: Int!, $repo: String!) {
+mutation($parent: ID!, $child: ID!) {
   addSubIssue(input: { issueId: $parent, subIssueId: $child }) {
-    issue { number }
-    subIssue { number }
+    issue { id }
+    subIssue { id }
   }
 }
 """.strip()
@@ -65,6 +65,8 @@ def apply_hierarchy(
     work_type: str,
     parent: int | None = None,
     children: Sequence[int] | None = None,
+    parent_id: str | None = None,
+    child_ids: Sequence[str] | None = None,
     independent_deliverables: Sequence[str] | None = None,
     authorize_remote_mutation: bool = False,
     state: TaskState | None = None,
@@ -80,12 +82,20 @@ def apply_hierarchy(
         if _allows_children(shape)
         else ()
     )
+    parent_node = _graphql_id(parent_id if parent_id is not None else parent)
+    child_nodes = tuple(
+        node
+        for node in (
+            _graphql_id(item) for item in (child_ids if child_ids is not None else ())
+        )
+        if node
+    )
     linked = False
-    if authorize_remote_mutation and parent_number is not None and planned_children:
-        for child in planned_children:
+    if authorize_remote_mutation and parent_node and child_nodes:
+        for child in child_nodes:
             github.api_graphql(
                 _ADD_SUB_ISSUE,
-                {"parent": parent_number, "child": child, "repo": repo},
+                {"parent": parent_node, "child": child},
             )
         linked = True
 
@@ -119,6 +129,15 @@ def _positive(value: object) -> int | None:
     if number < 1:
         return None
     return number
+
+
+def _graphql_id(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.isdigit():
+        return None
+    return text
 
 
 def _persist(state: TaskState | None, result: HierarchyResult) -> None:

@@ -175,6 +175,27 @@ class TrackingTests(unittest.TestCase):
         created_body = github.created[0]["body"]
         self.assertIn("Summary", created_body)
         self.assertNotIn("Root Cause", created_body)
+        self.assertEqual(github.searched, [])
+
+    def test_title_is_not_used_as_search_without_fingerprint(self):
+        github = FakeGitHub()
+        github.search_result = Issue(
+            number=7,
+            url="https://github.com/x/y/issues/7",
+            title="unrelated",
+            state="OPEN",
+        )
+        state = _state()
+        result = ensure_issue(
+            state,
+            github,
+            title="Add export",
+            work_type="feature",
+            authorize_remote_mutation=True,
+        )
+        self.assertEqual(github.searched, [])
+        self.assertEqual(result.issue, 99)
+        self.assertTrue(result.created)
 
     def test_bug_body_includes_rca_sections(self):
         body = issue_body("bugfix", {"Summary": "Login 500"})

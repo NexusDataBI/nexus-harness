@@ -29,6 +29,19 @@ FIELD_IDS = {
     "Quality": "user-field-quality",
     "Security": "user-field-security",
 }
+OPTION_IDS = {
+    "Status": {
+        "Inbox": "opt-inbox",
+        "Ready": "opt-ready",
+        "In Progress": "opt-progress",
+        "Review": "opt-review",
+        "Blocked": "opt-blocked",
+        "Verifying": "opt-verifying",
+        "Done": "opt-done",
+    },
+    "Quality": {"PASS": "opt-quality-pass", "FAIL": "opt-quality-fail"},
+    "Security": {"PASS": "opt-security-pass", "FAIL": "opt-security-fail"},
+}
 
 
 def _github() -> Mock:
@@ -52,6 +65,7 @@ def _sync(github, board, *, stage, event=None):
         project_id="user-local-project",
         item_id="user-local-item",
         field_ids=FIELD_IDS,
+        option_ids=OPTION_IDS,
         current_fields=board,
         stage=stage,
         gate_status="PASS",
@@ -71,7 +85,7 @@ def _status_texts(github) -> list[str]:
     for call in github.project_item_update.call_args_list:
         field_id = call.args[2]
         if field_id == FIELD_IDS["Status"]:
-            texts.append(call.kwargs.get("text"))
+            texts.append(call.kwargs.get("single_select_option_id"))
     return texts
 
 
@@ -189,7 +203,7 @@ class GovernanceIntegrationTests(unittest.TestCase):
 
         self.assertEqual(
             _status_texts(github),
-            ["Ready", "In Progress", "Review", "Verifying", "Done"],
+            ["opt-ready", "opt-progress", "opt-review", "opt-verifying", "opt-done"],
         )
         self.assertEqual(github.create_issue.call_count, 1)
         github.create_pr.assert_not_called()

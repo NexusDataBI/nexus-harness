@@ -17,6 +17,24 @@ from nexus_harness.security import SecurityReport
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT_FIELDS = ROOT / "core" / "project" / "project-fields.toml"
 _NODE_ID_MARKERS = ("PVT_", "PVTI_", "PVTF_", "PVTSSF_", "PVI_", "PN_")
+FIELD_IDS = {
+    "Status": "user-field-status",
+    "Quality": "user-field-quality",
+    "Security": "user-field-security",
+}
+OPTION_IDS = {
+    "Status": {
+        "Inbox": "opt-inbox",
+        "Ready": "opt-ready",
+        "In Progress": "opt-progress",
+        "Review": "opt-review",
+        "Blocked": "opt-blocked",
+        "Verifying": "opt-verifying",
+        "Done": "opt-done",
+    },
+    "Quality": {"PASS": "opt-quality-pass", "FAIL": "opt-quality-fail"},
+    "Security": {"PASS": "opt-security-pass", "FAIL": "opt-security-fail"},
+}
 
 
 def _github() -> Mock:
@@ -32,11 +50,8 @@ def _sync(
         github,
         project_id="user-local-project",
         item_id="user-local-item",
-        field_ids={
-            "Status": "user-field-status",
-            "Quality": "user-field-quality",
-            "Security": "user-field-security",
-        },
+        field_ids=FIELD_IDS,
+        option_ids=OPTION_IDS,
         current_fields=current,
         stage=stage,
         gate_status=gate_status,
@@ -127,7 +142,8 @@ class ProjectSyncTests(unittest.TestCase):
         self.assertEqual(args[0], "user-local-item")
         self.assertEqual(args[1], "user-local-project")
         self.assertEqual(args[2], "user-field-status")
-        self.assertEqual(kwargs.get("text"), "In Progress")
+        self.assertEqual(kwargs.get("single_select_option_id"), "opt-progress")
+        self.assertIsNone(kwargs.get("text"))
 
     def test_sync_skips_when_unchanged(self):
         github = _github()
@@ -160,11 +176,11 @@ class ProjectSyncTests(unittest.TestCase):
         self.assertEqual(set(result.updated), {"Status", "Quality"})
         self.assertEqual(github.project_item_update.call_count, 2)
         sent = {
-            call.args[2]: call.kwargs.get("text")
+            call.args[2]: call.kwargs.get("single_select_option_id")
             for call in github.project_item_update.call_args_list
         }
-        self.assertEqual(sent["user-field-status"], "Blocked")
-        self.assertEqual(sent["user-field-quality"], "FAIL")
+        self.assertEqual(sent["user-field-status"], "opt-blocked")
+        self.assertEqual(sent["user-field-quality"], "opt-quality-fail")
         self.assertNotIn("user-field-security", sent)
 
     def test_unauthorized_does_not_call_update(self):
