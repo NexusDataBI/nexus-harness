@@ -45,3 +45,16 @@ checks = ["trivy-source"]
 images = ["figma-worker"]
 dockerfile = "apps/server/Dockerfile.figma-worker"
 context = "."
+
+[frontend]
+base_url = "http://127.0.0.1:3000"
+readiness_url = "http://127.0.0.1:3000"
+visual_paths = ["apps/web/**"]
+
+[frontend.dev_server]
+command = ["npm", "run", "dev", "-w", "apps/web"]
+timeout_seconds = 60
+
+[[frontend.routes]]
+path = "/"
+name = "home"

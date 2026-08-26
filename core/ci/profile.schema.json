@@ -39,9 +39,52 @@
       "type": "object",
       "minProperties": 1,
       "additionalProperties": { "$ref": "#/$defs/component" }
+    },
+    "frontend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_url", "readiness_url", "dev_server"],
+      "properties": {
+        "base_url": { "type": "string", "minLength": 1 },
+        "readiness_url": { "type": "string", "minLength": 1 },
+        "visual_paths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "dev_server": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["command"],
+          "properties": {
+            "command": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "Argv list only. A shell string is malformed."
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "routes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/frontendRoute" }
+        }
+      }
     }
   },
   "$defs": {
+    "frontendRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
     "component": {
       "type": "object",
       "additionalProperties": false,

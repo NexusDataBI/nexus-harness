@@ -38,6 +38,7 @@ class CiProfile:
     repository: str
     components: tuple[Component, ...]
     global_paths: tuple[str, ...] = ()
+    frontend: object | None = None
 
 
 def _glob_to_regex(pattern: str) -> re.Pattern[str]:
@@ -204,11 +205,19 @@ def load_ci_profile(path: Path | str) -> CiProfile:
         data, project if isinstance(project, dict) else {}
     )
 
+    frontend = None
+    raw_frontend = data.get("frontend")
+    if raw_frontend is not None:
+        from nexus_harness.devserver import parse_frontend_config
+
+        frontend = parse_frontend_config(raw_frontend)
+
     return CiProfile(
         project_id=project_id,
         repository=repository,
         components=tuple(components),
         global_paths=global_paths,
+        frontend=frontend,
     )
 
 
