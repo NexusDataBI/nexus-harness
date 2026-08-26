@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import urlopen
+from urllib.request import HTTPRedirectHandler, ProxyHandler, build_opener
 
 from nexus_harness.safe import PathSafetyError, confine
 
@@ -121,15 +121,18 @@ def is_loopback_url(url: str) -> bool:
 def probe_readiness(url: str, *, opener: Callable[..., Any] | None = None) -> bool:
     if not is_loopback_url(url):
         return False
-    open_url = opener or urlopen
+    open_url = opener or _default_open
     try:
         with open_url(url, timeout=1) as response:
             status = getattr(response, "status", None)
             if status is None:
                 getcode = getattr(response, "getcode", None)
                 status = getcode() if callable(getcode) else 200
-            return 200 <= int(status) < 400
-    except (HTTPError, URLError, TimeoutError, OSError, ValueError, TypeError):
+            return 200 <= int(status) < 300
+    except HTTPError as exc:
+        exc.close()
+        return False
+    except (URLError, TimeoutError, OSError, ValueError, TypeError):
         return False
 
 
@@ -476,6 +479,21 @@ def _signal_owned(pgid: int, killpg: Callable[[int, int], None] | None) -> None:
     except ProcessLookupError:
         pass
     _OWNED_PGIDS.discard(pgid)
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    """Refuse every 3xx hop so a loopback probe cannot leave loopback."""
+
+    def http_error_302(self, req, fp, code, msg, headers):
+        raise HTTPError(req.full_url, code, msg, headers, fp)
+
+    http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
+
+
+def _default_open(url: str, timeout: float = 1) -> Any:
+    # Empty ProxyHandler ignores HTTP(S)_PROXY / system proxy for this probe.
+    opener = build_opener(ProxyHandler({}), _NoRedirectHandler)
+    return opener.open(url, timeout=timeout)
 
 
 def _parse_fail(

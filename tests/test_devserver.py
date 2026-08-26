@@ -1,9 +1,12 @@
 import json
 import signal
+import socket
 import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 from nexus_harness.affected import load_ci_profile
 from nexus_harness.devserver import (
@@ -275,6 +278,43 @@ class DevServerTests(unittest.TestCase):
         opener = Mock(side_effect=AssertionError("must not fetch external URL"))
         self.assertFalse(probe_readiness("http://example.com", opener=opener))
         opener.assert_not_called()
+
+    def test_default_probe_does_not_follow_redirect_off_loopback(self):
+        off_loopback = []
+        original_connect = socket.create_connection
+
+        class RedirectAway(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", "http://example.com/ready")
+                self.end_headers()
+
+            def log_message(self, *_args):
+                return
+
+        def guarded_connect(address, *args, **kwargs):
+            host = address[0]
+            if isinstance(host, bytes):
+                host = host.decode()
+            host_norm = str(host).strip("[]").casefold()
+            if host_norm not in {"127.0.0.1", "localhost", "::1", "::ffff:127.0.0.1"}:
+                off_loopback.append(address)
+                raise OSError("refusing off-loopback connect")
+            return original_connect(address, *args, **kwargs)
+
+        server = HTTPServer(("127.0.0.1", 0), RedirectAway)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            url = f"http://127.0.0.1:{server.server_address[1]}/"
+            with patch("socket.create_connection", side_effect=guarded_connect):
+                ready = probe_readiness(url)
+            self.assertFalse(ready)
+            self.assertEqual(off_loopback, [])
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
 
 class DevServerConfigTests(unittest.TestCase):
