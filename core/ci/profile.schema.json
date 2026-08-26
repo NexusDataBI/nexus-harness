@@ -68,6 +68,21 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "description": "Paths that match paths but must not select this component."
+        },
+        "dockerfile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Dockerfile path for this component's image(s); required to build."
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Docker build context path (default '.')."
+        },
+        "image_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional registry service slug override (else first images[] entry)."
         }
       }
     }

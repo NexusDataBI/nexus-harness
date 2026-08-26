@@ -3,10 +3,11 @@ import re
 import unittest
 from pathlib import Path
 
-from nexus_harness.affected import AffectedPlan
+from nexus_harness.affected import AffectedPlan, load_ci_profile
 from nexus_harness.build import (
     build_affected_images,
     image_ref_for,
+    image_specs_from_profile,
     plan_image_builds,
 )
 from nexus_harness.deploy_manifest import DeployManifest, assemble_deploy_manifest
@@ -14,9 +15,20 @@ from nexus_harness.deploy_manifest import DeployManifest, assemble_deploy_manife
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = REPO_ROOT / "core" / "ci" / "deploy-manifest.schema.json"
+SDR_PROFILE = REPO_ROOT / "profiles" / "projects" / "sdr-platform.toml"
 EXAMPLE_REPO = "Rubens-Marques/SDR-Plataform"
 COMMIT = "9e6f3ccc19dee64c03e771c87a01679d4ab9a98e"
 VALID_DIGEST = "sha256:" + ("a" * 64)
+
+# Explicit mapping for unit tests (no core hardcoded SDR defaults).
+TEST_SPECS = {
+    "web": {"dockerfile": "apps/web/Dockerfile", "context": "."},
+    "server": {"dockerfile": "apps/server/Dockerfile", "context": "."},
+    "figma-worker": {
+        "dockerfile": "apps/server/Dockerfile.figma-worker",
+        "context": ".",
+    },
+}
 
 
 def _schema_rejects(payload: dict) -> bool:
@@ -209,6 +221,7 @@ class BuildTests(unittest.TestCase):
             affected.images,
             repository=EXAMPLE_REPO,
             commit=COMMIT,
+            image_specs=TEST_SPECS,
         )
         self.assertEqual([item.service for item in plan], ["web"])
         self.assertNotIn("server", [item.service for item in plan])
@@ -219,6 +232,7 @@ class BuildTests(unittest.TestCase):
             ("web", "server"),
             repository=EXAMPLE_REPO,
             commit=COMMIT,
+            image_specs=TEST_SPECS,
         )
         self.assertEqual(len(plan), 2)
         web = plan[0]
@@ -314,6 +328,7 @@ class BuildTests(unittest.TestCase):
             repository=EXAMPLE_REPO,
             commit=COMMIT,
             runner=fake_runner,
+            image_specs=TEST_SPECS,
         )
         self.assertEqual(manifest["repository"], EXAMPLE_REPO)
         self.assertEqual(manifest["commit"], COMMIT)
@@ -342,8 +357,47 @@ class BuildTests(unittest.TestCase):
             repository=EXAMPLE_REPO,
             commit=COMMIT,
             runner=lambda *a, **k: (_ for _ in ()).throw(AssertionError("no runner")),
+            image_specs=TEST_SPECS,
         )
         self.assertEqual(manifest["artifacts"], [])
+
+    def test_unknown_service_without_mapping_fails_closed(self):
+        with self.assertRaises(ValueError) as ctx:
+            plan_image_builds(
+                ("web",),
+                repository=EXAMPLE_REPO,
+                commit=COMMIT,
+                image_specs={},
+            )
+        self.assertIn("dockerfile", str(ctx.exception).lower())
+
+    def test_sdr_dockerfile_paths_live_in_profile_not_core(self):
+        import nexus_harness.build as build_mod
+
+        source = Path(build_mod.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("_DOCKERFILE_DEFAULTS", source)
+        self.assertNotIn("apps/web/Dockerfile", source)
+        self.assertNotIn("Dockerfile.figma-worker", source)
+        profile = load_ci_profile(SDR_PROFILE)
+        specs = image_specs_from_profile(profile)
+        self.assertEqual(specs["web"].dockerfile, "apps/web/Dockerfile")
+        self.assertEqual(specs["server"].dockerfile, "apps/server/Dockerfile")
+        self.assertEqual(
+            specs["figma-worker"].dockerfile,
+            "apps/server/Dockerfile.figma-worker",
+        )
+        plan = plan_image_builds(
+            ("web", "figma-worker"),
+            repository=EXAMPLE_REPO,
+            commit=COMMIT,
+            image_specs=specs,
+        )
+        by_svc = {p.service: p for p in plan}
+        self.assertEqual(by_svc["web"].dockerfile, "apps/web/Dockerfile")
+        self.assertEqual(
+            by_svc["figma-worker"].dockerfile,
+            "apps/server/Dockerfile.figma-worker",
+        )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Restricted login shell for the nexus-deploy identity.
+# OpenSSH runs "$SHELL -c '<forced command>'"; we ignore -c payload and always
+# exec the root-owned deploy entrypoint. Client tokens arrive via
+# SSH_ORIGINAL_COMMAND (parsed in Python — never shell-eval'd).
+#
+# This is NOT a general interactive shell.
+set -euo pipefail
+
+INSTALL_BIN="${NEXUS_DEPLOY_BIN:-/usr/local/bin/nexus-deploy}"
+ROOTLESS_SOCK="${NEXUS_DEPLOY_DOCKER_SOCK:-/home/nexus-deploy/.docker/run/docker.sock}"
+
+if [[ -S "${ROOTLESS_SOCK}" ]]; then
+  export DOCKER_HOST="unix://${ROOTLESS_SOCK}"
+fi
+
+if [[ "${1:-}" == "-c" ]]; then
+  # OpenSSH forced-command form — discard the -c string; always run nexus-deploy.
+  exec "${INSTALL_BIN}"
+fi
+
+if [[ $# -eq 0 ]]; then
+  exec "${INSTALL_BIN}"
+fi
+
+printf 'ERROR: nexus-deploy-shell is not an interactive shell\n' >&2
+exit 2

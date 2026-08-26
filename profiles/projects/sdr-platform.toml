@@ -21,6 +21,8 @@ paths = ["apps/web/**"]
 depends_on = ["design_system"]
 checks = ["biome", "typecheck-web", "vitest-web", "playwright-web"]
 images = ["web"]
+dockerfile = "apps/web/Dockerfile"
+context = "."
 
 [components.server]
 paths = ["apps/server/**"]
@@ -30,6 +32,8 @@ exclude = [
 ]
 checks = ["biome", "typecheck-server", "vitest-server", "trivy-source"]
 images = ["server"]
+dockerfile = "apps/server/Dockerfile"
+context = "."
 
 [components.figma_worker]
 paths = [
@@ -39,3 +43,5 @@ paths = [
 ]
 checks = ["trivy-source"]
 images = ["figma-worker"]
+dockerfile = "apps/server/Dockerfile.figma-worker"
+context = "."

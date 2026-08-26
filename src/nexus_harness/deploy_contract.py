@@ -237,13 +237,48 @@ def _strip_compose_comments(text: str) -> str:
     return "\n".join(lines)
 
 
-def _assert_compose_binds_digest(
-    compose_file: Path, digest_var: str, image: str
-) -> None:
-    """Fail closed: compose must pin allowlisted image@${digest_var}; no :latest.
+def _leading_indent(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
 
-    String scan only (stdlib) — no YAML parser. Comment-only pin tokens
-    do not count; require ``image@${digest_var}`` in non-comment content.
+
+def _service_block_lines(text: str, service: str) -> list[str] | None:
+    """Return lines inside the named Compose service mapping (indent-aware).
+
+    Finds ``<indent><service>:`` then collects following lines with greater
+    indent until the next key at the same indent. No YAML parser.
+    """
+    lines = text.splitlines()
+    header_re = re.compile(rf"^(\s*){re.escape(service)}\s*:\s*(?:#.*)?$")
+    start: int | None = None
+    service_indent = 0
+    for idx, line in enumerate(lines):
+        match = header_re.match(line)
+        if match:
+            start = idx + 1
+            service_indent = len(match.group(1))
+            break
+    if start is None:
+        return None
+    block: list[str] = []
+    for line in lines[start:]:
+        if not line.strip():
+            block.append(line)
+            continue
+        indent = _leading_indent(line)
+        if indent <= service_indent:
+            break
+        block.append(line)
+    return block
+
+
+def _assert_compose_binds_digest(
+    compose_file: Path, digest_var: str, image: str, *, service: str
+) -> None:
+    """Fail closed: named service must pin allowlisted image@${digest_var}; no :latest.
+
+    Indent-aware text scan (stdlib only) — pin token in another service or in a
+    comment does not count. Require ``image: <allowlisted>@${digest_var}`` inside
+    the named service block.
     """
     try:
         text = compose_file.read_text(encoding="utf-8")
@@ -253,13 +288,21 @@ def _assert_compose_binds_digest(
         raise DeployError(
             "compose_file must not contain :latest (bind image to digest env var)"
         )
-    # Require allowlisted repository + digest_var in non-comment content.
     active = _strip_compose_comments(text)
     pin_token = f"{image}@${{{digest_var}}}"
-    if pin_token not in active:
+    block = _service_block_lines(active, service)
+    if block is None:
+        raise DeployError(f"compose_file missing service mapping for {service!r}")
+    block_text = "\n".join(block)
+    # Require an image: line with the allowlisted pin inside this service only.
+    image_pin_re = re.compile(
+        rf"^\s*image\s*:\s*{re.escape(pin_token)}\s*$",
+        re.MULTILINE,
+    )
+    if not image_pin_re.search(block_text):
         raise DeployError(
-            f"compose_file must pin image to digest env as {pin_token!r} "
-            "(allowlisted image@${digest_var}; comment-only mentions rejected)"
+            f"compose_file service {service!r} must pin image as "
+            f"'image: {pin_token}' (token in another service is not enough)"
         )
 
 
@@ -377,6 +420,12 @@ def run_deploy(
 
     compose_path = Path(str(entry.get("compose_file") or ""))
     previous = _read_digest_var(env_file, digest_var)
+    # Refuse BEFORE mutating env: operator must seed the initial digest.
+    if not previous or not DIGEST_RE.fullmatch(previous):
+        raise DeployError(
+            f"no valid previous sha256 digest for {digest_var}; "
+            "operator must seed the initial digest in the env file before deploy"
+        )
     digest_written = False
 
     def _rollback_evidence(health_after: bool, *, message: str) -> DeployResult:
@@ -401,7 +450,9 @@ def run_deploy(
     _validate_allowlist_image(image)
 
     try:
-        _assert_compose_binds_digest(compose_path, digest_var, image)
+        _assert_compose_binds_digest(
+            compose_path, digest_var, image, service=req.service
+        )
         _write_digest_var(env_file, digest_var, req.digest)
         digest_written = True
         _pull_and_recreate(
@@ -409,18 +460,16 @@ def run_deploy(
         )
         if not health_checker(health_url):
             # Health is part of the gate — compose rc=0 alone is not PASS.
-            health_after = False
-            if previous and DIGEST_RE.fullmatch(previous):
-                health_after = _restore_previous_digest(
-                    service=req.service,
-                    entry=entry,
-                    env_file=env_file,
-                    digest_var=digest_var,
-                    previous=previous,
-                    compose_runner=compose_runner,
-                    health_checker=health_checker,
-                    health_url=health_url,
-                )
+            health_after = _restore_previous_digest(
+                service=req.service,
+                entry=entry,
+                env_file=env_file,
+                digest_var=digest_var,
+                previous=previous,
+                compose_runner=compose_runner,
+                health_checker=health_checker,
+                health_url=health_url,
+            )
             return _rollback_evidence(
                 health_after,
                 message="health check failed; previous digest restored",
@@ -435,7 +484,7 @@ def run_deploy(
         )
     except DeployError as exc:
         # After env write, pull/up failure must still restore previous digest.
-        if digest_written and previous and DIGEST_RE.fullmatch(previous):
+        if digest_written:
             health_after = _restore_previous_digest(
                 service=req.service,
                 entry=entry,
@@ -450,16 +499,6 @@ def run_deploy(
                 health_after,
                 message=f"{exc}; previous digest restored",
             )
-        if digest_written:
-            # No valid previous digest — still record that deploy failed mid-flight.
-            payload = {
-                "status": "ROLLBACK",
-                "service": req.service,
-                "attempted_digest": req.digest,
-                "restored_digest": previous,
-                "health_restored": False,
-            }
-            _write_evidence(evidence_path, payload)
         return DeployResult(
             ok=False,
             status="ERROR",

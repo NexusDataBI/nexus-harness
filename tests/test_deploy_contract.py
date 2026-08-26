@@ -402,23 +402,134 @@ class DeployRollbackTests(unittest.TestCase):
             self.assertEqual(result.status, "PASS")
 
 
+class DeployPreviousDigestTests(unittest.TestCase):
+    def test_refuse_before_env_mutate_without_previous_digest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, _, _ = _prepare_deploy_tmp(tmp_path)
+            evidence_path = tmp_path / "rollback.json"
+            # Empty / missing previous digest — must refuse before write.
+            env_path.write_text("# no digest yet\n", encoding="utf-8")
+            compose_calls: list[list[str]] = []
+
+            with self.assertRaises(DeployError) as ctx:
+                run_deploy(
+                    ["deploy", "web", VALID_DIGEST],
+                    services_path=services_path,
+                    compose_runner=lambda argv: compose_calls.append(list(argv)) or 0,
+                    health_checker=lambda url: True,
+                    evidence_path=evidence_path,
+                )
+            msg = str(ctx.exception).lower()
+            self.assertTrue(
+                "previous" in msg or "seed" in msg or "initial" in msg,
+                str(ctx.exception),
+            )
+            env_text = env_path.read_text(encoding="utf-8")
+            self.assertNotIn(VALID_DIGEST, env_text)
+            self.assertFalse(compose_calls)
+            self.assertFalse(evidence_path.exists())
+
+    def test_refuse_invalid_previous_digest_does_not_write_rollback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, _, _ = _prepare_deploy_tmp(tmp_path)
+            evidence_path = tmp_path / "rollback.json"
+            env_path.write_text("WEB_IMAGE_DIGEST=latest\n", encoding="utf-8")
+            with self.assertRaises(DeployError):
+                run_deploy(
+                    ["deploy", "web", VALID_DIGEST],
+                    services_path=services_path,
+                    compose_runner=lambda argv: 0,
+                    health_checker=lambda url: False,
+                    evidence_path=evidence_path,
+                )
+            self.assertNotIn(VALID_DIGEST, env_path.read_text(encoding="utf-8"))
+            self.assertFalse(evidence_path.exists())
+
+
+class ComposeServicePinTests(unittest.TestCase):
+    def test_pin_in_other_service_with_stable_tag_rejected(self):
+        """Pin token elsewhere + this service :stable must reject."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, compose_path, services = _prepare_deploy_tmp(
+                tmp_path
+            )
+            env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
+            image = services["services"]["web"]["image"]
+            digest_var = services["services"]["web"]["digest_var"]
+            pin = f"{image}@${{{digest_var}}}"
+            compose_path.write_text(
+                "services:\n"
+                f"  api:\n    image: {pin}\n"
+                f"  web:\n    image: {image}:stable\n",
+                encoding="utf-8",
+            )
+            result = run_deploy(
+                ["deploy", "web", VALID_DIGEST],
+                services_path=services_path,
+                compose_runner=lambda argv: 0,
+                health_checker=lambda url: True,
+            )
+            self.assertFalse(result.ok)
+            self.assertEqual(result.status, "ERROR")
+            msg = result.message.lower()
+            self.assertTrue(
+                "pin" in msg
+                or "service" in msg
+                or "stable" in msg
+                or "@$" in result.message,
+                result.message,
+            )
+            # Must not have mutated env on compose bind failure.
+            self.assertIn(PREV_DIGEST, env_path.read_text(encoding="utf-8"))
+            self.assertNotIn(VALID_DIGEST, env_path.read_text(encoding="utf-8"))
+
+
 class ClientVmFilesTests(unittest.TestCase):
     def test_required_files_exist(self):
-        for path in (NEXUS_DEPLOY, INSTALL_SH, README):
+        shell = CLIENT_VM / "nexus-deploy-shell"
+        for path in (NEXUS_DEPLOY, INSTALL_SH, README, shell):
             self.assertTrue(path.is_file(), f"missing required file: {path}")
 
     def test_installer_creates_restricted_user_and_command(self):
         text = INSTALL_SH.read_text(encoding="utf-8")
         self.assertIn("nexus-deploy", text)
         self.assertTrue("useradd" in text or "adduser" in text)
-        self.assertIn("/usr/sbin/nologin", text)
+        # OpenSSH command= needs a runnable shell — not nologin.
+        self.assertNotIn("/usr/sbin/nologin", text)
+        self.assertIn("nexus-deploy-shell", text)
+        self.assertIn("/usr/local/bin/nexus-deploy-shell", text)
         self.assertIn("authorized_keys", text)
         self.assertIn("command=", text)
         self.assertIn("/usr/local/bin/nexus-deploy", text)
+        # Fail closed on rootless docker; never grant docker group.
+        self.assertIn("rootless", text.lower())
+        self.assertIn(".docker/run/docker.sock", text)
+        self.assertNotIn("usermod -aG docker", text)
+        self.assertIn("check_docker_prerequisites", text)
         # No client hostnames / IPs / live keys in the installer.
         self.assertIsNone(re.search(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", text))
         self.assertNotIn("BEGIN OPENSSH PRIVATE KEY", text)
         self.assertNotIn("ssh-rsa AAAA", text)
+
+    def test_deploy_shell_wrapper_only_execs_deploy(self):
+        shell = CLIENT_VM / "nexus-deploy-shell"
+        self.assertTrue(shell.is_file())
+        text = shell.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("#!"))
+        self.assertIn("/usr/local/bin/nexus-deploy", text)
+        self.assertIn('[[ "${1:-}" == "-c" ]]', text)
+        self.assertNotRegex(text, r"(?m)^\s*eval\b")
+        self.assertIn("not an interactive shell", text.lower())
+
+    def test_readme_documents_rootless_and_shell(self):
+        text = README.read_text(encoding="utf-8")
+        self.assertIn("nexus-deploy-shell", text)
+        self.assertIn("rootless", text.lower())
+        self.assertNotIn("usermod -aG docker", text)
+        self.assertIn("seed", text.lower())
 
     def test_nexus_deploy_entrypoint_is_executable_script(self):
         text = NEXUS_DEPLOY.read_text(encoding="utf-8")

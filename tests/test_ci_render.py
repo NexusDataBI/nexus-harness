@@ -55,15 +55,15 @@ class CiRenderTests(unittest.TestCase):
     def test_pr_job_runs_affected_and_batched_quality(self):
         text = render_workflow()
         pr = _job_body(text, "quality-gate")
-        self.assertIn("nexus ci affected", pr)
-        self.assertIn("nexus quality run", pr)
+        self.assertIn("python3 -m nexus_harness ci affected", pr)
+        self.assertIn("python3 -m nexus_harness quality run", pr)
         self.assertIn("--base", pr)
         self.assertIn("--head", pr)
 
     def test_pr_job_does_not_push_images(self):
         text = render_workflow()
         pr = _job_body(text, "quality-gate")
-        self.assertNotIn("nexus images build", pr)
+        self.assertNotIn("python3 -m nexus_harness images build", pr)
         self.assertNotIn("nexus images push", pr)
         self.assertNotIn("docker push", pr)
         self.assertNotIn("--push", pr)
@@ -72,9 +72,14 @@ class CiRenderTests(unittest.TestCase):
         text = render_workflow()
         build = _job_body(text, "build-images")
         self.assertNotIn("nexus quality full", build)
-        self.assertNotIn("nexus quality run", build)
-        self.assertIn("nexus images build", build)
-        self.assertIn("nexus ci affected", build)
+        self.assertNotIn("python3 -m nexus_harness quality run", build)
+        self.assertIn("python3 -m nexus_harness images build", build)
+        self.assertIn("python3 -m nexus_harness ci affected", build)
+
+    def test_workflow_documents_module_and_wrapper(self):
+        text = render_workflow()
+        self.assertIn("python3 -m nexus_harness", text)
+        self.assertIn("scripts/nexus", text)
 
     def test_no_workflow_level_paths_filter(self):
         text = render_workflow()

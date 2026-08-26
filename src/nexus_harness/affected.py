@@ -18,6 +18,10 @@ class Component:
     checks: tuple[str, ...] = ()
     images: tuple[str, ...] = ()
     exclude: tuple[str, ...] = ()
+    # Optional image build mapping (data-driven; no core layout defaults).
+    dockerfile: str | None = None
+    context: str | None = None
+    image_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -179,6 +183,9 @@ def load_ci_profile(path: Path | str) -> CiProfile:
     for name, raw in raw_components.items():
         if not isinstance(raw, dict):
             raise TypeError(f"component {name!r} must be a table")
+        dockerfile = raw.get("dockerfile")
+        context = raw.get("context")
+        image_name = raw.get("image_name")
         components.append(
             Component(
                 name=str(name),
@@ -187,6 +194,9 @@ def load_ci_profile(path: Path | str) -> CiProfile:
                 checks=_as_str_tuple(raw.get("checks")),
                 images=_as_str_tuple(raw.get("images")),
                 exclude=_as_str_tuple(raw.get("exclude")),
+                dockerfile=str(dockerfile).strip() if dockerfile else None,
+                context=str(context).strip() if context else None,
+                image_name=str(image_name).strip() if image_name else None,
             )
         )
 

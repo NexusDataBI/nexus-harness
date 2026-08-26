@@ -15,14 +15,20 @@
 #
 # Client-specific hostnames, compose paths, and registry credentials stay in the
 # project profile / secrets store — never in the Canonical Harness repository.
+#
+# Docker policy (same as CI VPS): fail closed unless a rootless docker socket
+# exists for nexus-deploy. NEVER add the deploy user to the docker group
+# (root-equivalent socket access).
 
 set -euo pipefail
 
 NEXUS_USER="nexus-deploy"
 INSTALL_BIN="/usr/local/bin/nexus-deploy"
+INSTALL_SHELL="/usr/local/bin/nexus-deploy-shell"
 LIB_DIR="/usr/local/lib/nexus-deploy"
 ETC_DIR="/etc/nexus-deploy"
 DATA_DIR="/var/lib/nexus-deploy"
+ROOTLESS_SOCK="/home/${NEXUS_USER}/.docker/run/docker.sock"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_HELPER="${SCRIPT_DIR}/../../src/nexus_harness/deploy_contract.py"
 
@@ -54,14 +60,31 @@ require_pubkey() {
   fi
 }
 
+check_docker_prerequisites() {
+  if ! command -v docker >/dev/null 2>&1; then
+    die "docker CLI not found — install Docker Engine (rootless for ${NEXUS_USER}) before provisioning"
+  fi
+  # Fail closed: require rootless socket. Never grant the docker group (root-equivalent).
+  if [[ -S "${ROOTLESS_SOCK}" ]]; then
+    log "rootless docker socket detected at ${ROOTLESS_SOCK}"
+    return 0
+  fi
+  if [[ -S /var/run/docker.sock ]]; then
+    log "WARN: system /var/run/docker.sock present — refusing docker group membership for ${NEXUS_USER}"
+    die "rootless socket missing at ${ROOTLESS_SOCK} — set up rootless Docker for ${NEXUS_USER}; do not grant the docker group"
+  fi
+  die "no docker socket found — configure rootless Docker for ${NEXUS_USER} first (expected ${ROOTLESS_SOCK})"
+}
+
 ensure_user() {
-  # No standing application shell workflow — nologin only.
+  # Dedicated wrapper shell (not nologin): OpenSSH command= needs a runnable
+  # $SHELL; nexus-deploy-shell only execs the restricted entrypoint.
   if id -u "${NEXUS_USER}" >/dev/null 2>&1 || getent passwd "${NEXUS_USER}" >/dev/null 2>&1; then
-    log "user ${NEXUS_USER} already exists — ensuring nologin shell"
-    usermod -s /usr/sbin/nologin "${NEXUS_USER}" 2>/dev/null || true
+    log "user ${NEXUS_USER} already exists — ensuring nexus-deploy-shell"
+    usermod -s "${INSTALL_SHELL}" "${NEXUS_USER}" 2>/dev/null || true
   else
     useradd --system --create-home --home-dir "/home/${NEXUS_USER}" \
-      --shell /usr/sbin/nologin --user-group "${NEXUS_USER}"
+      --shell "${INSTALL_SHELL}" --user-group "${NEXUS_USER}"
     log "created system user ${NEXUS_USER}"
   fi
 }
@@ -71,20 +94,23 @@ install_deploy_script() {
   if [[ ! -f "${SCRIPT_DIR}/nexus-deploy" ]]; then
     die "missing ${SCRIPT_DIR}/nexus-deploy"
   fi
+  if [[ ! -f "${SCRIPT_DIR}/nexus-deploy-shell" ]]; then
+    die "missing ${SCRIPT_DIR}/nexus-deploy-shell"
+  fi
   if [[ ! -f "${REPO_HELPER}" ]]; then
     die "missing deploy helper ${REPO_HELPER}"
   fi
-  # Root-owned deploy entrypoint + helper (not writable by nexus-deploy).
+  # Root-owned deploy entrypoint + shell wrapper + helper (not writable by nexus-deploy).
   install -m 0755 -o root -g root "${SCRIPT_DIR}/nexus-deploy" "${INSTALL_BIN}"
+  install -m 0755 -o root -g root "${SCRIPT_DIR}/nexus-deploy-shell" "${INSTALL_SHELL}"
   install -m 0644 -o root -g root "${REPO_HELPER}" "${LIB_DIR}/deploy_contract.py"
-  # Point the installed entrypoint at the installed helper via default path.
-  chown root:root "${INSTALL_BIN}" "${LIB_DIR}/deploy_contract.py"
-  chmod 0755 "${INSTALL_BIN}"
+  chown root:root "${INSTALL_BIN}" "${INSTALL_SHELL}" "${LIB_DIR}/deploy_contract.py"
+  chmod 0755 "${INSTALL_BIN}" "${INSTALL_SHELL}"
   chmod 0644 "${LIB_DIR}/deploy_contract.py"
   chmod 0750 "${ETC_DIR}" "${DATA_DIR}"
   # nexus-deploy may read allowlist + write rollback evidence.
   chown root:"${NEXUS_USER}" "${ETC_DIR}" "${DATA_DIR}"
-  log "installed ${INSTALL_BIN} and ${LIB_DIR}/deploy_contract.py"
+  log "installed ${INSTALL_BIN}, ${INSTALL_SHELL}, and ${LIB_DIR}/deploy_contract.py"
 }
 
 install_services_allowlist() {
@@ -125,12 +151,14 @@ install_authorized_keys() {
 main() {
   require_root
   require_pubkey
-  ensure_user
+  check_docker_prerequisites
   install_deploy_script
+  ensure_user
   install_services_allowlist
   install_authorized_keys
   log "nexus-deploy restricted identity provisioning complete"
   log "Remember: client hostnames, compose paths, and registry creds stay outside this repo"
+  log "Docker: rootless only at ${ROOTLESS_SOCK} — never grant the docker group"
 }
 
 main "$@"

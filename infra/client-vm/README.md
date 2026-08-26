@@ -15,13 +15,14 @@ registry credentials.
 
 ## Layout (on the client VM after install)
 
-| Path                                              | Purpose                                  |
-| ------------------------------------------------- | ---------------------------------------- |
-| `/usr/local/bin/nexus-deploy`                     | Root-owned restricted entrypoint         |
-| `/usr/local/lib/nexus-deploy/deploy_contract.py`  | Parser + deploy/rollback logic           |
-| `/etc/nexus-deploy/services.json`                 | Allowlisted services (operator-supplied) |
-| `/var/lib/nexus-deploy/`                          | Rollback evidence                        |
-| `nexus-deploy` (system user, `/usr/sbin/nologin`) | SSH identity; no standing app shell      |
+| Path                                             | Purpose                                  |
+| ------------------------------------------------ | ---------------------------------------- |
+| `/usr/local/bin/nexus-deploy`                    | Root-owned restricted entrypoint         |
+| `/usr/local/bin/nexus-deploy-shell`              | Root-owned `$SHELL` — only execs deploy  |
+| `/usr/local/lib/nexus-deploy/deploy_contract.py` | Parser + deploy/rollback logic           |
+| `/etc/nexus-deploy/services.json`                | Allowlisted services (operator-supplied) |
+| `/var/lib/nexus-deploy/`                         | Rollback evidence                        |
+| `nexus-deploy` (system user)                     | SSH identity; shell = nexus-deploy-shell |
 
 ## Allowlist (`services.json`)
 
@@ -46,6 +47,10 @@ Only service names matching `^[a-z0-9][a-z0-9-]*$` are accepted. Digests must
 match `^sha256:[0-9a-f]{64}$`. Unknown services, `latest`, shell metacharacters,
 arbitrary paths, and arbitrary Compose targets are rejected.
 
+The Compose file must pin the **named** service with
+`image: <allowlisted>@${DIGEST_VAR}` (indent-aware; a pin on another service is
+not enough).
+
 ## Install
 
 On the **client VM** as root (supply the CI public key at install time — do not
@@ -58,11 +63,17 @@ export NEXUS_DEPLOY_PUBKEY='ssh-ed25519 AAAA... ci-nexus-deploy'
 sudo -E ./install-deploy-user.sh
 ```
 
+**Prerequisites:** rootless Docker for `nexus-deploy` at
+`/home/nexus-deploy/.docker/run/docker.sock`. The installer **fails closed** if
+that socket is missing. It never grants the `docker` group (root-equivalent).
+
 The installer:
 
-1. Creates system user `nexus-deploy` with shell `/usr/sbin/nologin`.
-2. Installs the root-owned deploy script + helper.
-3. Writes `~nexus-deploy/.ssh/authorized_keys` with
+1. Checks rootless Docker socket (fail closed; no docker group).
+2. Installs root-owned `nexus-deploy` + `nexus-deploy-shell` + helper.
+3. Creates system user `nexus-deploy` with shell `/usr/local/bin/nexus-deploy-shell`
+   (not `/usr/sbin/nologin` — OpenSSH `command=` requires a runnable `$SHELL`).
+4. Writes `~nexus-deploy/.ssh/authorized_keys` with
    `command="/usr/local/bin/nexus-deploy"` and forwarding disabled.
 
 ## Deploy flow
@@ -83,7 +94,10 @@ ssh -i ci_deploy_key nexus-deploy@CLIENT_HOST 'deploy web sha256:<64 hex>'
 The entrypoint splits `SSH_ORIGINAL_COMMAND` on whitespace only (no shell
 evaluation) and validates each token.
 
-1. Capture previous digest from the service `env_file` / `digest_var`.
+1. **Require** a valid previous `sha256:` digest already present in the service
+   `env_file` / `digest_var` (operator seeds the initial digest). Refuse before
+   mutating env if missing — never leave a half-deploy labeled ROLLBACK with
+   nothing to restore.
 2. Write the new digest; `docker compose pull` + `up -d --force-recreate --no-deps` **only** for that allowlisted service.
 3. HTTP health check against `health_url`.
 4. **PASS** only if health succeeds. Compose exit 0 alone is not enough.
@@ -92,6 +106,7 @@ evaluation) and validates each token.
 ## Security notes
 
 - Parse argv in Python; never `eval` user strings in a shell.
-- No standing production shell workflow for the deploy user.
+- `$SHELL` is `nexus-deploy-shell` only — not a standing production shell.
+- Rootless Docker only; never add `nexus-deploy` to the `docker` group.
 - Keep client-specific data in the selected project profile / secrets store —
   out of this repository.
