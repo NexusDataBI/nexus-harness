@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from nexus_harness.memory.guard import MemoryGuardError
+from nexus_harness.memory.freshness import AuthorityContradiction, TruthStrength
 from nexus_harness.memory.models import (
     MemoryConfidence,
     MemoryDraft,
@@ -185,3 +186,39 @@ class MemorySessionTests(unittest.TestCase):
             )
             self.assertIn(record.id, capsule.hot)
             self.assertIn(record.title, capsule.hot)
+
+    def test_session_recall_excludes_current_repo_contradiction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            record = write_memory(
+                root,
+                replace(
+                    _verified_invariant().to_record(),
+                    status=MemoryStatus.VERIFIED,
+                    confidence=MemoryConfidence.HIGH,
+                    verified_at="2026-08-25T00:00:00Z",
+                ),
+            )
+
+            capsule = session_recall(
+                root,
+                project_id="repo-1",
+                query="auth session",
+                affected_paths=("src/auth/session.py",),
+                cache_home=root / "cache",
+                contradictions=(
+                    AuthorityContradiction(
+                        memory_id=record.id,
+                        authority=TruthStrength.CURRENT_REPO,
+                        pointer="src/auth/session.py",
+                    ),
+                ),
+            )
+
+            self.assertEqual(capsule.hot, "")
+            self.assertEqual(capsule.warm, "")
+            self.assertIn(record.id, capsule.warnings)
+            self.assertIn("CURRENT_REPO", capsule.warnings)
+            self.assertIn("src/auth/session.py", capsule.warnings)
+            self.assertNotIn(record.body, capsule.text)

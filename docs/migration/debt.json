@@ -126,10 +126,10 @@
       "origin": "plan-2.5-final-review",
       "severity": "medium",
       "description": "resolve_contradiction exists but recall does not auto-exclude vs CURRENT_REPO.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "search_memory/session_recall apply resolve_contradiction so memories contradicted by CURRENT_REPO are excluded or downranked.",
-      "defer_reason": "Contradiction resolution is not wired into search. Out of this HIGH-fix scope."
+      "defer_reason": "Resolved: explicit caller-supplied AuthorityContradiction claims exclude contradicted memories from recall injection."
     },
     {
       "id": "P25-D02",

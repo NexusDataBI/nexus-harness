@@ -14,6 +14,7 @@ from nexus_harness.memory.models import (
     MemoryStatus,
     MemoryType,
 )
+from nexus_harness.memory.freshness import AuthorityContradiction, TruthStrength
 from nexus_harness.memory.retrieval import (
     MemoryQueryContext,
     default_index_path,
@@ -102,6 +103,57 @@ class MemoryRetrievalExclusionTests(unittest.TestCase):
 
         self.assertEqual(hit_ids, [included_id])
         self.assertNotIn(stale.id, hit_ids)
+
+    def test_current_repo_contradiction_excludes_verified_memory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            contradicted = write_memory(
+                root,
+                _verified_record("Contradicted auth rule"),
+            )
+
+            hits = search_memory(
+                root,
+                "contradicted auth",
+                MemoryQueryContext(
+                    project_id="repo-1",
+                    contradictions=(
+                        AuthorityContradiction(
+                            memory_id=contradicted.id,
+                            authority=TruthStrength.CURRENT_REPO,
+                            pointer="src/auth/session.py",
+                        ),
+                    ),
+                ),
+                cache_home=root / "cache",
+            )
+
+            self.assertNotIn(contradicted.id, [hit.record.id for hit in hits])
+
+    def test_weaker_authority_does_not_exclude_verified_memory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            record = write_memory(root, _verified_record("Retained auth rule"))
+
+            hits = search_memory(
+                root,
+                "retained auth",
+                MemoryQueryContext(
+                    project_id="repo-1",
+                    contradictions=(
+                        AuthorityContradiction(
+                            memory_id=record.id,
+                            authority=TruthStrength.VERIFIED_PORTFOLIO_MEMORY,
+                            pointer="portfolio/fact.md",
+                        ),
+                    ),
+                ),
+                cache_home=root / "cache",
+            )
+
+            self.assertIn(record.id, [hit.record.id for hit in hits])
 
 
 def _verified(record):

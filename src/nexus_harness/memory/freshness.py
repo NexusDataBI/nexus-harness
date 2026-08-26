@@ -35,6 +35,15 @@ class TruthStrength(IntEnum):
 
 
 @dataclass(frozen=True)
+class AuthorityContradiction:
+    """Caller-supplied higher-authority claim; never inferred by retrieval."""
+
+    memory_id: str
+    authority: TruthStrength = TruthStrength.CURRENT_REPO
+    pointer: str = ""
+
+
+@dataclass(frozen=True)
 class ContradictionResolution:
     winner: str | None
     excluded: tuple[str, ...]

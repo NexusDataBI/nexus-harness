@@ -108,10 +108,18 @@ def build_context_capsule(
                     f"- {hit.record.id} was excluded because it is stale."
                 )
     for finding in findings:
-        warning_blocks.append(
-            f"- {finding.get('path', 'memory record')} was excluded because its "
-            "sidecar is invalid."
-        )
+        if finding.get("code") == "memory_contradiction":
+            pointer = finding.get("pointer", "")
+            suffix = f" ({pointer})" if pointer else ""
+            warning_blocks.append(
+                f"- {finding.get('memory_id', 'memory record')} was excluded because "
+                f"it contradicts {finding.get('authority', 'CURRENT_REPO')}{suffix}."
+            )
+        else:
+            warning_blocks.append(
+                f"- {finding.get('path', 'memory record')} was excluded because its "
+                "sidecar is invalid."
+            )
 
     return ContextCapsule(
         project_id=project_id,

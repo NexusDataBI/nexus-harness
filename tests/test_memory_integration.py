@@ -24,7 +24,11 @@ from nexus_harness.memory import (
 )
 from nexus_harness.memory.capsule import load_capsule_policy
 from nexus_harness.memory.cli import main as memory_cli_main
-from nexus_harness.memory.freshness import FreshnessStatus
+from nexus_harness.memory.freshness import (
+    AuthorityContradiction,
+    FreshnessStatus,
+    TruthStrength,
+)
 from nexus_harness.memory.guard import MemoryGuardError
 from nexus_harness.memory.lifecycle import CandidateSignal
 from nexus_harness.memory.models import (
@@ -81,6 +85,43 @@ def _invariant_draft(**overrides) -> MemoryDraft:
 
 
 class MemoryIntegrationProofTests(unittest.TestCase):
+    def test_current_repo_truth_wins_over_verified_memory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            cache_home = Path(tmp) / "cache"
+            root.mkdir()
+            _init_repo(root)
+            commit = _commit_file(
+                root,
+                "src/auth/session.py",
+                "def load_session():\n    return 'repo truth'\n",
+                "repo truth",
+            )
+            init_project_memory(root)
+            record = write_memory(root, _invariant_draft().to_record())
+            verify_memory(root, record.id, current_commit=commit)
+
+            capsule = session_recall(
+                root,
+                project_id="repo-1",
+                query="auth session",
+                affected_paths=("src/auth/session.py",),
+                cache_home=cache_home,
+                contradictions=(
+                    AuthorityContradiction(
+                        memory_id=record.id,
+                        authority=TruthStrength.CURRENT_REPO,
+                        pointer="src/auth/session.py",
+                    ),
+                ),
+            )
+
+            self.assertNotIn(record.id, capsule.hot)
+            self.assertNotIn(record.id, capsule.warm)
+            self.assertIn(record.id, capsule.warnings)
+            self.assertIn("CURRENT_REPO", capsule.warnings)
+            self.assertIn("src/auth/session.py", capsule.warnings)
+
     def test_plan25_end_to_end_scenario_without_portfolio(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"

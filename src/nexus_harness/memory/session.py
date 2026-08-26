@@ -43,11 +43,13 @@ def session_recall(
     affected_paths=(),
     portfolio_root=None,
     cache_home=None,
+    contradictions=(),
 ):
     context = MemoryQueryContext(
         project_id=project_id,
         affected_paths=tuple(affected_paths),
         include_stale=True,
+        contradictions=tuple(contradictions),
     )
     policy = load_capsule_policy()
     findings: list[dict[str, str]] = []

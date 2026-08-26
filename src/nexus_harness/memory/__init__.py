@@ -1,6 +1,7 @@
 from nexus_harness.memory.capsule import build_context_capsule
 from nexus_harness.memory.doctor import memory_doctor
 from nexus_harness.memory.freshness import compute_memory_freshness
+from nexus_harness.memory.freshness import AuthorityContradiction
 from nexus_harness.memory.guard import MemoryGuardError
 from nexus_harness.memory.lifecycle import (
     collect_memory_candidates,
@@ -42,6 +43,7 @@ __all__ = [
     "MemorySource",
     "MemoryStatus",
     "MemoryType",
+    "AuthorityContradiction",
     "build_context_capsule",
     "checkpoint_memory_candidates",
     "collect_memory_candidates",

@@ -7,10 +7,12 @@ from pathlib import Path, PurePosixPath
 
 from nexus_harness.config import load_toml
 from nexus_harness.memory.freshness import (
+    AuthorityContradiction,
     FreshnessResult,
     FreshnessStatus,
     TruthStrength,
     compute_memory_freshness,
+    resolve_contradiction,
 )
 from nexus_harness.memory.models import (
     MemoryRecord,
@@ -49,6 +51,7 @@ class MemoryQueryContext:
     tags: tuple[str, ...] = ()
     requested_types: tuple[MemoryType, ...] = ()
     include_stale: bool = False
+    contradictions: tuple[AuthorityContradiction, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -171,6 +174,8 @@ def search_memory(
         freshness = _freshness_for(project_root, record)
         if freshness.status == FreshnessStatus.STALE and not context.include_stale:
             continue
+        if _excluded_by_authority(record, freshness.status, context, findings):
+            continue
         score, reasons = _score_record(
             record, query, context, freshness.status, fts_matched=record.id in fts_ids
         )
@@ -184,6 +189,48 @@ def search_memory(
         )
     hits.sort(key=_hit_sort_key)
     return hits[:50]
+
+
+def _excluded_by_authority(
+    record: MemoryRecord,
+    freshness: FreshnessStatus,
+    context: MemoryQueryContext,
+    findings: list[dict[str, str]] | None,
+) -> bool:
+    excluded = False
+    memory_strength = TruthStrength(_provenance_strength(record, freshness))
+    for contradiction in context.contradictions:
+        if contradiction.memory_id != record.id:
+            continue
+        resolution = resolve_contradiction(
+            [
+                (record.id, memory_strength),
+                (
+                    f"authority:{contradiction.pointer or contradiction.authority.name}",
+                    contradiction.authority,
+                ),
+            ]
+        )
+        authority_is_leader = contradiction.authority == max(
+            memory_strength, contradiction.authority
+        )
+        should_exclude = record.id in resolution.excluded or (
+            resolution.requires_adjudication
+            and authority_is_leader
+            and contradiction.authority == TruthStrength.CURRENT_REPO
+        )
+        if should_exclude:
+            excluded = True
+            if findings is not None:
+                findings.append(
+                    {
+                        "code": "memory_contradiction",
+                        "memory_id": record.id,
+                        "authority": contradiction.authority.name,
+                        "pointer": contradiction.pointer,
+                    }
+                )
+    return excluded
 
 
 def _is_eligible(record: MemoryRecord, context: MemoryQueryContext) -> bool:
