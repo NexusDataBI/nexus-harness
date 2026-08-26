@@ -33,6 +33,51 @@ class GraphTests(unittest.TestCase):
         )
         self.assertEqual(graph.conflicts(), {("a", "b")})
 
+    def test_parent_and_child_write_paths_conflict(self):
+        graph = TaskGraph(
+            [
+                GraphNode("parent", writes=("src/auth",)),
+                GraphNode("child", writes=("src/auth/session.py",)),
+            ]
+        )
+        self.assertEqual(graph.conflicts(), {("child", "parent")})
+
+    def test_trailing_slash_parent_write_path_conflicts(self):
+        graph = TaskGraph(
+            [
+                GraphNode("parent", writes=("src/auth/",)),
+                GraphNode("child", writes=("src/auth/session.py",)),
+            ]
+        )
+        self.assertEqual(graph.conflicts(), {("child", "parent")})
+
+    def test_similar_but_non_overlapping_write_paths_do_not_conflict(self):
+        graph = TaskGraph(
+            [
+                GraphNode("a", writes=("src/aut",)),
+                GraphNode("b", writes=("src/auth.py",)),
+            ]
+        )
+        self.assertEqual(graph.conflicts(), set())
+
+    def test_conflicting_ready_writers_are_excluded_fail_closed(self):
+        graph = TaskGraph(
+            [
+                GraphNode("parent", writes=("src/auth",)),
+                GraphNode("child", writes=("src/auth/session.py",)),
+            ]
+        )
+        self.assertEqual(graph.ready_nodes(), [])
+
+    def test_independent_ready_writers_remain_ready_together(self):
+        graph = TaskGraph(
+            [
+                GraphNode("a", writes=("src/a.py",)),
+                GraphNode("b", writes=("src/b.py",)),
+            ]
+        )
+        self.assertEqual({n.id for n in graph.ready_nodes()}, {"a", "b"})
+
     def test_rejects_cycles(self):
         with self.assertRaises(ValueError):
             TaskGraph(

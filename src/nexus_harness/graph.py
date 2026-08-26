@@ -13,6 +13,16 @@ def _as_tuple(value) -> tuple:
     return tuple(value)
 
 
+def _normalize_write_path(path: str) -> str:
+    return path.rstrip("/")
+
+
+def _paths_overlap(left: str, right: str) -> bool:
+    left = _normalize_write_path(left)
+    right = _normalize_write_path(right)
+    return left == right or left.startswith(f"{right}/") or right.startswith(f"{left}/")
+
+
 @dataclass(frozen=True)
 class GraphNode:
     id: str
@@ -101,19 +111,30 @@ class TaskGraph:
                 for dependency in node.depends_on
             ):
                 ready.append(node)
-        return ready
+        ready_ids = {node.id for node in ready}
+        conflicting_ids = {
+            node_id
+            for left, right in self.conflicts()
+            if left in ready_ids and right in ready_ids
+            for node_id in (left, right)
+        }
+        return [node for node in ready if node.id not in conflicting_ids]
 
     def conflicts(self) -> set[tuple[str, str]]:
-        writers: dict[str, list[str]] = {}
+        writers: dict[str, set[str]] = {}
         for node in self._nodes.values():
             for path in node.writes:
-                writers.setdefault(path, []).append(node.id)
+                writers.setdefault(_normalize_write_path(path), set()).add(node.id)
         pairs: set[tuple[str, str]] = set()
-        for node_ids in writers.values():
-            unique = sorted(set(node_ids))
-            for index, left in enumerate(unique):
-                for right in unique[index + 1 :]:
-                    pairs.add((left, right))
+        paths = sorted(writers)
+        for index, left_path in enumerate(paths):
+            for right_path in paths[index:]:
+                if not _paths_overlap(left_path, right_path):
+                    continue
+                node_ids = sorted(writers[left_path] | writers[right_path])
+                for left_index, left in enumerate(node_ids):
+                    for right in node_ids[left_index + 1 :]:
+                        pairs.add((left, right))
         return pairs
 
     def invalidate(self, changed_paths) -> None:

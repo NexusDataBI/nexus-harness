@@ -96,10 +96,10 @@
       "origin": "plan-2-final-review",
       "severity": "medium",
       "description": "conflicts() is exact-path only (prefix write conflicts remain); ready_nodes() does not compose with conflicts(), so concurrent writers can both be ready.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "Prefix/directory write overlap is a first-class conflict; ready_nodes excludes unresolved conflict pairs unless a merge strategy is declared.",
-      "defer_reason": "This round kept exact-path conflicts() and did not change scheduler composition. Cascade invalidation was the graph bug that had to land."
+      "defer_reason": "Resolved: write paths normalize trailing separators, detect directory-boundary parent/child overlap, and ready_nodes excludes all unresolved conflicting pending writers."
     },
     {
       "id": "P2-D06",
