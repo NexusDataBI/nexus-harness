@@ -1,3 +1,4 @@
+import re
 import unittest
 from pathlib import Path
 
@@ -43,6 +44,14 @@ class RuntimeMemoryContractTests(unittest.TestCase):
         )
         for value in forbidden:
             self.assertNotIn(value, self.output)
+        absolute = re.search(
+            r"""(?:^|[\s"'`=(])/(?:users|home|opt|var|tmp|private|root)(?:/|$)""",
+            self.output,
+            re.M,
+        )
+        self.assertIsNone(absolute, absolute.group(0) if absolute else None)
+        self.assertNotRegex(self.output, r'"body"\s*:')
+        self.assertNotRegex(self.output, r"```memory")
 
     def test_candidate_stale_and_confidential_memory_are_not_auto_injected(self):
         self.assertIn(

@@ -1,3 +1,4 @@
+import io
 import json
 import importlib.util
 import sys
@@ -70,21 +71,53 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.assertIn("completion gate", output.lower())
         self.assertIn("exit 2", output.lower())
 
-    def test_completion_hook_propagates_dispatch_exit_code(self):
+    def _load_wrapper(self):
         module_spec = importlib.util.spec_from_file_location(
             "claude_event", Path("hooks/claude_event.py")
         )
         wrapper = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(wrapper)
+        return wrapper
+
+    def test_completion_hook_propagates_dispatch_exit_code(self):
+        wrapper = self._load_wrapper()
         common_hooks = types.ModuleType("nexus_harness.hooks")
-        common_hooks.dispatch = lambda event, completion_gate: 2
+        common_hooks.dispatch = lambda event, payload, completion_gate=False: 2
         with patch.dict(sys.modules, {"nexus_harness.hooks": common_hooks}):
             with patch.object(
                 sys,
                 "argv",
                 ["claude_event.py", "--event", "TaskCompleted", "--completion-gate"],
             ):
+                with patch.object(sys, "stdin", io.StringIO("{}")):
+                    self.assertEqual(wrapper.main(), 2)
+
+    def test_invalid_json_with_completion_gate_exits_two(self):
+        wrapper = self._load_wrapper()
+        with patch.object(
+            sys,
+            "argv",
+            ["claude_event.py", "--event", "TaskCompleted", "--completion-gate"],
+        ):
+            with patch.object(sys, "stdin", io.StringIO("not-json")):
                 self.assertEqual(wrapper.main(), 2)
+
+    def test_unexpected_dispatch_failure_is_nonzero_without_completion_gate(self):
+        wrapper = self._load_wrapper()
+        common_hooks = types.ModuleType("nexus_harness.hooks")
+
+        def boom(*_args, **_kwargs):
+            raise RuntimeError("unexpected policy failure")
+
+        common_hooks.dispatch = boom
+        with patch.dict(sys.modules, {"nexus_harness.hooks": common_hooks}):
+            with patch.object(
+                sys, "argv", ["claude_event.py", "--event", "SessionStart"]
+            ):
+                with patch.object(sys, "stdin", io.StringIO("{}")):
+                    code = wrapper.main()
+        self.assertNotEqual(code, 0)
+        self.assertEqual(code, 1)
 
     def test_rendered_wrapper_matches_source_wrapper(self):
         self.assertEqual(

@@ -59,7 +59,10 @@ def main() -> int:
     parser.add_argument("--completion-gate", action="store_true")
     args = parser.parse_args()
     raw = sys.stdin.read().strip()
-    payload = json.loads(raw) if raw else {{}}
+    try:
+        payload = json.loads(raw) if raw else {{}}
+    except json.JSONDecodeError:
+        return 2 if args.completion_gate else 1
     try:
         from nexus_harness.hooks import dispatch
     except ImportError:
@@ -68,9 +71,7 @@ def main() -> int:
     try:
         result = dispatch(args.event, payload, completion_gate=args.completion_gate)
     except Exception:
-        if args.completion_gate:
-            return 2
-        return 0
+        return 2 if args.completion_gate else 1
     if result is None:
         return 2 if args.completion_gate else 0
     if getattr(result, "output", None) is not None:

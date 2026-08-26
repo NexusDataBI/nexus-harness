@@ -8,7 +8,6 @@ from pathlib import Path
 
 from nexus_harness.adapters import RenderedFile
 from nexus_harness.runtime_common import (
-    GENERATED_MARKER,
     generated_json,
     generated_markdown,
 )
@@ -86,9 +85,7 @@ def render(root: Path) -> tuple[RenderedFile, ...]:
         RenderedFile("USER_RULES.md", generated_markdown(_RULES).encode("utf-8")),
         RenderedFile(
             ".cursor/rules/nexus-workflow.mdc",
-            generated_markdown(f"<!-- {GENERATED_MARKER} -->\n{_RULES}").encode(
-                "utf-8"
-            ),
+            generated_markdown(_RULES).encode("utf-8"),
         ),
         RenderedFile(
             "cursor/sandbox.json",
