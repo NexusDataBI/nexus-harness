@@ -7,6 +7,8 @@ from unittest.mock import patch
 from nexus_harness.hooks import completion_gate, dispatch, session_start
 from nexus_harness.memory.freshness import AuthorityContradiction, TruthStrength
 from nexus_harness.memory.models import MemoryDraft
+from nexus_harness.memory.models import MemoryScope, MemorySource, MemoryType
+from nexus_harness.state import TaskState
 
 
 class HookTests(unittest.TestCase):
@@ -136,6 +138,56 @@ class HookTests(unittest.TestCase):
         self.assertTrue(
             result.output["warnings"] or "excluded" in result.output["capsule"]
         )
+
+    def test_precompact_then_compact_session_start_restores_state_and_candidates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_path = root / "state.json"
+            candidate_path = root / "candidates.json"
+            state = TaskState.new("task", "repo")
+            state.completion_status = "FAIL"
+            state.completion_reasons = ["AC-1"]
+            draft = MemoryDraft(
+                type=MemoryType.INVARIANT,
+                scope=MemoryScope.PROJECT,
+                project_id="repo",
+                title="Invariant",
+                body="Keep state structured.",
+                sources=(MemorySource("approved_spec", "SPEC-1"),),
+            )
+            self.assertEqual(
+                dispatch(
+                    "PreCompact",
+                    {
+                        "project_root": root,
+                        "state_path": state_path,
+                        "candidate_path": candidate_path,
+                        "task": state.to_dict(),
+                        "candidates": [draft],
+                    },
+                ).exit_code,
+                0,
+            )
+            restored = dispatch(
+                "SessionStart",
+                {
+                    "project_root": root,
+                    "state_path": state_path,
+                    "candidate_path": candidate_path,
+                    "compact": True,
+                    "project_id": "repo",
+                },
+            )
+        self.assertEqual(restored.output["task"]["completion_status"], "FAIL")
+        self.assertEqual(restored.output["task"]["completion_reasons"], ["AC-1"])
+        self.assertEqual(restored.output["candidate_count"], 1)
+
+    def test_postcompact_is_observer_only(self):
+        with patch("nexus_harness.hooks.restore_memory_candidates") as restore:
+            result = dispatch("PostCompact", {"compact": True})
+        self.assertEqual(result.exit_code, 0)
+        self.assertFalse(result.output["restored"])
+        restore.assert_not_called()
 
     def test_contradiction_is_forwarded_without_injecting_body(self):
         contradiction = AuthorityContradiction(

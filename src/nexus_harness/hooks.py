@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 from typing import Any
 
 from nexus_harness.completion import evaluate_completion
@@ -140,11 +141,21 @@ def completion_gate(payload: dict | None = None) -> HookResult:
         return HookResult(2, {"status": "FAIL", "reasons": ["task state unavailable"]})
     explicit = _value(task, "completion_status")
     if explicit == "FAIL":
-        return HookResult(2, {"status": "FAIL", "reasons": _value(task, "reasons", [])})
+        reasons = _value(task, "completion_reasons")
+        if not reasons:
+            reasons = _value(task, "reasons", [])
+        return HookResult(2, {"status": "FAIL", "reasons": list(reasons)})
     result = evaluate_completion(task)
+    reasons = list(result.reasons)
+    if result.status == "FAIL":
+        for reason in _value(task, "completion_reasons", ()) or _value(
+            task, "reasons", ()
+        ):
+            if reason not in reasons:
+                reasons.append(reason)
     return HookResult(
         0 if result.status == "READY_TO_SHIP" else 2,
-        {"status": result.status, "reasons": list(result.reasons)},
+        {"status": result.status, "reasons": reasons},
     )
 
 
@@ -234,6 +245,11 @@ def compact_observation(payload: dict) -> HookResult:
     return checkpoint(payload)
 
 
+def post_compact_observer(payload: dict) -> HookResult:
+    del payload
+    return HookResult(0, {"observed": True, "restored": False})
+
+
 def config_drift(payload: dict) -> HookResult:
     return HookResult(0, {"drift": bool(payload.get("drift", False))})
 
@@ -246,10 +262,14 @@ def stop_handler(payload: dict) -> HookResult:
         previous = (
             json.loads(marker.read_text(encoding="utf-8")) if marker.exists() else {}
         )
-        if previous.get("identity") == identity:
+        timestamp = float(previous.get("timestamp", 0))
+        if previous.get("identity") == identity and time.time() - timestamp < 60:
             return HookResult(0, {"loop_protected": True, "identity": identity})
         marker.parent.mkdir(parents=True, exist_ok=True)
-        marker.write_text(json.dumps({"identity": identity}), encoding="utf-8")
+        marker.write_text(
+            json.dumps({"identity": identity, "timestamp": time.time()}),
+            encoding="utf-8",
+        )
     except (OSError, json.JSONDecodeError, TypeError):
         return HookResult(0, {"loop_protected": True, "warning": "guard unavailable"})
     return policy_gate(payload)
@@ -315,7 +335,7 @@ _HANDLERS = {
     "TaskCompleted": task_completed,
     "Stop": stop_handler,
     "PreCompact": compact_observation,
-    "PostCompact": session_start,
+    "PostCompact": post_compact_observer,
     "ConfigChange": config_drift,
     "SessionEnd": session_end,
 }
