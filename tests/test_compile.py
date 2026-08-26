@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from nexus_harness.adapters import render_all
+from nexus_harness.compile import compile_harness
 from nexus_harness.lockfile import build_lock, serialize_lock
 
 
@@ -44,6 +45,22 @@ class CompileTests(unittest.TestCase):
             set(lock["adapter_versions"]),
             {"claude", "cursor", "codex"},
         )
+
+    def test_compile_materializes_render_all_and_non_empty_hashes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "core").mkdir()
+            (root / "core" / "constitution.md").write_text(
+                "NEXUS WORKFLOW IS MANDATORY.\n", encoding="utf-8"
+            )
+            lock = compile_harness(root)
+            hashes = lock["generated_hashes"]
+            self.assertTrue(hashes)
+            self.assertIn("dist/hooks/nexus_event.py", hashes)
+            self.assertTrue((root / "dist" / "hooks" / "nexus_event.py").is_file())
+            self.assertTrue(
+                (root / "dist" / "src" / "nexus_harness" / "hooks.py").is_file()
+            )
 
 
 if __name__ == "__main__":

@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
 
+from nexus_harness.safe import reject_symlinks, reject_tree_symlinks
+
 
 @dataclass(frozen=True)
 class DriftReport:
@@ -71,6 +73,11 @@ def atomic_install(source: Path, target: Path) -> Path:
     """
     source = Path(source)
     target = Path(target)
+    reject_symlinks(source)
+    reject_tree_symlinks(source)
+    if target.exists():
+        reject_symlinks(target)
+        reject_tree_symlinks(target)
     if not source.is_dir():
         raise ValueError(f"generated source is not a directory: {source}")
     target.parent.mkdir(parents=True, exist_ok=True)

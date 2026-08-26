@@ -8,6 +8,7 @@ from pathlib import Path
 
 from nexus_harness.adapters import RenderedFile
 from nexus_harness.runtime_common import (
+    constitution_with_notes,
     generated_json,
     generated_markdown,
 )
@@ -17,24 +18,13 @@ _SANDBOX_SOURCE = (
     Path(__file__).resolve().parents[2] / "adapters" / "cursor" / "sandbox.base.json"
 )
 
-_RULES = """# Cursor workflow
+_CURSOR_NOTES = """# Cursor-specific notes
 
-Nexus Harness is the source of truth for lifecycle state and completion.
+Nexus Memory is injected only by the runtime-neutral command, with JSON on stdin:
 
-- Follow the canonical workflow stages and approval boundaries.
-- Treat the deterministic completion gate as authoritative; do not claim completion
-  when it fails.
-- Use the runtime-neutral Nexus hook and command path at lifecycle boundaries.
-- Nexus Memory is the canonical cross-session engineering memory layer.
-- Use public `nexus_harness.memory` APIs (`session_recall`,
-  `checkpoint_memory_candidates`, `restore_memory_candidates`,
-  `collect_memory_candidates`, and `consolidate_memory`) for bounded recall.
-- Restore structured task state before rebuilding context after compaction.
-- Checkpoint structured state before compaction; never persist a transcript as
-  canonical memory.
-- Candidate, stale, invalid, or confidential memory is not automatically injected.
-- A failed completion gate must not consolidate memory.
-- Never expose secrets or invent context when memory retrieval is unavailable.
+`python3 hooks/nexus_event.py --event <EventName>`
+
+Do not invent a parallel memory or completion path. Candidate, stale, invalid, or confidential memory is not automatically injected. A failed completion gate must not consolidate memory.
 """
 
 _HOSTNAME = re.compile(r"^[A-Za-z0-9.-]+$")
@@ -81,11 +71,12 @@ def render(root: Path) -> tuple[RenderedFile, ...]:
         sandbox = json.load(source)
     sandbox["networkPolicy"]["default"] = "deny"
     sandbox["networkPolicy"]["allowedHosts"] = _allowed_hosts(root)
+    body = constitution_with_notes(root, _CURSOR_NOTES)
     return (
-        RenderedFile("USER_RULES.md", generated_markdown(_RULES).encode("utf-8")),
+        RenderedFile("USER_RULES.md", generated_markdown(body).encode("utf-8")),
         RenderedFile(
             ".cursor/rules/nexus-workflow.mdc",
-            generated_markdown(_RULES).encode("utf-8"),
+            generated_markdown(body).encode("utf-8"),
         ),
         RenderedFile(
             "cursor/sandbox.json",

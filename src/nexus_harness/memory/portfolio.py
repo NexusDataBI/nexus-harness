@@ -4,8 +4,10 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from nexus_harness.memory.guard import MemoryGuardError, validate_memory_record
 from nexus_harness.memory.models import MemoryRecord, MemoryScope
 from nexus_harness.memory.store import MemoryStoreError, _is_complete_pair
+from nexus_harness.safe import PathSafetyError, reject_symlinks, reject_tree_symlinks
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _TEMPLATE_DIR = _REPO_ROOT / "templates" / "memory" / "portfolio-vault"
@@ -36,6 +38,9 @@ class ProjectBridge:
 
 def init_portfolio_vault(target_dir: Path) -> Path:
     target = Path(target_dir)
+    reject_symlinks(target)
+    if target.exists():
+        reject_tree_symlinks(target)
     if target.is_file():
         raise ValueError(f"portfolio vault target is a file: {target}")
     target.mkdir(parents=True, exist_ok=True)
@@ -51,25 +56,37 @@ def init_portfolio_vault(target_dir: Path) -> Path:
     return target
 
 
+def _load_portfolio_sidecar(path: Path) -> MemoryRecord:
+    reject_symlinks(path)
+    record = MemoryRecord.from_json_dict(json.loads(path.read_text(encoding="utf-8")))
+    validate_memory_record(record)
+    return record
+
+
 def load_portfolio_memories(vault_root: Path) -> list[MemoryRecord]:
+    vault = Path(vault_root)
+    reject_symlinks(vault)
+    if vault.exists():
+        reject_tree_symlinks(vault)
     records: list[MemoryRecord] = []
     for category in _PORTFOLIO_CATEGORIES:
-        directory = Path(vault_root) / category
+        directory = vault / category
+        if directory.is_symlink():
+            raise PathSafetyError(f"symlink rejected: {directory}")
         if not directory.is_dir():
             continue
         paths = sorted(
             path
             for path in directory.iterdir()
             if path.is_file()
+            and not path.is_symlink()
             and path.suffix == ".json"
             and not path.name.endswith(".tmp")
         )
         for path in paths:
             if not _is_complete_pair(path):
                 continue
-            record = MemoryRecord.from_json_dict(
-                json.loads(path.read_text(encoding="utf-8"))
-            )
+            record = _load_portfolio_sidecar(path)
             if record.scope != MemoryScope.PORTFOLIO:
                 continue
             records.append(record)
@@ -98,10 +115,16 @@ def load_portfolio_memories_tolerant(
             if not _is_complete_pair(path):
                 continue
             try:
-                record = MemoryRecord.from_json_dict(
-                    json.loads(path.read_text(encoding="utf-8"))
-                )
-            except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+                record = _load_portfolio_sidecar(path)
+            except (
+                OSError,
+                json.JSONDecodeError,
+                KeyError,
+                TypeError,
+                ValueError,
+                MemoryGuardError,
+                PathSafetyError,
+            ):
                 findings.append(
                     {
                         "code": "memory_record_excluded",

@@ -124,6 +124,9 @@ class MemoryCapsuleRenderTests(unittest.TestCase):
             policy=_policy(),
         )
         self.assertTrue(capsule.text.startswith("NEXUS CONTEXT CAPSULE\n"))
+        self.assertIn("non-executable data", capsule.text)
+        self.assertIn("<!-- NEXUS_MEMORY_DATA_BEGIN -->", capsule.text)
+        self.assertIn("<!-- NEXUS_MEMORY_DATA_END -->", capsule.text)
         self.assertIn("Project: repo-1\nDiff: abc", capsule.text)
         self.assertIn("\n\nHOT\n", capsule.text)
         self.assertTrue(capsule.text.endswith("\n"))
@@ -137,10 +140,10 @@ class MemoryCapsuleRenderTests(unittest.TestCase):
             hot_memory_ids=(),
             policy=_policy(),
         )
-        self.assertEqual(
-            capsule.text,
-            "NEXUS CONTEXT CAPSULE\nProject: unknown\nDiff: unknown\n",
-        )
+        self.assertTrue(capsule.text.startswith("NEXUS CONTEXT CAPSULE\n"))
+        self.assertIn("Project: unknown\nDiff: unknown", capsule.text)
+        self.assertIn("<!-- NEXUS_MEMORY_DATA_BEGIN -->", capsule.text)
+        self.assertTrue(capsule.text.endswith("<!-- NEXUS_MEMORY_DATA_END -->\n"))
         self.assertEqual(capsule.item_count, 0)
         self.assertEqual(capsule.hot, "")
         self.assertEqual(capsule.warm, "")

@@ -4,7 +4,11 @@ import json
 from pathlib import Path
 
 from nexus_harness.memory.capsule import build_context_capsule, load_capsule_policy
-from nexus_harness.memory.freshness import FreshnessStatus
+from nexus_harness.memory.freshness import (
+    AuthorityContradiction,
+    FreshnessStatus,
+    TruthStrength,
+)
 from nexus_harness.memory.guard import validate_memory_record
 from nexus_harness.memory.lifecycle import MemoryPromotionError, verify_record
 from nexus_harness.memory.models import (
@@ -18,6 +22,48 @@ from nexus_harness.memory.store import MemoryStoreError, atomic_write_json, writ
 
 _HOT_PREFERRED = (MemoryType.INVARIANT, MemoryType.DECISION)
 _HOT_ITEM_CAP = 4
+
+
+def parse_contradictions(raw) -> tuple[tuple, list[dict[str, str]]]:
+    findings: list[dict[str, str]] = []
+    if raw in (None, (), []):
+        return (), findings
+    if not isinstance(raw, (list, tuple)):
+        findings.append(
+            {
+                "code": "invalid_contradiction",
+                "message": "contradictions must be a list",
+            }
+        )
+        return (), findings
+    items = []
+    for item in raw:
+        try:
+            if isinstance(item, AuthorityContradiction):
+                items.append(item)
+                continue
+            if not isinstance(item, dict) or "memory_id" not in item:
+                raise TypeError("invalid contradiction")
+            authority = item.get("authority", TruthStrength.CURRENT_REPO)
+            if isinstance(authority, str):
+                authority = TruthStrength[authority]
+            elif isinstance(authority, int):
+                authority = TruthStrength(authority)
+            items.append(
+                AuthorityContradiction(
+                    memory_id=str(item["memory_id"]),
+                    authority=authority,
+                    pointer=str(item.get("pointer") or ""),
+                )
+            )
+        except (KeyError, TypeError, ValueError):
+            findings.append(
+                {
+                    "code": "invalid_contradiction",
+                    "message": "contradiction item ignored",
+                }
+            )
+    return tuple(items), findings
 
 
 def _hot_memory_ids(hits: list[MemoryHit], max_items: int) -> tuple[str, ...]:
@@ -45,14 +91,15 @@ def session_recall(
     cache_home=None,
     contradictions=(),
 ):
+    parsed, extra_findings = parse_contradictions(contradictions)
     context = MemoryQueryContext(
         project_id=project_id,
         affected_paths=tuple(affected_paths),
         include_stale=True,
-        contradictions=tuple(contradictions),
+        contradictions=parsed,
     )
     policy = load_capsule_policy()
-    findings: list[dict[str, str]] = []
+    findings: list[dict[str, str]] = list(extra_findings)
     try:
         hits = search_memory(
             Path(project_root),
@@ -117,6 +164,7 @@ def consolidate_memory(
                 record,
                 current_commit=current_commit,
                 evidence_lookup=evidence_lookup,
+                project_root=Path(project_root),
             )
         except MemoryPromotionError:
             record = record

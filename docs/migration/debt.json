@@ -170,6 +170,26 @@
       "target_plan": "plan-8",
       "resolution_condition": "evaluate_completion / promote_acceptance reject evidence without base_commit when policy requires a bound commit, without changing READY_TO_SHIP semantics for already-complete evidence.",
       "defer_reason": "Controller left Done Gate semantics unchanged in the Plan 3 final-review fix wave."
+    },
+    {
+      "id": "P3-R01",
+      "origin": "plans-1-3-repair-gate",
+      "severity": "medium",
+      "description": "PreToolUse production and destructive detection is substring matching on tool/path/command/url, not a command parser. Equivalent encodings can slip past until a structured command policy exists.",
+      "status": "deferred",
+      "target_plan": "plan-4",
+      "resolution_condition": "Canonical production/filesystem/network policies are evaluated against a parsed command/argv model, still fail-closed on invalid sensitive payloads.",
+      "defer_reason": "Repair gate closed the no-op PreToolUse and fail-closed invalid payloads. A parser is Plan 4 CI/VPS policy depth, not required to stop READY_TO_SHIP on string PASS reports."
+    },
+    {
+      "id": "P3-R02",
+      "origin": "plans-1-3-repair-gate",
+      "severity": "low",
+      "description": "harness.lock generated_hashes includes the compiled engine copy under dist/src/nexus_harness, so any engine byte change churns the lock even when render_all() adapters are unchanged.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "Split adapter hashes from engine hashes, or hash only render_all() outputs plus a single engine archive digest.",
+      "defer_reason": "Non-empty generated_hashes and installable engine were the repair requirement. Hash partitioning is release hygiene."
     }
   ]
 }

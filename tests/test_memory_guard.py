@@ -195,3 +195,22 @@ class MemoryGuardTests(unittest.TestCase):
                     memory_root = root / ".nexus" / "memory" / "components"
                     self.assertEqual(list(memory_root.glob("*.md")), [])
                     self.assertEqual(list(memory_root.glob("*.json")), [])
+
+    def test_rejects_jwt_dsn_cookie_cloud_and_pii_without_echoing(self):
+        cases = (
+            (
+                "jwt",
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0In0.abcdeghijklmnopq",
+            ),
+            ("dsn", "postgres://nexus:super-secret-db@db.internal:5432/app"),
+            ("cookie", "Set-Cookie: session=abc123secretvalue; HttpOnly"),
+            ("cloud_token", "AKIAIOSFODNN7EXAMPLE"),
+            ("cloud_token", "xoxb-123456789012-secretslacktoken"),
+            ("cloud_token", "sk_live_51SecretStripeKeyValue"),
+            ("customer_pii", "cpf 123.456.789-09 leaked"),
+            ("customer_pii", "raw customer payload must not persist"),
+        )
+        for rule, text in cases:
+            secret = "super-secret-db" if rule == "dsn" else text
+            with self.subTest(rule=rule, text=text):
+                self._assert_rule_rejects(text, rule, secret)

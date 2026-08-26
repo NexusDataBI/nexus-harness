@@ -84,6 +84,18 @@ def _invariant_draft(**overrides) -> MemoryDraft:
     return MemoryDraft(**payload)
 
 
+def _write_spec(root: Path, ref: str = "SPEC-AUTH") -> None:
+    path = root / "docs" / f"{ref}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"# {ref}\n", encoding="utf-8")
+
+
+def _write_adr(root: Path, ref: str = "ADR-001") -> None:
+    path = root / "docs" / "adr" / f"{ref}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"# {ref}\n", encoding="utf-8")
+
+
 class MemoryIntegrationProofTests(unittest.TestCase):
     def test_current_repo_truth_wins_over_verified_memory(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -98,6 +110,7 @@ class MemoryIntegrationProofTests(unittest.TestCase):
                 "repo truth",
             )
             init_project_memory(root)
+            _write_spec(root)
             record = write_memory(root, _invariant_draft().to_record())
             verify_memory(root, record.id, current_commit=commit)
 
@@ -138,6 +151,7 @@ class MemoryIntegrationProofTests(unittest.TestCase):
             # 2. initialize project memory
             memory_root = init_project_memory(root)
             self.assertTrue(memory_root.is_dir())
+            _write_spec(root)
 
             # 3. CANDIDATE invariant with approved source and src/auth/**
             record = write_memory(root, _invariant_draft().to_record())
@@ -272,6 +286,7 @@ class MemorySessionFacadeTests(unittest.TestCase):
                 "A",
             )
             init_project_memory(root)
+            _write_spec(root)
             record = write_memory(root, _invariant_draft().to_record())
             verify_memory(root, record.id, current_commit=commit)
             before = {
@@ -331,6 +346,7 @@ class MemorySessionFacadeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_project_memory(root)
+            _write_adr(root)
             weak = MemoryDraft(
                 type=MemoryType.DECISION,
                 scope=MemoryScope.PROJECT,

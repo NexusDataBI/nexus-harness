@@ -127,6 +127,11 @@ def _has_issue(state) -> bool:
 
 def _gate(state, key):
     value = _get(state, key)
+    if key in {"quality_gate", "security_gate"}:
+        report = _structured_report(value)
+        if report is None:
+            return None
+        return report.get("gate")
     if value is None:
         return None
     if isinstance(value, dict):
@@ -134,22 +139,40 @@ def _gate(state, key):
     return getattr(value, "gate", value)
 
 
-def _report_diff_hash(value):
+def _structured_report(value) -> dict | None:
     if value is None or isinstance(value, str):
         return None
     if isinstance(value, dict):
-        return value.get("diff_hash")
-    return getattr(value, "diff_hash", None)
+        if "gate" not in value:
+            return None
+        return value
+    gate = getattr(value, "gate", None)
+    if gate is None:
+        return None
+    return {
+        "gate": gate,
+        "diff_hash": getattr(value, "diff_hash", None),
+    }
+
+
+def _report_diff_hash(value):
+    report = _structured_report(value)
+    if report is None:
+        return None
+    return report.get("diff_hash")
 
 
 def _gate_fresh(state, key, current_diff_hash) -> bool:
     value = _get(state, key)
-    if isinstance(value, str):
-        return True
+    report = _structured_report(value)
+    if report is None:
+        return False
     report_hash = _report_diff_hash(value)
     if report_hash is None or str(report_hash).strip() == "":
         return False
-    return report_hash == current_diff_hash
+    if not current_diff_hash:
+        return False
+    return str(report_hash) == str(current_diff_hash)
 
 
 def _skip_reason(state) -> str:

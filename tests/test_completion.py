@@ -8,13 +8,17 @@ from nexus_harness.state import AcceptanceCriterion, TaskState
 from nexus_harness.workflow import advance_stage
 
 
+def _pass_report(diff_hash="abc"):
+    return {"gate": "PASS", "diff_hash": diff_hash, "report": "structured"}
+
+
 def _ready_state(**overrides):
     state = {
         "tracking_required": True,
         "issue": 123,
         "acceptance": [{"id": "AC-1", "status": "PASS", "evidence": "ev-1"}],
-        "quality_gate": "PASS",
-        "security_gate": "PASS",
+        "quality_gate": _pass_report(),
+        "security_gate": _pass_report(),
         "review_gate": "PASS",
         "current_diff_hash": "abc",
         "verified_diff_hash": "abc",
@@ -32,8 +36,8 @@ class CompletionTests(unittest.TestCase):
             "tracking_required": True,
             "issue": 123,
             "acceptance": [{"id": "AC-1", "status": "FAIL"}],
-            "quality_gate": "PASS",
-            "security_gate": "PASS",
+            "quality_gate": _pass_report(),
+            "security_gate": _pass_report(),
             "review_gate": "PASS",
             "current_diff_hash": "abc",
         }
@@ -285,8 +289,8 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(state.acceptance[0].status, "PASS")
         self.assertEqual(state.acceptance[0].evidence, "ev-1")
 
-        state.quality_gate = "PASS"
-        state.security_gate = "PASS"
+        state.quality_gate = _pass_report()
+        state.security_gate = _pass_report()
         state.review_gate = "PASS"
         state.verified_diff_hash = "abc"
         state.reviewed_diff_hash = "abc"
@@ -309,8 +313,8 @@ class CompletionTests(unittest.TestCase):
         evidence = Evidence("ev-1", "vitest", 0, "abc", "base-1", "tests pass")
         state.evidence = [evidence]
         promote_acceptance(state, evidence)
-        state.quality_gate = "PASS"
-        state.security_gate = "PASS"
+        state.quality_gate = _pass_report()
+        state.security_gate = _pass_report()
         state.review_gate = "PASS"
         state.verified_diff_hash = "abc"
         state.reviewed_diff_hash = "abc"
@@ -354,3 +358,45 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(evaluate_completion(loaded), before)
         self.assertEqual(loaded.skip_reason, "not applicable")
         self.assertEqual(loaded.approvals_recorded, ["review"])
+
+    def test_string_pass_quality_report_is_not_ready_to_ship(self):
+        result = evaluate_completion(_ready_state(quality_gate="PASS"))
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(any("quality" in reason for reason in result.reasons))
+
+    def test_string_pass_security_report_is_not_ready_to_ship(self):
+        result = evaluate_completion(_ready_state(security_gate="PASS"))
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(any("security" in reason for reason in result.reasons))
+
+    def test_empty_quality_diff_hash_blocks_ready_to_ship(self):
+        result = evaluate_completion(
+            _ready_state(quality_gate={"gate": "PASS", "diff_hash": ""})
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("quality" in reason and "fresh" in reason for reason in result.reasons)
+        )
+
+    def test_missing_quality_diff_hash_blocks_ready_to_ship(self):
+        result = evaluate_completion(_ready_state(quality_gate={"gate": "PASS"}))
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("quality" in reason and "fresh" in reason for reason in result.reasons)
+        )
+
+    def test_diverging_security_diff_hash_blocks_ready_to_ship(self):
+        result = evaluate_completion(
+            _ready_state(security_gate={"gate": "PASS", "diff_hash": "zzz"})
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("security" in reason and "fresh" in reason for reason in result.reasons)
+        )
+
+    def test_quality_gate_fail_structured_report_blocks_ready_to_ship(self):
+        result = evaluate_completion(
+            _ready_state(quality_gate={"gate": "FAIL", "diff_hash": "abc"})
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(any("quality_gate" in reason for reason in result.reasons))

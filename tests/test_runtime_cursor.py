@@ -39,7 +39,7 @@ class CursorAdapterTests(unittest.TestCase):
         output = "\n".join(files.values()).lower()
         self.assertIn("nexus memory", output)
         self.assertIn("completion gate", output)
-        self.assertIn("session_recall", output)
+        self.assertIn("hooks/nexus_event.py", output)
         self.assertNotIn(".cursor/memory", output)
         self.assertNotIn("auto-deploy", output)
         self.assertNotIn("model", output)

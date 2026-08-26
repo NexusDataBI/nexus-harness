@@ -6,6 +6,7 @@ from enum import IntEnum, StrEnum
 from pathlib import Path, PurePosixPath
 
 from nexus_harness.memory.models import MemoryRecord, MemoryStatus
+from nexus_harness.safe import verify_git_oid
 
 
 class FreshnessStatus(StrEnum):
@@ -67,14 +68,14 @@ def _changed_paths_since(
     repo_root: Path, valid_at_commit: str
 ) -> tuple[str, ...] | None:
     try:
+        oid = verify_git_oid(repo_root, valid_at_commit)
         completed = subprocess.run(
-            ["git", "diff", "--name-only", f"{valid_at_commit}..HEAD", "--"],
-            cwd=repo_root,
+            ["git", "-C", str(repo_root), "diff", "--name-only", f"{oid}..HEAD", "--"],
             check=True,
             capture_output=True,
             text=True,
         )
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError, ValueError):
         return None
     return tuple(line.strip() for line in completed.stdout.splitlines() if line.strip())
 

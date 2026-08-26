@@ -24,6 +24,7 @@ from nexus_harness.memory.retrieval import search_memory
 from nexus_harness.memory.session import (
     checkpoint_memory_candidates,
     consolidate_memory,
+    parse_contradictions,
     restore_memory_candidates,
     session_recall,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "init_project_memory",
     "load_project_memories",
     "memory_doctor",
+    "parse_contradictions",
     "read_memory",
     "restore_memory_candidates",
     "search_memory",

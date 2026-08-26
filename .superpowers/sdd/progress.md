@@ -1,44 +1,39 @@
-# Plan 2 — Workflow, Graph, Quality & Security
+# Plan 3 ledger
 
-Status: IN_PROGRESS
-Started: 2026-08-25
-Repo: /Users/USER1/Projects/nexus-harness
-Branch: feat/v4-workflow-graph-quality
-Worktree: /Users/USER1/Projects/nexus-harness/.worktrees/feat-v4-workflow-graph-quality
-PLAN_2_BASELINE: 2e0dcc11ce73ea782cd371dc98e7111dbcff91d7
-Plan 1 HEAD: 2e0dcc11ce73ea782cd371dc98e7111dbcff91d7
-Plan 1 worktree preserved: /Users/USER1/Projects/nexus-harness/.worktrees/feat-v4-canonical-core
+Worktree: /Users/USER1/Projects/nexus-harness/.worktrees/feat-v4-runtime-adapters-hooks
+Branch: feat/v4-runtime-adapters-hooks
+PLAN3_BASE: 8723c5ce02347dee5702dafa9c92e79877a84fc0
+Audited HEAD: bedfb131512dfc51cd1651a1e274b7e0c8029684
 
-## Integration
+## Plan 2.5 integration
 
-- Main before: 787c4ccd6965801d4612cde284a2adc1323b874b
-- Main after / PLAN_2_BASELINE: 2e0dcc11ce73ea782cd371dc98e7111dbcff91d7
-- Integration: fast-forward
-- Fresh tests before merge (Plan 1 worktree): 29/29 OK, scripts/validate exit 0
-- Fresh tests after merge (main): 29/29 OK, scripts/validate exit 0
+Reviewed old head: 9b4be7528be79b9441b94c2192864a97750a6de5
+Repair: e6c11bc..8723c5c
+Final Plan 2.5 head / main after ff: 8723c5ce02347dee5702dafa9c92e79877a84fc0
 
-## Rulings
+## Phase B debts
 
-- R8: Plan 2 schemas that already exist from Plan 1 (task-state, graph, quality-report, ratchet.toml, security-report) must be extended, never weakened.
-- R9: Stage 8 in Task 1 may call a completion stub that Task 7 replaces; no false DONE shortcut.
-- R10: Graph nodes are not GitHub Actions jobs.
-- R11: No remote side effects. No Plan 3 adapters/hooks/VPS/GitHub/PostHog.
-- R12: Plan 1 inherited debt lives in docs/migration/debt.json; do not silently drop items.
+- P1-D01: complete (d6077b0)
+- P1-D03: complete (9980c28)
+- P2-D01: complete (a1d05ed)
+- P2-D02: complete (cf59e9c)
+- P2-D05: complete (7ef208a)
+- P2-D06: complete (a1d05ed)
+- P2-D07: complete (a1d05ed, schema fields in bedfb13)
 
-## Tasks
+## Plan 3 tasks 1-7
 
-- Task 1: complete (commits c50c5fa..ab4229f, review clean). Lifecycle + persistence. Stage 8 stub rejects empty/FAIL; no injectable override.
-- Task 2: complete (commit 32f6838). TaskGraph readiness/conflicts/invalidation; schema unchanged (R8).
-- Task 3: pending
-- Task 4: pending
-- Task 5: complete (commit fd2e725). Trivy-only normalize; CRITICAL blocks; HIGH blocks only with FixedVersion/remediation.
-- Task 6: complete (fingerprint + persist). FailureMemory serializes; TaskState.failures roundtrips through save/load without resetting the ceiling.
-- Task 7: complete (commit 888f9ab). Completion gate + promote_acceptance; stage 8 uses evaluate_completion; no false DONE.
-- Task 8: complete (commit de2e466). End-to-end integration: mutable task + Issue 123 + AC-001 FAIL → recorded evidence `abc` → promote → quality/security/review PASS → READY_TO_SHIP; diff `def` → FAIL (stale evidence). Test-only, existing APIs.
+- Task 1: complete (0abfcd6)
+- Task 2: complete (4d4ae54..8b0dcc2, protocol fix bedfb13)
+- Task 3: complete (af58ba0..921569f)
+- Task 4: complete (941c6cc..58164b7)
+- Task 5: complete (0ccc832..e3d2fc2, protocol/policy split bedfb13)
+- Task 6: complete (b89c1ec..2cc669d)
+- Task 7: complete (8f52b26, wrapper/marker c790cca)
 
-## Review-fix (after whole-branch review)
+Whole-branch review at bedfb13: PASS (pre-repair).
 
-- Quality/security reports with `diff_hash` must match `current_diff_hash`; bare `"PASS"` still allowed.
-- Finding `status: confirmed` blocks DONE; suspected/rejected do not; `confirmed: true` still works.
-- GraphNode emits schema `dependencies`; invalidate cascades to PASS/SKIP dependents.
-- `issue >= 1` only. Debt P2-D01..P2-D07 appended; P1-D01..P1-D05 kept.
+## Plans 1–3 Repair Gate
+
+Local uncommitted repair over `bedfb13`. No commit, no merge to `main`, Plan 4 not started.
+Operational TaskState moved to `NEXUS_RUNTIME_HOME` / `~/.nexus-harness/runtime/<repo-id>/<task-id>/`.

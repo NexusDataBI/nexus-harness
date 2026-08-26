@@ -15,6 +15,7 @@ from nexus_harness.memory.models import (
     MemoryType,
 )
 from nexus_harness.memory.store import read_memory, write_memory
+from nexus_harness.safe import PathSafetyError, confine, reject_symlinks
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _POLICY_PATH = _REPO_ROOT / "core" / "memory" / "memory-policy.toml"
@@ -94,7 +95,7 @@ def _validate_deterministic_evidence(
         if not record.evidence_ids or source.ref not in record.evidence_ids:
             raise MemoryPromotionError("deterministic evidence id missing")
         if evidence_lookup is None:
-            continue
+            raise MemoryPromotionError("deterministic evidence lookup required")
         try:
             result = evidence_lookup(source.ref)
         except Exception as exc:
@@ -132,16 +133,77 @@ def _validate_sources(record: MemoryRecord, policy: dict) -> None:
         raise MemoryPromotionError("missing authoritative source")
 
 
+_FILE_SOURCE_KINDS = frozenset({"adr", "approved_spec", "canonical_doc", "policy"})
+_DECLARED_ONLY = frozenset({"llm_summary", "explicit_user_decision", "note"})
+
+
+def _authenticate_sources(record: MemoryRecord, project_root: Path | None) -> None:
+    if not any(source.kind not in _DECLARED_ONLY for source in record.sources):
+        if record.sources:
+            raise MemoryPromotionError("self-declared sources cannot verify")
+    for source in record.sources:
+        if source.kind not in _FILE_SOURCE_KINDS:
+            continue
+        if project_root is None:
+            raise MemoryPromotionError("source path could not be authenticated")
+        root = Path(project_root)
+        reject_symlinks(root)
+        ref = str(source.ref)
+        candidates = []
+        if "/" in ref or ref.endswith((".md", ".toml", ".txt")):
+            candidates.append(root / ref)
+        else:
+            candidates.extend(
+                [
+                    root / "docs" / "adr" / f"{ref}.md",
+                    root / "docs" / f"{ref}.md",
+                    root / "core" / f"{ref}.md",
+                    root / ref,
+                ]
+            )
+        found = False
+        for candidate in candidates:
+            try:
+                confined = confine(candidate, root)
+            except (PathSafetyError, ValueError):
+                continue
+            if confined.is_file() and not confined.is_symlink():
+                found = True
+                break
+        if not found:
+            raise MemoryPromotionError("source path could not be authenticated")
+
+
+def _require_component_paths(record: MemoryRecord, project_root: Path | None) -> None:
+    if record.type != MemoryType.COMPONENT:
+        return
+    if not record.related_paths:
+        raise MemoryPromotionError("component requires related_paths")
+    if project_root is None:
+        raise MemoryPromotionError("component related_paths missing")
+    root = Path(project_root)
+    for raw in record.related_paths:
+        try:
+            confined = confine(root / raw, root)
+        except (PathSafetyError, ValueError) as exc:
+            raise MemoryPromotionError("component related_paths missing") from exc
+        if confined.is_symlink() or not confined.exists():
+            raise MemoryPromotionError("component related_paths missing")
+
+
 def verify_record(
     record: MemoryRecord,
     current_commit: str,
     evidence_lookup=None,
     current_diff: str | None = None,
+    project_root=None,
 ) -> MemoryRecord:
     if record.status not in _PROMOTABLE:
         raise MemoryPromotionError("record is not eligible for verification")
     policy = _promotion_policy()
     _validate_sources(record, policy)
+    _authenticate_sources(record, Path(project_root) if project_root else None)
+    _require_component_paths(record, Path(project_root) if project_root else None)
     _validate_deterministic_evidence(
         record,
         evidence_lookup=evidence_lookup,
@@ -205,6 +267,7 @@ def verify_memory(
         current_commit=current_commit,
         evidence_lookup=evidence_lookup,
         current_diff=current_diff,
+        project_root=project_root,
     )
     return write_memory(Path(project_root), verified, replace=True)
 

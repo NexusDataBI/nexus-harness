@@ -4,6 +4,7 @@ from pathlib import Path
 from nexus_harness.adapters import RenderedFile
 from nexus_harness.runtime_common import (
     GENERATED_MARKER,
+    constitution_with_notes,
     generated_json,
     generated_markdown,
 )
@@ -13,28 +14,21 @@ _SETTINGS_SOURCE = (
     Path(__file__).resolve().parents[2] / "adapters" / "claude" / "settings.base.json"
 )
 
-_CONSTITUTION = """# Claude workflow
+_CLAUDE_NOTES = """# Claude-specific notes
 
-Nexus Harness is the source of truth for workflow state and completion.
+Claude consumes the canonical constitution above.
 
-- Follow the canonical workflow stages and approval boundaries.
-- Treat the deterministic completion gate as authoritative; do not claim completion
-  when it fails.
 - TaskCompleted must run the completion gate and exit 2 on failure.
-- Nexus Memory is the canonical cross-session engineering memory layer.
-- Use the generated hooks and public `nexus_harness.memory` APIs
-  (`session_recall`, `checkpoint_memory_candidates`,
-  `restore_memory_candidates`, `collect_memory_candidates`, and
-  `consolidate_memory`) for bounded recall.
-- Restore structured task state before rebuilding context after compaction.
+- Use generated `hooks/claude_event.py` for Claude transport; the runtime-neutral
+  engine is `python3 hooks/nexus_event.py --event <EventName>`.
 - On PreCompact, checkpoint structured state with
   `checkpoint_memory_candidates`; never persist a transcript as canonical memory.
-- On compact SessionStart, restore candidates with `restore_memory_candidates` and
-  rebuild the capsule from canonical memory.
+- On compact SessionStart, restore candidates with `restore_memory_candidates`
+  and rebuild the capsule from canonical memory.
 - After a passing completion gate, collect and consolidate candidates; a failing
   gate must not consolidate memory.
-- Candidate, stale, invalid, or confidential memory is not automatically injected.
-- Never expose secrets or invent context when memory retrieval is unavailable.
+- Nexus Memory is the canonical cross-session engineering memory layer.
+- Bounded recall uses `session_recall` inside the generated hook engine.
 """
 
 _HOOK_WRAPPER = (
@@ -117,12 +111,14 @@ if __name__ == "__main__":
 
 
 def render(root: Path) -> tuple[RenderedFile, ...]:
-    del root
     with _SETTINGS_SOURCE.open(encoding="utf-8") as source:
         settings = json.load(source)
     return (
         RenderedFile(
-            "claude/CLAUDE.md", generated_markdown(_CONSTITUTION).encode("utf-8")
+            "claude/CLAUDE.md",
+            generated_markdown(constitution_with_notes(root, _CLAUDE_NOTES)).encode(
+                "utf-8"
+            ),
         ),
         RenderedFile(
             "claude/settings.json",

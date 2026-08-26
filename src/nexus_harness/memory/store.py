@@ -6,8 +6,9 @@ import re
 from pathlib import Path
 
 from nexus_harness.config import load_toml
-from nexus_harness.memory.guard import validate_memory_record
+from nexus_harness.memory.guard import MemoryGuardError, validate_memory_record
 from nexus_harness.memory.models import MemoryRecord, MemoryStatus, MemoryType
+from nexus_harness.safe import PathSafetyError, reject_symlinks, reject_tree_symlinks
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _POLICY_PATH = _REPO_ROOT / "core" / "memory" / "memory-policy.toml"
@@ -48,7 +49,12 @@ def _assert_inside_dir(path: Path, directory: Path) -> None:
 def _project_memory_root(project_root: Path) -> Path:
     policy = load_toml(_POLICY_PATH)
     relative = policy.get("storage", {}).get("project_relative_path", ".nexus/memory")
-    return Path(project_root) / relative
+    root = Path(project_root)
+    reject_symlinks(root)
+    memory_root = root / relative
+    if memory_root.exists():
+        reject_tree_symlinks(memory_root)
+    return memory_root
 
 
 def _category_dir(project_root: Path, memory_type: MemoryType) -> Path:
@@ -60,6 +66,8 @@ def _sidecar_paths(project_root: Path) -> list[Path]:
     paths: list[Path] = []
     for category in CATEGORY_BY_TYPE.values():
         directory = memory_root / category
+        if directory.is_symlink():
+            raise PathSafetyError(f"symlink rejected: {directory}")
         if not directory.is_dir():
             continue
         paths.extend(
@@ -67,6 +75,7 @@ def _sidecar_paths(project_root: Path) -> list[Path]:
                 path
                 for path in directory.iterdir()
                 if path.is_file()
+                and not path.is_symlink()
                 and path.suffix == ".json"
                 and not path.name.endswith(".tmp")
             )
@@ -83,8 +92,11 @@ def _is_complete_pair(json_path: Path) -> bool:
 
 
 def _load_sidecar(path: Path) -> MemoryRecord:
+    reject_symlinks(path, _pair_markdown(path))
     data = json.loads(path.read_text(encoding="utf-8"))
-    return MemoryRecord.from_json_dict(data)
+    record = MemoryRecord.from_json_dict(data)
+    validate_memory_record(record)
+    return record
 
 
 def _render_markdown(record: MemoryRecord) -> str:
@@ -218,15 +230,12 @@ def read_memory(project_root: Path, memory_id: str) -> MemoryRecord:
         raise MemoryStoreError(
             f"expected exactly one sidecar for {memory_id}; found {len(matches)}"
         )
-    data = json.loads(matches[0].read_text(encoding="utf-8"))
-    return MemoryRecord.from_json_dict(data)
+    return _load_sidecar(matches[0])
 
 
 def load_project_memories(project_root: Path) -> list[MemoryRecord]:
     records = [
-        MemoryRecord.from_json_dict(json.loads(p.read_text(encoding="utf-8")))
-        for p in _sidecar_paths(project_root)
-        if _is_complete_pair(p)
+        _load_sidecar(p) for p in _sidecar_paths(project_root) if _is_complete_pair(p)
     ]
     ids = [r.id for r in records]
     if len(ids) != len(set(ids)):
@@ -244,7 +253,15 @@ def load_project_memories_tolerant(
             continue
         try:
             record = _load_sidecar(path)
-        except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        except (
+            OSError,
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+            ValueError,
+            MemoryGuardError,
+            PathSafetyError,
+        ):
             findings.append(
                 {
                     "code": "memory_record_excluded",

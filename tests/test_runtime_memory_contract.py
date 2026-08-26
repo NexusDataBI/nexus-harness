@@ -17,7 +17,7 @@ class RuntimeMemoryContractTests(unittest.TestCase):
         }
         cls.output = "\n".join(cls.files.values()).lower()
 
-    def test_all_runtimes_use_nexus_memory_public_apis(self):
+    def test_all_runtimes_use_nexus_memory_and_neutral_command(self):
         for runtime_text in (
             self.files["claude/CLAUDE.md"],
             self.files["USER_RULES.md"],
@@ -25,8 +25,8 @@ class RuntimeMemoryContractTests(unittest.TestCase):
             self.files[".cursor/rules/nexus-workflow.mdc"],
         ):
             self.assertIn("nexus memory", runtime_text.lower())
-            self.assertIn("nexus_harness.memory", runtime_text)
-            self.assertIn("session_recall", runtime_text)
+            self.assertIn("hooks/nexus_event.py", runtime_text)
+        self.assertIn("session_recall", self.files["claude/CLAUDE.md"])
 
     def test_generated_output_has_no_paths_bodies_or_runtime_memory_stores(self):
         forbidden = (

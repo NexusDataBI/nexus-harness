@@ -128,6 +128,20 @@ class InstallTests(unittest.TestCase):
 
             self.assertFalse(report.has_drift)
 
+    def test_symlink_source_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real = root / "real"
+            real.mkdir()
+            (real / "a").write_text("new")
+            source = root / "dist"
+            source.symlink_to(real)
+            target = root / "installed"
+            from nexus_harness.safe import PathSafetyError
+
+            with self.assertRaises(PathSafetyError):
+                atomic_install(source, target)
+
 
 if __name__ == "__main__":
     unittest.main()

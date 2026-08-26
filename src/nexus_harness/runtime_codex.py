@@ -3,49 +3,36 @@ from __future__ import annotations
 from pathlib import Path
 
 from nexus_harness.adapters import RenderedFile
-from nexus_harness.runtime_common import generated_markdown, generated_toml_header
+from nexus_harness.runtime_common import (
+    constitution_with_notes,
+    generated_markdown,
+    generated_toml_header,
+)
 
 
 _CONFIG_SOURCE = (
     Path(__file__).resolve().parents[2] / "adapters" / "codex" / "config.base.toml"
 )
 
-_AGENTS = """# Codex workflow
+_CODEX_NOTES = """# Codex-specific notes
 
-Nexus Harness is the source of truth for workflow state and completion.
+Nexus Harness is the source of truth. Nexus Memory is injected only by the runtime-neutral command, with JSON on stdin:
 
-- Follow the canonical workflow stages and approval boundaries.
-- Treat the deterministic completion gate as authoritative; do not claim completion
-  when it fails.
-- Use Codex's project instructions and command execution capabilities to apply the
-  runtime-neutral Nexus workflow at lifecycle boundaries.
-- Nexus Memory is the canonical cross-session engineering memory layer.
-- Use public `nexus_harness.memory` APIs (`session_recall`,
-  `checkpoint_memory_candidates`, `restore_memory_candidates`,
-  `collect_memory_candidates`, `consolidate_memory`, and `memory_doctor`) for
-  bounded recall.
-- Restore structured task state before rebuilding context after compaction.
-- Checkpoint structured state before compaction; never persist a transcript as
-  canonical memory.
-- Candidate, stale, invalid, or confidential memory is not automatically injected.
-- A failed completion gate must not consolidate memory.
-- Never expose secrets or invent context when memory retrieval is unavailable.
+`python3 hooks/nexus_event.py --event <EventName>`
+
+Do not invent a parallel memory or completion path. Candidate, stale, invalid, or confidential memory is not automatically injected. A failed completion gate must not consolidate memory.
 """
 
 
 def render(root: Path) -> tuple[RenderedFile, ...]:
     root = Path(root)
-    constitution_path = root / "core" / "constitution.md"
-    if not constitution_path.is_file():
-        constitution_path = (
-            Path(__file__).resolve().parents[2] / "core" / "constitution.md"
-        )
-    constitution = constitution_path.read_text(encoding="utf-8").rstrip()
     config = _CONFIG_SOURCE.read_text(encoding="utf-8")
     return (
         RenderedFile(
             "AGENTS.md",
-            generated_markdown(f"{constitution}\n\n{_AGENTS}").encode("utf-8"),
+            generated_markdown(constitution_with_notes(root, _CODEX_NOTES)).encode(
+                "utf-8"
+            ),
         ),
         RenderedFile(
             "codex/config.toml",

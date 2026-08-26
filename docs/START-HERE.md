@@ -23,7 +23,7 @@ This is the approved architecture and implementation package for rebuilding the 
 7. PostHog Incident Intelligence
 8. Release, Evals & Doctor
 
-Plans 2 and 3 can begin after Plan 1 and may be developed independently. Plans 5–7 should start only after the shared lifecycle/CI contracts they consume are stable.
+Plans 1–3 can be developed after Plan 1. **Plan 4 must not start until the Plans 1–3 Repair Gate reports `READY_FOR_PLAN_4`.** Plans 5–7 should start only after the shared lifecycle/CI contracts they consume are stable.
 
 ## Target everyday experience after v4
 

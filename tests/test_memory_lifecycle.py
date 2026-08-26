@@ -22,6 +22,19 @@ from nexus_harness.memory.models import (
 from nexus_harness.memory.store import init_project_memory, read_memory, write_memory
 
 
+def _write_source(root: Path, ref: str, body: str = "approved") -> None:
+    if "/" in ref:
+        path = root / ref
+    elif ref.startswith("ADR-"):
+        path = root / "docs" / "adr" / f"{ref}.md"
+    elif ref.startswith("SPEC-"):
+        path = root / "docs" / f"{ref}.md"
+    else:
+        path = root / "docs" / f"{ref}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+
+
 def _decision_draft(**overrides) -> MemoryDraft:
     payload = {
         "type": MemoryType.DECISION,
@@ -50,19 +63,32 @@ class MemoryLifecycleTests(unittest.TestCase):
         self.assertEqual(record.status, MemoryStatus.CANDIDATE)
 
     def test_decision_with_adr_can_verify(self):
-        record = _decision_draft(
-            sources=(MemorySource("adr", "ADR-001"),),
-        ).to_record()
-        verified = verify_record(record, current_commit="abc")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_source(root, "ADR-001")
+            record = _decision_draft(
+                sources=(MemorySource("adr", "ADR-001"),),
+            ).to_record()
+            verified = verify_record(record, current_commit="abc", project_root=root)
         self.assertEqual(verified.status, MemoryStatus.VERIFIED)
         self.assertEqual(verified.valid_at_commit, "abc")
 
-    def test_verify_record_does_not_mutate_frozen_original(self):
+    def test_self_declared_adr_without_file_cannot_verify(self):
         record = _decision_draft(
             sources=(MemorySource("adr", "ADR-001"),),
         ).to_record()
-        snapshot = record.to_json_dict()
-        verified = verify_record(record, current_commit="abc")
+        with self.assertRaises(MemoryPromotionError):
+            verify_record(record, current_commit="abc")
+
+    def test_verify_record_does_not_mutate_frozen_original(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_source(root, "ADR-001")
+            record = _decision_draft(
+                sources=(MemorySource("adr", "ADR-001"),),
+            ).to_record()
+            snapshot = record.to_json_dict()
+            verified = verify_record(record, current_commit="abc", project_root=root)
         self.assertEqual(record.to_json_dict(), snapshot)
         self.assertEqual(record.status, MemoryStatus.CANDIDATE)
         self.assertIsNone(record.valid_at_commit)
@@ -105,6 +131,8 @@ class MemoryLifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_project_memory(root)
+            _write_source(root, "ADR-001")
+            _write_source(root, "ADR-002")
             record = write_memory(
                 root,
                 _decision_draft(
@@ -134,6 +162,8 @@ class MemoryLifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             init_project_memory(root)
+            _write_source(root, "ADR-001")
+            _write_source(root, "ADR-002")
             old = write_memory(
                 root,
                 _decision_draft(
@@ -260,16 +290,24 @@ class MemoryLifecycleTests(unittest.TestCase):
         verified = verify_record(two_refs, current_commit="abc")
         self.assertEqual(verified.status, MemoryStatus.VERIFIED)
 
-        with_adr = replace(single, sources=(MemorySource("adr", "ADR-014"),))
-        self.assertEqual(
-            verify_record(with_adr, current_commit="abc").status,
-            MemoryStatus.VERIFIED,
-        )
-        with_spec = replace(single, sources=(MemorySource("approved_spec", "SPEC-2"),))
-        self.assertEqual(
-            verify_record(with_spec, current_commit="abc").status,
-            MemoryStatus.VERIFIED,
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_source(root, "ADR-014")
+            _write_source(root, "SPEC-2")
+            with_adr = replace(single, sources=(MemorySource("adr", "ADR-014"),))
+            self.assertEqual(
+                verify_record(with_adr, current_commit="abc", project_root=root).status,
+                MemoryStatus.VERIFIED,
+            )
+            with_spec = replace(
+                single, sources=(MemorySource("approved_spec", "SPEC-2"),)
+            )
+            self.assertEqual(
+                verify_record(
+                    with_spec, current_commit="abc", project_root=root
+                ).status,
+                MemoryStatus.VERIFIED,
+            )
 
     def test_pattern_two_llm_summary_sources_cannot_verify(self):
         record = MemoryDraft(
@@ -350,3 +388,49 @@ class MemoryLifecycleTests(unittest.TestCase):
         with self.assertRaises(MemoryPromotionError):
             verify_record(record, current_commit="abc")
         self.assertEqual(record.status, MemoryStatus.CANDIDATE)
+
+    def test_deterministic_evidence_lookup_none_cannot_verify(self):
+        record = MemoryDraft(
+            type=MemoryType.INVARIANT,
+            scope=MemoryScope.PROJECT,
+            project_id="repo-1",
+            title="Migrations stay backward compatible",
+            body="Production migrations remain backward compatible.",
+            sources=(MemorySource("deterministic_evidence", "ev-77"),),
+            evidence_ids=("ev-77",),
+        ).to_record()
+        with self.assertRaises(MemoryPromotionError):
+            verify_record(
+                record,
+                current_commit="abc",
+                evidence_lookup=None,
+            )
+
+    def test_component_requires_existing_related_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src").mkdir()
+            (root / "src" / "auth.py").write_text("ok", encoding="utf-8")
+            missing = MemoryDraft(
+                type=MemoryType.COMPONENT,
+                scope=MemoryScope.PROJECT,
+                project_id="repo-1",
+                title="Auth",
+                body="Auth lives in src/auth.py",
+                sources=(MemorySource("canonical_doc", "docs/auth.md"),),
+                related_paths=("src/missing.py",),
+            ).to_record()
+            _write_source(root, "docs/auth.md")
+            with self.assertRaises(MemoryPromotionError):
+                verify_record(missing, current_commit="abc", project_root=root)
+            present = MemoryDraft(
+                type=MemoryType.COMPONENT,
+                scope=MemoryScope.PROJECT,
+                project_id="repo-1",
+                title="Auth",
+                body="Auth lives in src/auth.py",
+                sources=(MemorySource("canonical_doc", "docs/auth.md"),),
+                related_paths=("src/auth.py",),
+            ).to_record()
+            verified = verify_record(present, current_commit="abc", project_root=root)
+            self.assertEqual(verified.status, MemoryStatus.VERIFIED)

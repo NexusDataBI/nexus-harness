@@ -26,9 +26,7 @@ class CodexAdapterTests(unittest.TestCase):
         self.assertIn("Nexus Harness", agents)
         self.assertIn("Nexus Memory", agents)
         self.assertIn("completion gate", agents.lower())
-        self.assertIn("session_recall", agents)
-        self.assertIn("checkpoint_memory_candidates", agents)
-        self.assertIn("restore_memory_candidates", agents)
+        self.assertIn("hooks/nexus_event.py", agents)
 
     def test_codex_config_has_safe_defaults_and_neutral_paths(self):
         config = self.files["codex/config.toml"]

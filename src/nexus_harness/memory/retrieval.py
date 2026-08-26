@@ -14,6 +14,7 @@ from nexus_harness.memory.freshness import (
     compute_memory_freshness,
     resolve_contradiction,
 )
+from nexus_harness.memory.guard import MemoryGuardError, validate_memory_record
 from nexus_harness.memory.models import (
     MemoryRecord,
     MemoryScope,
@@ -89,17 +90,22 @@ def fts5_available(connection: sqlite3.Connection | None = None) -> bool:
 def rebuild_index(records: list[MemoryRecord], db_path: Path) -> None:
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    rows = [
-        (
-            record.id,
-            record.project_id or "",
-            record.type.value,
-            record.title,
-            record.body,
-            " ".join(record.tags),
+    rows = []
+    for record in records:
+        try:
+            validate_memory_record(record)
+        except MemoryGuardError:
+            continue
+        rows.append(
+            (
+                record.id,
+                record.project_id or "",
+                record.type.value,
+                record.title,
+                record.body,
+                " ".join(record.tags),
+            )
         )
-        for record in records
-    ]
     conn = sqlite3.connect(db_path)
     try:
         if fts5_available(conn):

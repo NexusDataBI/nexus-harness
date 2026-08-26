@@ -22,7 +22,12 @@ def _tree_hashes(root: Path, directory: str) -> dict[str, str]:
     return {
         path.relative_to(root).as_posix(): _digest(path)
         for path in sorted(tree.rglob("*"))
-        if path.is_file()
+        if (
+            path.is_file()
+            and "__pycache__" not in path.parts
+            and path.suffix not in {".pyc", ".pyo"}
+            and path.name != ".DS_Store"
+        )
     }
 
 

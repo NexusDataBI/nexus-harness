@@ -38,11 +38,12 @@ class HookTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 2)
         consolidate.assert_not_called()
 
+    @patch("nexus_harness.hooks.verify_git_oid", return_value="abc")
     @patch("nexus_harness.hooks.evaluate_completion")
     @patch("nexus_harness.hooks.collect_memory_candidates")
     @patch("nexus_harness.hooks.consolidate_memory")
     def test_ready_completion_consolidates_after_gate(
-        self, consolidate, collect, evaluate
+        self, consolidate, collect, evaluate, _oid
     ):
         evaluate.return_value = type(
             "Result", (), {"status": "READY_TO_SHIP", "reasons": []}
@@ -77,31 +78,43 @@ class HookTests(unittest.TestCase):
     @patch("nexus_harness.hooks.save_task_state")
     @patch("nexus_harness.hooks.checkpoint_memory_candidates")
     def test_precompact_checkpoints_state_and_candidates(self, checkpoint, save):
-        result = dispatch(
-            "PreCompact",
-            {
-                "task": {"task_id": "t", "repo_id": "r", "completion_status": "FAIL"},
-                "state_path": "/tmp/state.json",
-                "candidate_path": "/tmp/candidates.json",
-                "candidates": [],
-            },
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            with patch.dict(os.environ, {"NEXUS_RUNTIME_HOME": tmp}):
+                result = dispatch(
+                    "PreCompact",
+                    {
+                        "task": {
+                            "task_id": "t",
+                            "repo_id": "r",
+                            "completion_status": "FAIL",
+                        },
+                        "state_path": str(home / "task-state.json"),
+                        "candidate_path": str(home / "memory-candidates.json"),
+                        "candidates": [],
+                    },
+                )
         self.assertEqual(result.exit_code, 0)
         save.assert_called_once()
         checkpoint.assert_called_once()
 
+    @patch("nexus_harness.hooks.verify_git_oid", return_value="abc")
     @patch("nexus_harness.hooks.evaluate_completion")
+    @patch("nexus_harness.hooks.collect_memory_candidates")
     @patch("nexus_harness.hooks.consolidate_memory")
-    def test_completion_accepts_json_signal_dicts(self, consolidate, evaluate):
+    def test_completion_ignores_payload_signals_and_candidates(
+        self, consolidate, collect, evaluate, _oid
+    ):
         evaluate.return_value = type(
             "Result", (), {"status": "READY_TO_SHIP", "reasons": []}
         )()
+        collect.return_value = []
         result = dispatch(
             "TaskCompleted",
             {
                 "task": {"task_id": "t", "repo_id": "r"},
                 "project_root": tempfile.gettempdir(),
-                "base_commit": "base",
+                "base_commit": "forged",
                 "signals": [
                     {
                         "kind": "invariant",
@@ -113,34 +126,48 @@ class HookTests(unittest.TestCase):
             },
         )
         self.assertEqual(result.exit_code, 0)
+        collect.assert_called_once()
+        self.assertEqual(collect.call_args.kwargs["signals"], ())
         consolidate.assert_called_once()
-        self.assertIsInstance(consolidate.call_args.args[1][0], MemoryDraft)
 
-    def test_pretooluse_allows_missing_state_and_failed_task(self):
+    def test_pretooluse_requires_tool_name_and_allows_failed_task(self):
         missing = dispatch("PreToolUse", {})
         failed = dispatch(
             "PreToolUse",
-            {"task": {"completion_status": "FAIL", "reasons": ["AC-1"]}},
+            {
+                "tool_name": "Read",
+                "tool_input": {"path": "README.md"},
+                "task": {"completion_status": "FAIL", "reasons": ["AC-1"]},
+            },
         )
-        self.assertEqual(missing.exit_code, 0)
+        self.assertEqual(missing.exit_code, 2)
         self.assertEqual(failed.exit_code, 0)
 
     def test_pretooluse_denies_only_when_payload_sets_deny(self):
-        allowed = dispatch("PreToolUse", {"deny": False})
+        allowed = dispatch(
+            "PreToolUse",
+            {"deny": False, "tool_name": "Read", "tool_input": {}},
+        )
         denied = dispatch("PreToolUse", {"deny": True})
         self.assertEqual(allowed.exit_code, 0)
         self.assertEqual(denied.exit_code, 2)
 
-    def test_stop_same_generation_is_protected(self):
+    def test_stop_same_generation_repeats_blocking_exit(self):
         with tempfile.TemporaryDirectory() as tmp:
-            payload = {"project_root": tmp, "event_id": "same-generation"}
-            with patch("nexus_harness.hooks.completion_gate") as gate:
-                gate.return_value = type("Result", (), {"exit_code": 0, "output": {}})()
+            payload = {
+                "project_root": tmp,
+                "event_id": "same-generation",
+                "repo_id": "repo",
+                "task_id": "task",
+                "task": {"completion_status": "FAIL", "reasons": ["AC-1"]},
+            }
+            with patch.dict(os.environ, {"NEXUS_RUNTIME_HOME": tmp}):
                 first = dispatch("Stop", payload)
                 second = dispatch("Stop", payload)
-        self.assertEqual(first.exit_code, 0)
+        self.assertEqual(first.exit_code, 2)
+        self.assertEqual(second.exit_code, 2)
         self.assertTrue(second.output["loop_protected"])
-        self.assertEqual(gate.call_count, 1)
+        self.assertEqual(second.output["reasons"], ["AC-1"])
 
     def test_stop_without_identity_is_never_globally_debounced(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -163,28 +190,32 @@ class HookTests(unittest.TestCase):
     def test_stop_io_and_corrupt_marker_still_run_completion_gate(self):
         failing_task = {"completion_status": "FAIL", "reasons": ["AC-1"]}
         with tempfile.TemporaryDirectory() as tmp:
-            directory_marker = Path(tmp) / "io"
-            (directory_marker / ".nexus" / "stop-loop.json").mkdir(parents=True)
-            io_result = dispatch(
-                "Stop",
-                {
-                    "project_root": directory_marker,
-                    "session_id": "session-io",
-                    "task": failing_task,
-                },
-            )
-            corrupt_root = Path(tmp) / "corrupt"
-            marker = corrupt_root / ".nexus" / "stop-loop.json"
-            marker.parent.mkdir(parents=True)
-            marker.write_text("{", encoding="utf-8")
-            corrupt_result = dispatch(
-                "Stop",
-                {
-                    "project_root": corrupt_root,
-                    "session_id": "session-corrupt",
-                    "task": failing_task,
-                },
-            )
+            home = Path(tmp) / "runtime"
+            with patch.dict(os.environ, {"NEXUS_RUNTIME_HOME": str(home)}):
+                io_dir = home / "stop"
+                io_dir.mkdir(parents=True)
+                (io_dir / "unscoped.json").mkdir()
+                io_result = dispatch(
+                    "Stop",
+                    {
+                        "project_root": tmp,
+                        "session_id": "session-io",
+                        "task": failing_task,
+                    },
+                )
+                corrupt_home = Path(tmp) / "corrupt"
+                marker = corrupt_home / "stop" / "unscoped.json"
+                marker.parent.mkdir(parents=True)
+                marker.write_text("{", encoding="utf-8")
+                with patch.dict(os.environ, {"NEXUS_RUNTIME_HOME": str(corrupt_home)}):
+                    corrupt_result = dispatch(
+                        "Stop",
+                        {
+                            "project_root": tmp,
+                            "session_id": "session-corrupt",
+                            "task": failing_task,
+                        },
+                    )
         self.assertEqual(io_result.exit_code, 2)
         self.assertFalse(io_result.output.get("loop_protected", False))
         self.assertEqual(corrupt_result.exit_code, 2)
@@ -210,21 +241,25 @@ class HookTests(unittest.TestCase):
 
     def test_compact_session_start_restores_candidates_and_invalid_memory(self):
         with tempfile.TemporaryDirectory() as tmp:
-            candidate_path = Path(tmp) / "candidates.json"
+            home = Path(tmp) / "runtime"
+            home.mkdir()
+            candidate_path = home / "candidates.json"
             candidate_path.write_text("[]", encoding="utf-8")
             invalid = Path(tmp) / ".nexus" / "memory" / "invariants"
             invalid.mkdir(parents=True)
             (invalid / "bad.md").write_text("Never inject this", encoding="utf-8")
             (invalid / "bad.json").write_text("{", encoding="utf-8")
-            result = session_start(
-                {
-                    "project_root": tmp,
-                    "project_id": "repo",
-                    "compact": True,
-                    "candidate_path": candidate_path,
-                    "query": "invalid",
-                }
-            )
+            with patch.dict(os.environ, {"NEXUS_RUNTIME_HOME": str(home)}):
+                result = session_start(
+                    {
+                        "project_root": tmp,
+                        "project_id": "repo",
+                        "compact": True,
+                        "task": {"task_id": "t", "repo_id": "repo"},
+                        "candidate_path": candidate_path,
+                        "query": "invalid",
+                    }
+                )
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(result.output["candidate_count"], 0)
         self.assertNotIn("Never inject this", result.output["capsule"])
@@ -234,9 +269,12 @@ class HookTests(unittest.TestCase):
 
     def test_precompact_then_compact_session_start_restores_state_and_candidates(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            state_path = root / "state.json"
-            candidate_path = root / "candidates.json"
+            root = Path(tmp) / "project"
+            root.mkdir()
+            home = Path(tmp) / "runtime"
+            home.mkdir()
+            state_path = home / "state.json"
+            candidate_path = home / "candidates.json"
             state = TaskState.new("task", "repo")
             state.completion_status = "FAIL"
             state.completion_reasons = ["AC-1"]
@@ -248,29 +286,30 @@ class HookTests(unittest.TestCase):
                 body="Keep state structured.",
                 sources=(MemorySource("approved_spec", "SPEC-1"),),
             )
-            self.assertEqual(
-                dispatch(
-                    "PreCompact",
+            with patch.dict(os.environ, {"NEXUS_RUNTIME_HOME": str(home)}):
+                self.assertEqual(
+                    dispatch(
+                        "PreCompact",
+                        {
+                            "project_root": root,
+                            "state_path": state_path,
+                            "candidate_path": candidate_path,
+                            "task": state.to_dict(),
+                            "candidates": [draft],
+                        },
+                    ).exit_code,
+                    0,
+                )
+                restored = dispatch(
+                    "SessionStart",
                     {
                         "project_root": root,
                         "state_path": state_path,
                         "candidate_path": candidate_path,
-                        "task": state.to_dict(),
-                        "candidates": [draft],
+                        "compact": True,
+                        "project_id": "repo",
                     },
-                ).exit_code,
-                0,
-            )
-            restored = dispatch(
-                "SessionStart",
-                {
-                    "project_root": root,
-                    "state_path": state_path,
-                    "candidate_path": candidate_path,
-                    "compact": True,
-                    "project_id": "repo",
-                },
-            )
+                )
         self.assertEqual(restored.output["task"]["completion_status"], "FAIL")
         self.assertEqual(restored.output["task"]["completion_reasons"], ["AC-1"])
         self.assertEqual(restored.output["candidate_count"], 1)
@@ -284,18 +323,22 @@ class HookTests(unittest.TestCase):
 
     def test_claude_source_compact_restores_candidates_without_compact_flag(self):
         with tempfile.TemporaryDirectory() as tmp:
-            candidate_path = Path(tmp) / "candidates.json"
+            home = Path(tmp) / "runtime"
+            home.mkdir()
+            candidate_path = home / "candidates.json"
             candidate_path.write_text("[]", encoding="utf-8")
-            result = session_start(
-                {
-                    "project_root": tmp,
-                    "project_id": "repo",
-                    "source": "compact",
-                    "candidate_path": candidate_path,
-                    "query": "compact",
-                    "cache_home": Path(tmp) / "cache",
-                }
-            )
+            with patch.dict(os.environ, {"NEXUS_RUNTIME_HOME": str(home)}):
+                result = session_start(
+                    {
+                        "project_root": tmp,
+                        "project_id": "repo",
+                        "source": "compact",
+                        "task": {"task_id": "t", "repo_id": "repo"},
+                        "candidate_path": candidate_path,
+                        "query": "compact",
+                        "cache_home": Path(tmp) / "cache",
+                    }
+                )
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(result.output["candidate_count"], 0)
 
@@ -381,10 +424,12 @@ class HookTests(unittest.TestCase):
         self.assertTrue(hasattr(memory_mod, "CandidateSignal"))
 
     def test_root_reads_cwd_after_project_and_repo_roots(self):
-        self.assertEqual(_root({"cwd": "/tmp/from-cwd"}), Path("/tmp/from-cwd"))
+        self.assertEqual(
+            _root({"cwd": "/tmp/from-cwd"}), Path("/tmp/from-cwd").resolve()
+        )
         self.assertEqual(
             _root({"repo_root": "/tmp/repo", "cwd": "/tmp/from-cwd"}),
-            Path("/tmp/repo"),
+            Path("/tmp/repo").resolve(),
         )
         self.assertEqual(
             _root(
@@ -394,14 +439,25 @@ class HookTests(unittest.TestCase):
                     "cwd": "/tmp/from-cwd",
                 }
             ),
-            Path("/tmp/project"),
+            Path("/tmp/project").resolve(),
         )
 
-    def test_precompact_without_task_is_fail_soft(self):
+    def test_precompact_without_task_is_fail_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = dispatch("PreCompact", {"project_root": tmp})
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 2)
         self.assertEqual(result.output["checkpointed"], False)
+
+    def test_task_id_mismatch_blocks_task_completed(self):
+        result = dispatch(
+            "TaskCompleted",
+            {
+                "task_id": "other",
+                "task": {"task_id": "t", "repo_id": "r", "completion_status": "FAIL"},
+            },
+        )
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("mismatch", result.output["reasons"][0])
 
     def test_task_state_schema_includes_completion_fields(self):
         schema = json.loads(

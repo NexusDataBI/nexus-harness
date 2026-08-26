@@ -11,23 +11,10 @@ For mutable engineering work:
 7. do not ship without request or explicit approval;
 8. never weaken quality/security policy or baseline to make a change pass.
 
-# Codex workflow
+# Codex-specific notes
 
-Nexus Harness is the source of truth for workflow state and completion.
+Nexus Harness is the source of truth. Nexus Memory is injected only by the runtime-neutral command, with JSON on stdin:
 
-- Follow the canonical workflow stages and approval boundaries.
-- Treat the deterministic completion gate as authoritative; do not claim completion
-  when it fails.
-- Use Codex's project instructions and command execution capabilities to apply the
-  runtime-neutral Nexus workflow at lifecycle boundaries.
-- Nexus Memory is the canonical cross-session engineering memory layer.
-- Use public `nexus_harness.memory` APIs (`session_recall`,
-  `checkpoint_memory_candidates`, `restore_memory_candidates`,
-  `collect_memory_candidates`, `consolidate_memory`, and `memory_doctor`) for
-  bounded recall.
-- Restore structured task state before rebuilding context after compaction.
-- Checkpoint structured state before compaction; never persist a transcript as
-  canonical memory.
-- Candidate, stale, invalid, or confidential memory is not automatically injected.
-- A failed completion gate must not consolidate memory.
-- Never expose secrets or invent context when memory retrieval is unavailable.
+`python3 hooks/nexus_event.py --event <EventName>`
+
+Do not invent a parallel memory or completion path. Candidate, stale, invalid, or confidential memory is not automatically injected. A failed completion gate must not consolidate memory.

@@ -24,6 +24,30 @@ SECRET_RULES = (
             r"(?im)^\s*[A-Z0-9_]*(?:PASSWORD|SECRET|TOKEN|API_KEY|PRIVATE_KEY)[A-Z0-9_]*\s*=\s*\S+"
         ),
     ),
+    (
+        "jwt",
+        re.compile(
+            r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"
+        ),
+    ),
+    (
+        "dsn",
+        re.compile(r"\b[a-z][a-z0-9+.-]*://[^/\s:]+:[^/\s@]+@", re.I),
+    ),
+    (
+        "cookie",
+        re.compile(r"(?im)^\s*(?:Set-Cookie|Cookie)\s*:\s*\S+"),
+    ),
+    (
+        "cloud_token",
+        re.compile(r"\b(?:AKIA[0-9A-Z]{16}|xox[baprs]-|sk_live_)[A-Za-z0-9/_+=-]*"),
+    ),
+    (
+        "customer_pii",
+        re.compile(
+            r"(?is)\b(?:cpf\s*[:=]?\s*\d{3}\.?\d{3}\.?\d{3}-?\d{2}|raw[_ -]?customer[_ -]?payload)\b"
+        ),
+    ),
 )
 
 
