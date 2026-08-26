@@ -5,7 +5,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event ConfigChange",
+            "command": "python3 hooks/claude_event.py --event ConfigChange",
             "type": "command"
           }
         ]
@@ -15,7 +15,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event PostCompact",
+            "command": "python3 hooks/claude_event.py --event PostCompact",
             "type": "command"
           }
         ]
@@ -25,7 +25,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event PostToolBatch",
+            "command": "python3 hooks/claude_event.py --event PostToolBatch",
             "type": "command"
           }
         ]
@@ -35,7 +35,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event PostToolUseFailure",
+            "command": "python3 hooks/claude_event.py --event PostToolUseFailure",
             "type": "command"
           }
         ]
@@ -45,7 +45,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event PreCompact",
+            "command": "python3 hooks/claude_event.py --event PreCompact",
             "type": "command"
           }
         ]
@@ -55,7 +55,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event PreToolUse",
+            "command": "python3 hooks/claude_event.py --event PreToolUse",
             "type": "command"
           }
         ]
@@ -65,7 +65,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event SessionEnd",
+            "command": "python3 hooks/claude_event.py --event SessionEnd",
             "type": "command"
           }
         ]
@@ -75,7 +75,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event SessionStart",
+            "command": "python3 hooks/claude_event.py --event SessionStart",
             "type": "command"
           }
         ]
@@ -85,7 +85,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event Stop",
+            "command": "python3 hooks/claude_event.py --event Stop",
             "type": "command"
           }
         ]
@@ -95,7 +95,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event TaskCompleted --completion-gate",
+            "command": "python3 hooks/claude_event.py --event TaskCompleted --completion-gate",
             "type": "command"
           }
         ]
@@ -105,7 +105,7 @@
       {
         "hooks": [
           {
-            "command": "python hooks/claude_event.py --event UserPromptSubmit",
+            "command": "python3 hooks/claude_event.py --event UserPromptSubmit",
             "type": "command"
           }
         ]

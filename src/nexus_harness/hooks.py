@@ -17,8 +17,7 @@ from typing import Any
 from nexus_harness.completion import evaluate_completion
 from nexus_harness.failures import FailureMemory
 from nexus_harness.state import TaskState, load_task_state, save_task_state
-from nexus_harness.memory.lifecycle import CandidateSignal
-from nexus_harness.memory.models import MemorySource
+from nexus_harness.memory import CandidateSignal, MemorySource
 
 try:
     from nexus_harness.memory import (
@@ -51,7 +50,12 @@ def _value(value: Any, key: str, default: Any = None) -> Any:
 
 
 def _root(payload: dict) -> Path:
-    return Path(payload.get("project_root") or payload.get("repo_root") or os.getcwd())
+    return Path(
+        payload.get("project_root")
+        or payload.get("repo_root")
+        or payload.get("cwd")
+        or os.getcwd()
+    )
 
 
 def _state_path(payload: dict) -> Path:
@@ -165,16 +169,28 @@ def session_start(payload: dict) -> HookResult:
     if task is not None:
         output["task"] = task.to_dict() if hasattr(task, "to_dict") else task
     try:
-        if payload.get("compact") or payload.get("resume"):
+        restore = bool(
+            payload.get("compact")
+            or payload.get("resume")
+            or payload.get("source") in {"compact", "resume"}
+        )
+        if restore and restore_memory_candidates is not None:
             candidates = restore_memory_candidates(_candidate_path(payload))
             output["candidate_count"] = len(candidates)
+        query = (
+            payload.get("query")
+            or payload.get("prompt")
+            or _value(task, "intent")
+            or ""
+        )
         if session_recall is not None:
             capsule = session_recall(
                 _root(payload),
                 project_id=payload.get("project_id") or _value(task, "repo_id"),
-                query=payload.get("query") or _value(task, "intent") or "",
+                query=query,
                 affected_paths=tuple(payload.get("affected_paths", ())),
                 portfolio_root=payload.get("portfolio_root"),
+                cache_home=payload.get("cache_home"),
                 contradictions=tuple(payload.get("contradictions", ())),
             )
             output["capsule"] = capsule.text if hasattr(capsule, "text") else capsule
@@ -187,20 +203,23 @@ def session_start(payload: dict) -> HookResult:
 
 
 def user_prompt_submit(payload: dict) -> HookResult:
+    query = payload.get("query") or payload.get("prompt") or ""
     previous = payload.get("previous_classification")
     current = payload.get("classification") or {
-        "query": payload.get("query"),
+        "query": query,
         "affected_paths": sorted(payload.get("affected_paths", ())),
         "domain": payload.get("domain"),
     }
     if previous == current:
         return HookResult(0, {"refreshed": False})
-    result = session_start({**payload, "query": payload.get("query", "")})
+    result = session_start({**payload, "query": query})
     return HookResult(result.exit_code, {**(result.output or {}), "refreshed": True})
 
 
 def policy_gate(payload: dict) -> HookResult:
-    return completion_gate(payload)
+    if payload.get("deny") is True:
+        return HookResult(2, {"denied": True})
+    return HookResult(0, {"allowed": True})
 
 
 def failure_memory(payload: dict) -> HookResult:
@@ -231,7 +250,7 @@ def batch_maintenance(payload: dict) -> HookResult:
 def checkpoint(payload: dict) -> HookResult:
     task = _task(payload)
     if task is None:
-        return HookResult(2, {"status": "FAIL", "reasons": ["task state unavailable"]})
+        return HookResult(0, {"checkpointed": False})
     if isinstance(task, dict):
         task = TaskState.from_dict(task)
     save_task_state(task, _state_path(payload))
@@ -265,13 +284,15 @@ def stop_handler(payload: dict) -> HookResult:
         None,
     )
     if identity_value is None:
-        return policy_gate(payload)
+        return completion_gate(payload)
     marker = _root(payload) / ".nexus" / "stop-loop.json"
     identity = str(identity_value)
     try:
         previous = (
             json.loads(marker.read_text(encoding="utf-8")) if marker.exists() else {}
         )
+        if not isinstance(previous, dict):
+            raise TypeError("corrupt stop marker")
         timestamp = float(previous.get("timestamp", 0))
         if previous.get("identity") == identity and time.time() - timestamp < 60:
             return HookResult(0, {"loop_protected": True, "identity": identity})
@@ -280,9 +301,9 @@ def stop_handler(payload: dict) -> HookResult:
             json.dumps({"identity": identity, "timestamp": time.time()}),
             encoding="utf-8",
         )
-    except (OSError, json.JSONDecodeError, TypeError):
-        return HookResult(0, {"loop_protected": True, "warning": "guard unavailable"})
-    return policy_gate(payload)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        pass
+    return completion_gate(payload)
 
 
 def task_completed(payload: dict) -> HookResult:

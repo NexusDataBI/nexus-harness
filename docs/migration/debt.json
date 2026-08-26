@@ -160,6 +160,16 @@
       "target_plan": "plan-3",
       "resolution_condition": "session_recall catches all sidecar parse/model errors and returns an empty capsule plus a structured finding.",
       "defer_reason": "Corrupt non-JSON already degrades. Schema-invalid objects are doctor FAIL, not the happy path."
+    },
+    {
+      "id": "P3-D02",
+      "origin": "plan-3-final-review",
+      "severity": "low",
+      "description": "Empty base_commit on Evidence is accepted by the Done Gate; completeness of evidence identity is not fail-closed.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "evaluate_completion / promote_acceptance reject evidence without base_commit when policy requires a bound commit, without changing READY_TO_SHIP semantics for already-complete evidence.",
+      "defer_reason": "Controller left Done Gate semantics unchanged in the Plan 3 final-review fix wave."
     }
   ]
 }

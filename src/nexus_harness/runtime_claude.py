@@ -37,8 +37,9 @@ Nexus Harness is the source of truth for workflow state and completion.
 - Never expose secrets or invent context when memory retrieval is unavailable.
 """
 
-_HOOK_WRAPPER = f"""# {GENERATED_MARKER}
-\"\"\"Claude event bridge; lifecycle logic remains runtime-neutral.\"\"\"
+_HOOK_WRAPPER = (
+    f"# {GENERATED_MARKER}\n"
+    + '''"""Claude event bridge; lifecycle logic remains runtime-neutral."""
 
 from __future__ import annotations
 
@@ -53,6 +54,32 @@ os.environ["NEXUS_HOME"] = str(NEXUS_HOME)
 sys.path.insert(0, str(NEXUS_HOME / "src"))
 
 
+def _claude_transport(event, output):
+    if event not in {"SessionStart", "UserPromptSubmit"}:
+        return output
+    parts = []
+    capsule = output.get("capsule") if isinstance(output, dict) else None
+    if capsule:
+        parts.append(str(capsule).rstrip())
+    formatted = []
+    warnings = output.get("warnings") if isinstance(output, dict) else None
+    for warning in warnings or []:
+        if isinstance(warning, dict):
+            code = str(warning.get("code") or "warning")
+            message = str(warning.get("message") or "")
+            formatted.append("- " + code + (": " + message if message else ""))
+        else:
+            formatted.append("- " + str(warning))
+    if formatted:
+        parts.append("\\n".join(formatted))
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": event,
+            "additionalContext": "\\n\\n".join(parts),
+        }
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event", required=True)
@@ -60,7 +87,7 @@ def main() -> int:
     args = parser.parse_args()
     raw = sys.stdin.read().strip()
     try:
-        payload = json.loads(raw) if raw else {{}}
+        payload = json.loads(raw) if raw else {}
     except json.JSONDecodeError:
         return 2 if args.completion_gate else 1
     try:
@@ -75,7 +102,7 @@ def main() -> int:
     if result is None:
         return 2 if args.completion_gate else 0
     if getattr(result, "output", None) is not None:
-        print(json.dumps(result.output, default=str))
+        print(json.dumps(_claude_transport(args.event, result.output), default=str))
     exit_code = getattr(result, "exit_code", result)
     try:
         return int(exit_code)
@@ -85,7 +112,8 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-"""
+'''
+)
 
 
 def render(root: Path) -> tuple[RenderedFile, ...]:
