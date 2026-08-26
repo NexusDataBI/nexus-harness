@@ -5,6 +5,7 @@ from __future__ import annotations
 import fnmatch
 from pathlib import Path, PurePosixPath
 
+from nexus_harness.command import parse_tool_command
 from nexus_harness.config import load_toml
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -79,24 +80,21 @@ def evaluate_pretool(payload: dict) -> tuple[int, dict]:
         or tool_input.get("filePath")
         or ""
     )
-    command = str(tool_input.get("command") or tool_input.get("cmd") or "")
     url = str(tool_input.get("url") or tool_input.get("href") or "")
-    blob = " ".join([tool, path, command, url]).lower()
+    intent = parse_tool_command(tool_input)
 
     deny_globs = list(filesystem.get("deny_patterns", {}).get("relative_globs") or [])
     if path and _matches_denied(path, deny_globs):
         return 2, {"denied": True, "reason": "filesystem deny pattern"}
 
-    production_markers = (
-        "production",
-        "prod-deploy",
-        "docker compose",
-        "kubectl",
-        "helm upgrade",
-        "ssh ",
-        "scp ",
+    url_production = url.lower().startswith(("ssh://", "scp://", "rsync://"))
+    needs_production = intent.production_capable or url_production
+    malformed_sensitive = intent.parse_status == "malformed" and (
+        intent.production_capable or intent.destructive_operation
     )
-    needs_production = any(marker in blob for marker in production_markers)
+    if malformed_sensitive:
+        return 2, {"denied": True, "reason": "malformed sensitive command"}
+
     if needs_production and filesystem.get("production", {}).get(
         "implicit_production_write_forbidden", True
     ):
@@ -106,8 +104,7 @@ def evaluate_pretool(payload: dict) -> tuple[int, dict]:
             ) or network.get("production", {}).get("never_implicit", True):
                 return 2, {"denied": True, "reason": "production requires approval"}
 
-    destructive = ("rm -rf", "drop table", "mkfs", "format ", ":(){:|:&};:")
-    if any(item in blob for item in destructive):
+    if intent.destructive_operation:
         if approvals.get("required", {}).get("destructive_action", True):
             if "destructive" not in granted and "explicit" not in granted:
                 return 2, {
