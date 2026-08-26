@@ -48,6 +48,8 @@ class TaskState:
     skip_reason: str | None = None
     approvals_required: list | dict = field(default_factory=list)
     approvals_recorded: list | dict | bool = field(default_factory=list)
+    completion_status: str | None = None
+    completion_reasons: list[str] = field(default_factory=list)
 
     @classmethod
     def new(cls, task_id: str, repo_id: str) -> "TaskState":
@@ -101,6 +103,8 @@ class TaskState:
             "skip_reason",
             "approvals_required",
             "approvals_recorded",
+            "completion_status",
+            "completion_reasons",
         ):
             value = getattr(self, key)
             if value is not None and value != []:
@@ -143,6 +147,10 @@ class TaskState:
             skip_reason=payload.get("skip_reason"),
             approvals_required=payload.get("approvals_required", []),
             approvals_recorded=payload.get("approvals_recorded", []),
+            completion_status=payload.get("completion_status"),
+            completion_reasons=payload.get(
+                "completion_reasons", payload.get("reasons", [])
+            ),
         )
 
 

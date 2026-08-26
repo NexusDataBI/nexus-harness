@@ -4,7 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
+from pathlib import Path
 import sys
+
+NEXUS_HOME = Path(__file__).resolve().parents[1]
+os.environ["NEXUS_HOME"] = str(NEXUS_HOME)
+sys.path.insert(0, str(NEXUS_HOME / "src"))
 
 
 def main() -> int:
@@ -12,13 +19,15 @@ def main() -> int:
     parser.add_argument("--event", required=True)
     parser.add_argument("--completion-gate", action="store_true")
     args = parser.parse_args()
+    raw = sys.stdin.read().strip()
+    payload = json.loads(raw) if raw else {}
     try:
         from nexus_harness.hooks import dispatch
     except ImportError:
         # The common hook engine is installed by the hooks integration task.
         return 2 if args.completion_gate else 0
     try:
-        result = dispatch(args.event, completion_gate=args.completion_gate)
+        result = dispatch(args.event, payload, completion_gate=args.completion_gate)
     except Exception:
         if args.completion_gate:
             return 2
