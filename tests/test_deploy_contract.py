@@ -352,6 +352,35 @@ class DeployRollbackTests(unittest.TestCase):
                 result.message,
             )
 
+    def test_compose_full_pin_token_only_in_comment_rejected(self):
+        """Full pin token only in a comment + image:repo:stable must be rejected."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, compose_path, services = _prepare_deploy_tmp(
+                tmp_path
+            )
+            env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
+            image = services["services"]["web"]["image"]
+            digest_var = services["services"]["web"]["digest_var"]
+            pin = f"{image}@${{{digest_var}}}"
+            compose_path.write_text(
+                f"# image: {pin}\nservices:\n  web:\n    image: {image}:stable\n",
+                encoding="utf-8",
+            )
+            result = run_deploy(
+                ["deploy", "web", VALID_DIGEST],
+                services_path=services_path,
+                compose_runner=lambda argv: 0,
+                health_checker=lambda url: True,
+            )
+            self.assertFalse(result.ok)
+            self.assertEqual(result.status, "ERROR")
+            msg = result.message.lower()
+            self.assertTrue(
+                "pin" in msg or "digest" in msg or "@$" in result.message,
+                result.message,
+            )
+
     def test_compose_allowlisted_image_digest_pin_accepted(self):
         """Happy path: allowlisted_image@${digest_var} in compose text."""
         with tempfile.TemporaryDirectory() as tmp:

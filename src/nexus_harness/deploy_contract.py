@@ -225,14 +225,25 @@ def _default_health_checker(url: str) -> bool:
         return False
 
 
+def _strip_compose_comments(text: str) -> str:
+    """Drop full-line and simple inline `` #`` comments (no YAML parser)."""
+    lines: list[str] = []
+    for line in text.splitlines():
+        if line.lstrip().startswith("#"):
+            continue
+        if " #" in line:
+            line = line.split(" #", 1)[0]
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def _assert_compose_binds_digest(
     compose_file: Path, digest_var: str, image: str
 ) -> None:
     """Fail closed: compose must pin allowlisted image@${digest_var}; no :latest.
 
-    String scan only (stdlib) — no YAML parser. Comment-only mentions of
-    digest_var do not count; require a digest-pin token like
-    ``ghcr.io/acme/web@${WEB_DIGEST}``.
+    String scan only (stdlib) — no YAML parser. Comment-only pin tokens
+    do not count; require ``image@${digest_var}`` in non-comment content.
     """
     try:
         text = compose_file.read_text(encoding="utf-8")
@@ -242,9 +253,10 @@ def _assert_compose_binds_digest(
         raise DeployError(
             "compose_file must not contain :latest (bind image to digest env var)"
         )
-    # Require allowlisted repository + digest_var in a digest-pin token.
+    # Require allowlisted repository + digest_var in non-comment content.
+    active = _strip_compose_comments(text)
     pin_token = f"{image}@${{{digest_var}}}"
-    if pin_token not in text:
+    if pin_token not in active:
         raise DeployError(
             f"compose_file must pin image to digest env as {pin_token!r} "
             "(allowlisted image@${digest_var}; comment-only mentions rejected)"
