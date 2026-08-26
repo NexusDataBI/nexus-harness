@@ -50,6 +50,11 @@ class TaskState:
     approvals_recorded: list | dict | bool = field(default_factory=list)
     completion_status: str | None = None
     completion_reasons: list[str] = field(default_factory=list)
+    visual_required: bool | None = None
+    visual_evidence: list = field(default_factory=list)
+    visual_skip: object | None = None
+    changed_paths: list = field(default_factory=list)
+    visual_paths: list = field(default_factory=list)
 
     @classmethod
     def new(cls, task_id: str, repo_id: str) -> "TaskState":
@@ -105,6 +110,11 @@ class TaskState:
             "approvals_recorded",
             "completion_status",
             "completion_reasons",
+            "visual_required",
+            "visual_evidence",
+            "visual_skip",
+            "changed_paths",
+            "visual_paths",
         ):
             value = getattr(self, key)
             if value is not None and value != []:
@@ -151,6 +161,11 @@ class TaskState:
             completion_reasons=payload.get(
                 "completion_reasons", payload.get("reasons", [])
             ),
+            visual_required=payload.get("visual_required"),
+            visual_evidence=payload.get("visual_evidence", []),
+            visual_skip=payload.get("visual_skip"),
+            changed_paths=payload.get("changed_paths", []),
+            visual_paths=payload.get("visual_paths", []),
         )
 
 

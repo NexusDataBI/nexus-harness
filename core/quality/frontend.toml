@@ -27,3 +27,20 @@ only_when_rollback_safe = true
 
 [lazy]
 non_critical_routes_components_media = true
+
+[visual]
+required_viewports = ["desktop", "mobile"]
+
+[visual.console]
+allowlist = [
+  "Download the React DevTools",
+  "[HMR]",
+  "[webpack-dev-server]",
+  "Fast Refresh",
+]
+
+[visual.network]
+allowlist = [
+  "/_next/webpack-hmr",
+  "/__webpack_hmr",
+]

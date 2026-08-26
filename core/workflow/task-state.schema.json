@@ -74,6 +74,26 @@
     "completion_reasons": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "visual_required": { "type": ["boolean", "null"] },
+    "visual_evidence": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "visual_skip": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "object", "additionalProperties": true },
+        { "type": "string" }
+      ]
+    },
+    "changed_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "visual_paths": {
+      "type": "array",
+      "items": { "type": "string" }
     }
   },
   "$defs": {

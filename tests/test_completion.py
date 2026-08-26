@@ -12,6 +12,22 @@ def _pass_report(diff_hash="abc"):
     return {"gate": "PASS", "diff_hash": diff_hash, "report": "structured"}
 
 
+def _visual_ev(viewport, diff_hash="abc", **overrides):
+    payload = {
+        "route": "/",
+        "viewport": viewport,
+        "diff_hash": diff_hash,
+        "screenshot": f"{viewport}-after.png",
+        "baseline": f"{viewport}-before.png",
+        "trace": f"{viewport}.zip",
+        "console_error_count": 0,
+        "failed_request_count": 0,
+        "reviewer_status": "PASS",
+    }
+    payload.update(overrides)
+    return payload
+
+
 def _ready_state(**overrides):
     state = {
         "tracking_required": True,
@@ -400,3 +416,65 @@ class CompletionTests(unittest.TestCase):
         )
         self.assertEqual(result.status, "FAIL")
         self.assertTrue(any("quality_gate" in reason for reason in result.reasons))
+
+    def test_visual_required_fresh_desktop_and_mobile_is_ready(self):
+        result = evaluate_completion(
+            _ready_state(
+                visual_required=True,
+                visual_evidence=[_visual_ev("desktop"), _visual_ev("mobile")],
+            )
+        )
+        self.assertEqual(result.status, "READY_TO_SHIP")
+        self.assertEqual(result.reasons, [])
+
+    def test_visual_required_stale_evidence_fails(self):
+        result = evaluate_completion(
+            _ready_state(
+                visual_required=True,
+                visual_evidence=[
+                    _visual_ev("desktop", diff_hash="old"),
+                    _visual_ev("mobile"),
+                ],
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("visual evidence is not fresh" in reason for reason in result.reasons)
+        )
+
+    def test_visual_required_missing_mobile_fails(self):
+        result = evaluate_completion(
+            _ready_state(
+                visual_required=True,
+                visual_evidence=[_visual_ev("desktop")],
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(any("mobile" in reason for reason in result.reasons))
+
+    def test_visual_required_console_policy_fail_blocks_ready(self):
+        result = evaluate_completion(
+            _ready_state(
+                visual_required=True,
+                visual_evidence=[
+                    _visual_ev("desktop", console_error_count=1),
+                    _visual_ev("mobile"),
+                ],
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("console" in reason or "network" in reason for reason in result.reasons)
+        )
+
+    def test_matching_visual_paths_require_evidence(self):
+        result = evaluate_completion(
+            _ready_state(
+                changed_paths=["apps/web/page.tsx"],
+                visual_paths=["apps/web/**"],
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("desktop" in reason or "mobile" in reason for reason in result.reasons)
+        )

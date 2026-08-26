@@ -3,6 +3,7 @@ from pathlib import Path
 import tomllib
 
 from nexus_harness.evidence import Evidence
+from nexus_harness.visual import visual_completion_reasons
 
 _BLOCKING_FINDINGS = frozenset({"blocker", "high"})
 _COMPLETION_POLICY = (
@@ -56,6 +57,8 @@ def evaluate_completion(state) -> CompletionResult:
     reviewed = _get(state, "reviewed_diff_hash")
     if not (current and current == verified == reviewed):
         reasons.append("verified_diff_hash != current_diff_hash != reviewed_diff_hash")
+
+    reasons.extend(visual_completion_reasons(state, current))
 
     if reasons:
         return CompletionResult(status="FAIL", reasons=reasons)
