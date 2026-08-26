@@ -215,6 +215,7 @@ class DeployRollbackTests(unittest.TestCase):
                 self.assertEqual(call[idx + 1], str(env_path))
 
     def test_rollback_when_pull_fails_after_env_write(self):
+        """Forward pull fail → rollback; rollback pull may fail but up must run."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             services_path, env_path, _, _ = _prepare_deploy_tmp(tmp_path)
@@ -226,8 +227,8 @@ class DeployRollbackTests(unittest.TestCase):
             def fake_compose(argv: list[str]) -> int:
                 compose_calls.append(list(argv))
                 if "pull" in argv:
-                    return 1  # fail after digest env was written
-                return 0
+                    return 1  # ALL pulls fail (forward + rollback)
+                return 0  # ups succeed
 
             result = run_deploy(
                 ["deploy", "web", VALID_DIGEST],
@@ -248,6 +249,16 @@ class DeployRollbackTests(unittest.TestCase):
             self.assertEqual(evidence["attempted_digest"], VALID_DIGEST)
             self.assertEqual(evidence["restored_digest"], PREV_DIGEST)
             self.assertIn("health_restored", evidence)
+            # Rollback must still force-recreate even when pull of previous fails.
+            up_calls = [
+                c
+                for c in compose_calls
+                if "up" in c and "--force-recreate" in c and "web" in c
+            ]
+            self.assertTrue(
+                up_calls,
+                f"expected up --force-recreate for web after pull miss; got {compose_calls}",
+            )
             for call in compose_calls:
                 self.assertIn("--env-file", call, f"missing --env-file in {call}")
 
@@ -315,6 +326,51 @@ class DeployRollbackTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertEqual(result.status, "ERROR")
             self.assertIn("WEB_IMAGE_DIGEST", result.message)
+
+    def test_compose_digest_var_only_in_comment_rejected(self):
+        """digest_var in a comment without image@${digest_var} pin is rejected."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, compose_path, _ = _prepare_deploy_tmp(tmp_path)
+            env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
+            compose_path.write_text(
+                "# WEB_IMAGE_DIGEST must be set elsewhere\n"
+                "services:\n  web:\n    image: ghcr.io/example/app-web\n",
+                encoding="utf-8",
+            )
+            result = run_deploy(
+                ["deploy", "web", VALID_DIGEST],
+                services_path=services_path,
+                compose_runner=lambda argv: 0,
+                health_checker=lambda url: True,
+            )
+            self.assertFalse(result.ok)
+            self.assertEqual(result.status, "ERROR")
+            msg = result.message.lower()
+            self.assertTrue(
+                "pin" in msg or "digest" in msg or "@$" in result.message,
+                result.message,
+            )
+
+    def test_compose_allowlisted_image_digest_pin_accepted(self):
+        """Happy path: allowlisted_image@${digest_var} in compose text."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, compose_path, services = _prepare_deploy_tmp(
+                tmp_path
+            )
+            env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
+            image = services["services"]["web"]["image"]
+            digest_var = services["services"]["web"]["digest_var"]
+            self.assertIn(f"{image}@${{{digest_var}}}", compose_path.read_text())
+            result = run_deploy(
+                ["deploy", "web", VALID_DIGEST],
+                services_path=services_path,
+                compose_runner=lambda argv: 0,
+                health_checker=lambda url: True,
+            )
+            self.assertTrue(result.ok)
+            self.assertEqual(result.status, "PASS")
 
 
 class ClientVmFilesTests(unittest.TestCase):

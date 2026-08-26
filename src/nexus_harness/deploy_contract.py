@@ -225,10 +225,14 @@ def _default_health_checker(url: str) -> bool:
         return False
 
 
-def _assert_compose_binds_digest(compose_file: Path, digest_var: str) -> None:
-    """Fail closed: compose must reference digest_var and must not use :latest.
+def _assert_compose_binds_digest(
+    compose_file: Path, digest_var: str, image: str
+) -> None:
+    """Fail closed: compose must pin allowlisted image@${digest_var}; no :latest.
 
-    String scan only (stdlib) — no YAML parser.
+    String scan only (stdlib) — no YAML parser. Comment-only mentions of
+    digest_var do not count; require a digest-pin token like
+    ``ghcr.io/acme/web@${WEB_DIGEST}``.
     """
     try:
         text = compose_file.read_text(encoding="utf-8")
@@ -238,10 +242,12 @@ def _assert_compose_binds_digest(compose_file: Path, digest_var: str) -> None:
         raise DeployError(
             "compose_file must not contain :latest (bind image to digest env var)"
         )
-    if digest_var not in text:
+    # Require allowlisted repository + digest_var in a digest-pin token.
+    pin_token = f"{image}@${{{digest_var}}}"
+    if pin_token not in text:
         raise DeployError(
-            f"compose_file must reference digest_var {digest_var!r} "
-            "(image must be bound to the digest env)"
+            f"compose_file must pin image to digest env as {pin_token!r} "
+            "(allowlisted image@${digest_var}; comment-only mentions rejected)"
         )
 
 
@@ -269,11 +275,18 @@ def _pull_and_recreate(
     service: str,
     entry: Mapping,
     compose_runner: ComposeRunner,
+    require_pull: bool = True,
 ) -> None:
+    """Pull then force-recreate the named service.
+
+    Forward deploy: ``require_pull=True`` — pull failure raises before up
+    (caller rolls back). Rollback: ``require_pull=False`` — prefer pull of
+    previous digest, but still run ``up -d --force-recreate --no-deps`` if
+    pull fails (image may already be local / registry blip).
+    """
     base = _compose_base(entry)
-    # Pull by service (compose resolves digest from env); recreate only that service.
     rc = compose_runner([*base, "pull", service])
-    if rc != 0:
+    if rc != 0 and require_pull:
         raise DeployError(f"compose pull failed for {service} (rc={rc})")
     rc = compose_runner([*base, "up", "-d", "--force-recreate", "--no-deps", service])
     if rc != 0:
@@ -305,7 +318,13 @@ def _restore_previous_digest(
     """
     _write_digest_var(env_file, digest_var, previous)
     try:
-        _pull_and_recreate(service=service, entry=entry, compose_runner=compose_runner)
+        # Prefer pull of previous; do not skip up just because pull failed.
+        _pull_and_recreate(
+            service=service,
+            entry=entry,
+            compose_runner=compose_runner,
+            require_pull=False,
+        )
     except DeployError:
         return False
     return bool(health_checker(health_url))
@@ -366,8 +385,11 @@ def run_deploy(
             message=message,
         )
 
+    image = str(entry.get("image") or "")
+    _validate_allowlist_image(image)
+
     try:
-        _assert_compose_binds_digest(compose_path, digest_var)
+        _assert_compose_binds_digest(compose_path, digest_var, image)
         _write_digest_var(env_file, digest_var, req.digest)
         digest_written = True
         _pull_and_recreate(
