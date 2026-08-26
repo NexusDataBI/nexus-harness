@@ -6,7 +6,7 @@
       "origin": "plan-1-final-review",
       "severity": "medium",
       "description": "Validator SSH and model-name regexes are broad (emails can look like SSH; opus/sonnet/haiku match non-model prose).",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "Tighten detectors without false positives on constitution/policy prose; add focused negative tests.",
       "defer_reason": "Not required for workflow/graph/quality kernel. YAGNI for Plan 2."

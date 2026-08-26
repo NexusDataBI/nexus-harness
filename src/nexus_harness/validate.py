@@ -28,15 +28,14 @@ IPV4 = re.compile(
     r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"
 )
 SSH_TARGET = re.compile(
-    r"(?i)(?:\b(?:ssh|scp)://|\b[A-Za-z0-9._-]+@(?:[A-Za-z0-9.-]+\.[A-Za-z]{2,}|\d{1,3}(?:\.\d{1,3}){3})\b)"
+    r"(?i)(?:\b(?:ssh|scp)://[^\s\"'<>]+"
+    r"|\b(?:ssh|scp)\s+[A-Za-z0-9._-]+@[A-Za-z0-9.-]+(?::[^\s\"'<>]+)?)"
 )
 ABS_CLIENT_PATH = re.compile(
     r"(?:/Users/[^\s\"']+|/home/[^\s\"']+|[A-Za-z]:\\[^\s\"']+)"
 )
 MODEL_PATTERNS = (
-    re.compile(r"(?i)\bclaude-sonnet\b"),
-    re.compile(r"(?i)\bclaude-opus\b"),
-    re.compile(r"(?i)\bclaude-haiku\b"),
+    re.compile(r"(?i)\bclaude(?:-\d+)*-(?:sonnet|opus|haiku)\b"),
     re.compile(r"(?i)\bgpt-4\b"),
     re.compile(r"(?i)\bgpt-5\b"),
     re.compile(r"(?i)\bgpt-3\.5\b"),
@@ -47,9 +46,6 @@ MODEL_PATTERNS = (
     re.compile(r"(?i)\bgemini-[0-9]\b"),
     re.compile(r"(?i)\bo1-preview\b"),
     re.compile(r"(?i)\bo3-mini\b"),
-    re.compile(r"(?i)\bsonnet\b"),
-    re.compile(r"(?i)\bopus\b"),
-    re.compile(r"(?i)\bhaiku\b"),
 )
 TEXT_SUFFIXES = {".toml", ".json", ".md", ".txt"}
 

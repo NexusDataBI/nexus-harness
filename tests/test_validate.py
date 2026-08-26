@@ -92,6 +92,58 @@ class ValidateTests(unittest.TestCase):
                 msg=result.errors,
             )
 
+    def test_email_in_policy_does_not_look_like_ssh_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            (root / "core" / "policies" / "production.toml").write_text(
+                'contact = "ops@example.com for access"\n',
+                encoding="utf-8",
+            )
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertEqual(result.errors, ())
+
+    def test_bare_model_words_in_constitution_prose_do_not_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            (root / "core" / "constitution.md").write_text(
+                "Discuss a musical sonnet, literary opus, and Japanese haiku.\n",
+                encoding="utf-8",
+            )
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertEqual(result.errors, ())
+
+    def test_ssh_and_scp_urls_in_core_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            (root / "core" / "policies" / "production.toml").write_text(
+                'targets = ["ssh://root@192.0.2.10", "scp://user@host/path"]\n',
+                encoding="utf-8",
+            )
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any("production target" in error.lower() for error in result.errors),
+                msg=result.errors,
+            )
+
+    def test_ssh_command_target_in_core_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            (root / "core" / "policies" / "production.toml").write_text(
+                'command = "ssh deploy@example.com"\n',
+                encoding="utf-8",
+            )
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any("production target" in error.lower() for error in result.errors),
+                msg=result.errors,
+            )
+
     def test_generated_hash_drift_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = _minimal_repo(Path(tmp))
