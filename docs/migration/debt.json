@@ -140,6 +140,26 @@
       "target_plan": "plan-8",
       "resolution_condition": "STALE/CONFLICT WARNINGS has a dedicated char budget distinct from hot/warm.",
       "defer_reason": "Warnings currently append without a section budget. Not required to close Plan 2.5 HIGH findings."
+    },
+    {
+      "id": "P25-D03",
+      "origin": "plan-2.5-final-review",
+      "severity": "medium",
+      "description": "load_portfolio_memories still reads orphan JSON sidecars; project store no longer does.",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "Portfolio loader requires complete md+json pairs, matching project store §37.",
+      "defer_reason": "Project recall is fail-closed. Vault loader is unused unless portfolio_root is passed."
+    },
+    {
+      "id": "P25-D04",
+      "origin": "plan-2.5-final-review",
+      "severity": "low",
+      "description": "session_recall still raises on schema-invalid JSON objects (KeyError/enum); only MemoryStoreError and JSONDecodeError degrade to empty capsule.",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "session_recall catches all sidecar parse/model errors and returns an empty capsule plus a structured finding.",
+      "defer_reason": "Corrupt non-JSON already degrades. Schema-invalid objects are doctor FAIL, not the happy path."
     }
   ]
 }
