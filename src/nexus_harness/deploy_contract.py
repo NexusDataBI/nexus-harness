@@ -20,6 +20,10 @@ from typing import Callable, Mapping, Sequence
 
 SERVICE_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+# Registry repository path only — no tag (:) and no digest (@).
+IMAGE_REPO_RE = re.compile(
+    r"^[a-z0-9]+(?:[._-][a-z0-9]+)*(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+$"
+)
 # Reject shell metacharacters / control chars in any argv token.
 _META_RE = re.compile(r"[;|&$`<>(){}[\]\\\"'*?~\n\r\t ]")
 
@@ -120,8 +124,23 @@ def parse_deploy_argv(
     entry = allowlist[service]
     if not isinstance(entry, dict):
         raise DeployError(f"allowlist entry for {service!r} must be an object")
+    _validate_allowlist_image(str(entry.get("image") or ""))
 
     return DeployRequest(action=action, service=service, digest=digest)
+
+
+def _validate_allowlist_image(image: str) -> None:
+    """Require an untagged registry repository path (same idea as deploy-manifest)."""
+    image = str(image).strip()
+    if not image:
+        raise DeployError("allowlist entry missing image (untagged repository path)")
+    _reject_metacharacters(image, label="image")
+    if ":" in image or "@" in image:
+        raise DeployError(
+            "image must be an untagged registry path (no tag, no @digest, no latest)"
+        )
+    if image.lower() == "latest" or not IMAGE_REPO_RE.fullmatch(image):
+        raise DeployError(f"image must be a repository path without tag; got {image!r}")
 
 
 def resolve_argv(
@@ -206,17 +225,42 @@ def _default_health_checker(url: str) -> bool:
         return False
 
 
+def _assert_compose_binds_digest(compose_file: Path, digest_var: str) -> None:
+    """Fail closed: compose must reference digest_var and must not use :latest.
+
+    String scan only (stdlib) — no YAML parser.
+    """
+    try:
+        text = compose_file.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise DeployError(f"cannot read compose_file: {exc}") from exc
+    if ":latest" in text:
+        raise DeployError(
+            "compose_file must not contain :latest (bind image to digest env var)"
+        )
+    if digest_var not in text:
+        raise DeployError(
+            f"compose_file must reference digest_var {digest_var!r} "
+            "(image must be bound to the digest env)"
+        )
+
+
 def _compose_base(entry: Mapping) -> list[str]:
     compose_file = str(entry.get("compose_file") or "")
     project_dir = str(entry.get("project_dir") or "")
+    env_file = str(entry.get("env_file") or "")
     if not compose_file:
         raise DeployError("allowlist entry missing compose_file")
+    if not env_file:
+        raise DeployError("allowlist entry missing env_file")
     _reject_metacharacters(compose_file, label="compose_file")
+    _reject_metacharacters(env_file, label="env_file")
     base: list[str] = []
     if project_dir:
         _reject_metacharacters(project_dir, label="project_dir")
         base.extend(["--project-directory", project_dir])
-    base.extend(["-f", compose_file])
+    # Bind digest env so compose resolves image@${DIGEST_VAR} from this file.
+    base.extend(["--env-file", env_file, "-f", compose_file])
     return base
 
 
@@ -241,6 +285,30 @@ def _write_evidence(path: Path, payload: Mapping) -> None:
     path.write_text(
         json.dumps(dict(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+
+
+def _restore_previous_digest(
+    *,
+    service: str,
+    entry: Mapping,
+    env_file: Path,
+    digest_var: str,
+    previous: str,
+    compose_runner: ComposeRunner,
+    health_checker: HealthChecker,
+    health_url: str,
+) -> bool:
+    """Restore previous digest, recreate service, re-check health.
+
+    Returns whether health succeeded after restore. If recreate fails, still
+    returns False (caller must write evidence with health_restored=false).
+    """
+    _write_digest_var(env_file, digest_var, previous)
+    try:
+        _pull_and_recreate(service=service, entry=entry, compose_runner=compose_runner)
+    except DeployError:
+        return False
+    return bool(health_checker(health_url))
 
 
 def run_deploy(
@@ -276,37 +344,51 @@ def run_deploy(
     if re.search(r"[;|&$`<>(){}\\\"'*?\n\r\t ]", health_url):
         raise DeployError("health_url contains forbidden characters")
 
+    compose_path = Path(str(entry.get("compose_file") or ""))
     previous = _read_digest_var(env_file, digest_var)
+    digest_written = False
+
+    def _rollback_evidence(health_after: bool, *, message: str) -> DeployResult:
+        payload = {
+            "status": "ROLLBACK",
+            "service": req.service,
+            "attempted_digest": req.digest,
+            "restored_digest": previous,
+            "health_restored": bool(health_after),
+        }
+        _write_evidence(evidence_path, payload)
+        return DeployResult(
+            ok=False,
+            status="ROLLBACK",
+            service=req.service,
+            digest=req.digest,
+            previous_digest=previous,
+            message=message,
+        )
 
     try:
+        _assert_compose_binds_digest(compose_path, digest_var)
         _write_digest_var(env_file, digest_var, req.digest)
+        digest_written = True
         _pull_and_recreate(
             service=req.service, entry=entry, compose_runner=compose_runner
         )
         if not health_checker(health_url):
             # Health is part of the gate — compose rc=0 alone is not PASS.
+            health_after = False
             if previous and DIGEST_RE.fullmatch(previous):
-                _write_digest_var(env_file, digest_var, previous)
-                _pull_and_recreate(
-                    service=req.service, entry=entry, compose_runner=compose_runner
+                health_after = _restore_previous_digest(
+                    service=req.service,
+                    entry=entry,
+                    env_file=env_file,
+                    digest_var=digest_var,
+                    previous=previous,
+                    compose_runner=compose_runner,
+                    health_checker=health_checker,
+                    health_url=health_url,
                 )
-                health_after = health_checker(health_url)
-            else:
-                health_after = False
-            payload = {
-                "status": "ROLLBACK",
-                "service": req.service,
-                "attempted_digest": req.digest,
-                "restored_digest": previous,
-                "health_restored": bool(health_after),
-            }
-            _write_evidence(evidence_path, payload)
-            return DeployResult(
-                ok=False,
-                status="ROLLBACK",
-                service=req.service,
-                digest=req.digest,
-                previous_digest=previous,
+            return _rollback_evidence(
+                health_after,
                 message="health check failed; previous digest restored",
             )
         return DeployResult(
@@ -318,6 +400,32 @@ def run_deploy(
             message="deploy healthy",
         )
     except DeployError as exc:
+        # After env write, pull/up failure must still restore previous digest.
+        if digest_written and previous and DIGEST_RE.fullmatch(previous):
+            health_after = _restore_previous_digest(
+                service=req.service,
+                entry=entry,
+                env_file=env_file,
+                digest_var=digest_var,
+                previous=previous,
+                compose_runner=compose_runner,
+                health_checker=health_checker,
+                health_url=health_url,
+            )
+            return _rollback_evidence(
+                health_after,
+                message=f"{exc}; previous digest restored",
+            )
+        if digest_written:
+            # No valid previous digest — still record that deploy failed mid-flight.
+            payload = {
+                "status": "ROLLBACK",
+                "service": req.service,
+                "attempted_digest": req.digest,
+                "restored_digest": previous,
+                "health_restored": False,
+            }
+            _write_evidence(evidence_path, payload)
         return DeployResult(
             ok=False,
             status="ERROR",

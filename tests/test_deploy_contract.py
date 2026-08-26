@@ -44,6 +44,27 @@ def _services_payload() -> dict:
     }
 
 
+def _write_bound_compose(path: Path, *, digest_var: str = "WEB_IMAGE_DIGEST") -> None:
+    """Compose that binds image to digest env (no :latest)."""
+    path.write_text(
+        f"services:\n  web:\n    image: ghcr.io/example/app-web@${{{digest_var}}}\n",
+        encoding="utf-8",
+    )
+
+
+def _prepare_deploy_tmp(tmp_path: Path) -> tuple[Path, Path, Path, dict]:
+    services_path = tmp_path / "services.json"
+    env_path = tmp_path / ".env"
+    compose_path = tmp_path / "compose.yml"
+    services = _services_payload()
+    services["services"]["web"]["env_file"] = str(env_path)
+    services["services"]["web"]["compose_file"] = str(compose_path)
+    services["services"]["web"]["project_dir"] = str(tmp_path)
+    services_path.write_text(json.dumps(services), encoding="utf-8")
+    _write_bound_compose(compose_path)
+    return services_path, env_path, compose_path, services
+
+
 class DeployParserTests(unittest.TestCase):
     def test_valid_service_and_digest_accepted(self):
         req = parse_deploy_argv(
@@ -109,19 +130,35 @@ class DeployParserTests(unittest.TestCase):
                 services=_services_payload(),
             )
 
+    def test_image_without_tag_required(self):
+        for bad_image in (
+            "ghcr.io/example/app-web:latest",
+            "ghcr.io/example/app-web:1.2.3",
+            "ghcr.io/example/app-web@" + VALID_DIGEST,
+            "latest",
+            "",
+        ):
+            with self.subTest(image=bad_image):
+                services = _services_payload()
+                services["services"]["web"]["image"] = bad_image
+                with self.assertRaises(DeployError) as ctx:
+                    parse_deploy_argv(
+                        ["deploy", "web", VALID_DIGEST],
+                        services=services,
+                    )
+                msg = str(ctx.exception).lower()
+                self.assertTrue(
+                    "image" in msg or "tag" in msg or "latest" in msg,
+                    msg,
+                )
+
 
 class DeployRollbackTests(unittest.TestCase):
     def test_rollback_when_health_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            services_path = tmp_path / "services.json"
-            env_path = tmp_path / ".env"
+            services_path, env_path, _, _ = _prepare_deploy_tmp(tmp_path)
             evidence_path = tmp_path / "rollback.json"
-            services = _services_payload()
-            services["services"]["web"]["env_file"] = str(env_path)
-            services["services"]["web"]["compose_file"] = str(tmp_path / "compose.yml")
-            services["services"]["web"]["project_dir"] = str(tmp_path)
-            services_path.write_text(json.dumps(services), encoding="utf-8")
             env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
 
             compose_calls: list[list[str]] = []
@@ -171,28 +208,113 @@ class DeployRollbackTests(unittest.TestCase):
             )
             # Health gate — compose success alone is not PASS.
             self.assertNotEqual(result.status, "PASS")
+            # Every compose invocation must bind the digest env file.
+            for call in compose_calls:
+                self.assertIn("--env-file", call, f"missing --env-file in {call}")
+                idx = call.index("--env-file")
+                self.assertEqual(call[idx + 1], str(env_path))
+
+    def test_rollback_when_pull_fails_after_env_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, _, _ = _prepare_deploy_tmp(tmp_path)
+            evidence_path = tmp_path / "rollback.json"
+            env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
+
+            compose_calls: list[list[str]] = []
+
+            def fake_compose(argv: list[str]) -> int:
+                compose_calls.append(list(argv))
+                if "pull" in argv:
+                    return 1  # fail after digest env was written
+                return 0
+
+            result = run_deploy(
+                ["deploy", "web", VALID_DIGEST],
+                services_path=services_path,
+                compose_runner=fake_compose,
+                health_checker=lambda url: True,
+                evidence_path=evidence_path,
+            )
+
+            self.assertEqual(result.status, "ROLLBACK")
+            self.assertFalse(result.ok)
+            env_text = env_path.read_text(encoding="utf-8")
+            self.assertIn(PREV_DIGEST, env_text)
+            self.assertNotIn(VALID_DIGEST, env_text)
+            self.assertTrue(evidence_path.is_file())
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            self.assertEqual(evidence["status"], "ROLLBACK")
+            self.assertEqual(evidence["attempted_digest"], VALID_DIGEST)
+            self.assertEqual(evidence["restored_digest"], PREV_DIGEST)
+            self.assertIn("health_restored", evidence)
+            for call in compose_calls:
+                self.assertIn("--env-file", call, f"missing --env-file in {call}")
 
     def test_successful_deploy_requires_health(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            services_path = tmp_path / "services.json"
-            env_path = tmp_path / ".env"
-            services = _services_payload()
-            services["services"]["web"]["env_file"] = str(env_path)
-            services["services"]["web"]["compose_file"] = str(tmp_path / "compose.yml")
-            services["services"]["web"]["project_dir"] = str(tmp_path)
-            services_path.write_text(json.dumps(services), encoding="utf-8")
+            services_path, env_path, _, _ = _prepare_deploy_tmp(tmp_path)
             env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
 
+            compose_calls: list[list[str]] = []
+
+            def fake_compose(argv: list[str]) -> int:
+                compose_calls.append(list(argv))
+                return 0
+
+            result = run_deploy(
+                ["deploy", "web", VALID_DIGEST],
+                services_path=services_path,
+                compose_runner=fake_compose,
+                health_checker=lambda url: True,
+            )
+            self.assertTrue(result.ok)
+            self.assertEqual(result.status, "PASS")
+            self.assertIn(VALID_DIGEST, env_path.read_text(encoding="utf-8"))
+            self.assertTrue(compose_calls)
+            for call in compose_calls:
+                self.assertIn("--env-file", call, f"missing --env-file in {call}")
+                idx = call.index("--env-file")
+                self.assertEqual(call[idx + 1], str(env_path))
+
+    def test_compose_latest_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, compose_path, _ = _prepare_deploy_tmp(tmp_path)
+            env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
+            compose_path.write_text(
+                "services:\n  web:\n    image: ghcr.io/example/app-web:latest\n",
+                encoding="utf-8",
+            )
             result = run_deploy(
                 ["deploy", "web", VALID_DIGEST],
                 services_path=services_path,
                 compose_runner=lambda argv: 0,
                 health_checker=lambda url: True,
             )
-            self.assertTrue(result.ok)
-            self.assertEqual(result.status, "PASS")
-            self.assertIn(VALID_DIGEST, env_path.read_text(encoding="utf-8"))
+            self.assertFalse(result.ok)
+            self.assertEqual(result.status, "ERROR")
+            self.assertIn("latest", result.message.lower())
+
+    def test_compose_missing_digest_var_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            services_path, env_path, compose_path, _ = _prepare_deploy_tmp(tmp_path)
+            env_path.write_text(f"WEB_IMAGE_DIGEST={PREV_DIGEST}\n", encoding="utf-8")
+            compose_path.write_text(
+                "services:\n  web:\n    image: ghcr.io/example/app-web@sha256:dead\n",
+                encoding="utf-8",
+            )
+            result = run_deploy(
+                ["deploy", "web", VALID_DIGEST],
+                services_path=services_path,
+                compose_runner=lambda argv: 0,
+                health_checker=lambda url: True,
+            )
+            self.assertFalse(result.ok)
+            self.assertEqual(result.status, "ERROR")
+            self.assertIn("WEB_IMAGE_DIGEST", result.message)
 
 
 class ClientVmFilesTests(unittest.TestCase):
