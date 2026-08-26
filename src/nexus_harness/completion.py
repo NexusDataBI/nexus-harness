@@ -169,6 +169,7 @@ def _as_evidence(value) -> Evidence | None:
             command=str(value.get("command") or ""),
             exit_code=int(value.get("exit_code", 1)),
             diff_hash=str(value.get("diff_hash") or ""),
+            base_commit=str(value.get("base_commit") or ""),
             summary=str(value.get("summary") or ""),
         )
     return None

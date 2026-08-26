@@ -173,7 +173,7 @@ class CompletionTests(unittest.TestCase):
                 {"id": "AC-1", "status": "FAIL", "statement": "does the thing"}
             ],
         }
-        evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        evidence = Evidence("ev-1", "vitest", 0, "abc", "base-1", "tests pass")
         state["evidence"] = [evidence]
         promote_acceptance(state, evidence)
         self.assertEqual(state["acceptance"][0]["status"], "PASS")
@@ -186,7 +186,7 @@ class CompletionTests(unittest.TestCase):
                 {"id": "AC-1", "status": "FAIL", "statement": "does the thing"}
             ],
         }
-        evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        evidence = Evidence("ev-1", "vitest", 0, "abc", "base-1", "tests pass")
         with self.assertRaisesRegex(ValueError, "recorded"):
             promote_acceptance(state, evidence)
         self.assertEqual(state["acceptance"][0]["status"], "FAIL")
@@ -198,7 +198,7 @@ class CompletionTests(unittest.TestCase):
                 {"id": "AC-1", "status": "FAIL", "statement": "does the thing"}
             ],
         }
-        evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        evidence = Evidence("ev-1", "vitest", 0, "abc", "base-1", "tests pass")
         promote_acceptance(state, evidence, ledger=[evidence])
         self.assertEqual(state["acceptance"][0]["status"], "PASS")
         self.assertEqual(state["acceptance"][0]["evidence"], "ev-1")
@@ -210,7 +210,7 @@ class CompletionTests(unittest.TestCase):
                 {"id": "AC-1", "status": "FAIL", "statement": "does the thing"}
             ],
         }
-        evidence = Evidence("ev-1", "vitest", 1, "abc", "tests failed")
+        evidence = Evidence("ev-1", "vitest", 1, "abc", "base-1", "tests failed")
         state["evidence"] = [evidence]
         with self.assertRaises(ValueError):
             promote_acceptance(state, evidence)
@@ -259,7 +259,7 @@ class CompletionTests(unittest.TestCase):
         state.acceptance = [
             AcceptanceCriterion(id="AC-1", statement="does the thing"),
         ]
-        evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        evidence = Evidence("ev-1", "vitest", 0, "abc", "base-1", "tests pass")
         state.evidence = [evidence]
         promote_acceptance(state, evidence)
         self.assertEqual(state.acceptance[0].status, "PASS")
@@ -286,7 +286,7 @@ class CompletionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "completion gate not satisfied"):
             advance_stage(state, 8)
 
-        evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        evidence = Evidence("ev-1", "vitest", 0, "abc", "base-1", "tests pass")
         state.evidence = [evidence]
         promote_acceptance(state, evidence)
         state.quality_gate = "PASS"

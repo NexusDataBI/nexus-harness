@@ -1,6 +1,8 @@
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+import os
 from pathlib import Path
+import tempfile
 import json
 
 
@@ -14,6 +16,7 @@ class Evidence:
     command: str
     exit_code: int
     diff_hash: str
+    base_commit: str
     summary: str
     artifact: str | None = None
     limitation: str | None = None
@@ -26,8 +29,28 @@ class Evidence:
 def append_evidence(path: Path, evidence: Evidence) -> None:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with destination.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(asdict(evidence), ensure_ascii=False) + "\n")
+    records = [asdict(item) for item in read_evidence(destination)]
+    records.append(asdict(evidence))
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            for record in records:
+                handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, destination)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def read_evidence(path: Path) -> list[Evidence]:
@@ -40,5 +63,8 @@ def read_evidence(path: Path) -> list[Evidence]:
             stripped = line.strip()
             if not stripped:
                 continue
-            items.append(Evidence(**json.loads(stripped)))
+            try:
+                items.append(Evidence(**json.loads(stripped)))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
     return items

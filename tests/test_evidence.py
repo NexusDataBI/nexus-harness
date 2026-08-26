@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 from nexus_harness.evidence import Evidence, append_evidence, read_evidence
@@ -7,15 +8,15 @@ from nexus_harness.evidence import Evidence, append_evidence, read_evidence
 
 class EvidenceTests(unittest.TestCase):
     def test_evidence_is_stale_for_different_diff(self):
-        item = Evidence("ev-1", "vitest", 0, "abc123", "tests pass")
+        item = Evidence("ev-1", "vitest", 0, "abc123", "base-1", "tests pass")
         self.assertFalse(item.is_fresh("def456"))
 
     def test_evidence_is_fresh_for_matching_diff(self):
-        item = Evidence("ev-1", "vitest", 0, "abc123", "tests pass")
+        item = Evidence("ev-1", "vitest", 0, "abc123", "base-1", "tests pass")
         self.assertTrue(item.is_fresh("abc123"))
 
     def test_exit_code_is_stored_and_does_not_affect_freshness(self):
-        item = Evidence("ev-2", "pytest", 1, "abc123", "tests failed")
+        item = Evidence("ev-2", "pytest", 1, "abc123", "base-1", "tests failed")
         self.assertEqual(item.exit_code, 1)
         self.assertTrue(item.is_fresh("abc123"))
         self.assertFalse(item.is_fresh("other"))
@@ -26,7 +27,8 @@ class EvidenceTests(unittest.TestCase):
             "vitest",
             0,
             "abc123",
-            "tests pass",
+            "base-1",
+            summary="tests pass",
             artifact="artifacts/out.txt",
             limitation="no browser",
             timestamp="2026-08-25T12:00:00+00:00",
@@ -41,6 +43,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(loaded[0].command, "vitest")
         self.assertEqual(loaded[0].exit_code, 0)
         self.assertEqual(loaded[0].diff_hash, "abc123")
+        self.assertEqual(loaded[0].base_commit, "base-1")
         self.assertEqual(loaded[0].summary, "tests pass")
         self.assertEqual(loaded[0].artifact, "artifacts/out.txt")
         self.assertEqual(loaded[0].limitation, "no browser")
@@ -48,8 +51,8 @@ class EvidenceTests(unittest.TestCase):
         self.assertTrue(loaded[0].is_fresh("abc123"))
 
     def test_append_only_keeps_two_records(self):
-        first = Evidence("ev-1", "vitest", 0, "abc123", "unit pass")
-        second = Evidence("ev-2", "playwright", 0, "abc123", "e2e pass")
+        first = Evidence("ev-1", "vitest", 0, "abc123", "base-1", "unit pass")
+        second = Evidence("ev-2", "playwright", 0, "abc123", "base-1", "e2e pass")
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "evidence.jsonl"
             append_evidence(path, first)
@@ -59,3 +62,35 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual([item.id for item in loaded], ["ev-1", "ev-2"])
         self.assertEqual(loaded[0].command, "vitest")
         self.assertEqual(loaded[1].command, "playwright")
+
+    def test_read_skips_partial_last_line(self):
+        complete = Evidence("ev-1", "vitest", 0, "abc123", "base-1", "unit pass")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "evidence.jsonl"
+            path.write_text(
+                json.dumps(complete.__dict__) + '\n{"id":"ev-2","command":"pytest"',
+                encoding="utf-8",
+            )
+            loaded = read_evidence(path)
+
+        self.assertEqual([item.id for item in loaded], ["ev-1"])
+
+    def test_read_skips_corrupt_line_and_keeps_prior_records(self):
+        first = Evidence("ev-1", "vitest", 0, "abc123", "base-1", "unit pass")
+        second = Evidence("ev-2", "pytest", 0, "abc123", "base-1", "pytest pass")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "evidence.jsonl"
+            path.write_text(
+                "\n".join(
+                    [
+                        json.dumps(first.__dict__),
+                        '{"not": "evidence"}',
+                        json.dumps(second.__dict__),
+                        '{"id":"ev-3"',
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            loaded = read_evidence(path)
+
+        self.assertEqual([item.id for item in loaded], ["ev-1", "ev-2"])

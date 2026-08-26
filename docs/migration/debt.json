@@ -66,7 +66,7 @@
       "origin": "plan-2-final-review",
       "severity": "medium",
       "description": "evidence JSONL append is not atomic; Evidence does not persist base_commit required by spec §9 / evidence.toml.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "append_evidence uses the same atomic replace pattern as save_task_state; each record stores base_commit plus existing command/exit/diff_hash/artifact/limitation.",
       "defer_reason": "Ledger write path was out of this review-fix scope; freshness already keys on diff_hash."

@@ -44,7 +44,7 @@ class WorkflowIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(graph.conflicts(), set())
 
-        evidence = Evidence("ev-1", "vitest", 0, "abc", "tests pass")
+        evidence = Evidence("ev-1", "vitest", 0, "abc", "base-1", "tests pass")
         with tempfile.TemporaryDirectory() as tmp:
             ledger_path = Path(tmp) / "evidence.jsonl"
             append_evidence(ledger_path, evidence)
