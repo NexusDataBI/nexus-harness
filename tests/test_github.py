@@ -174,3 +174,12 @@ class GitHubTests(unittest.TestCase):
         self.assertIn("PVT_1", cmd)
         self.assertIn("PVTF_status", cmd)
         self.assertIn("In Progress", cmd)
+
+    @patch("nexus_harness.github.subprocess.run", side_effect=FileNotFoundError)
+    def test_missing_gh_raises_without_environment(self, run):
+        with self.assertRaises(GitHubError) as raised:
+            GitHub().create_issue("x/y", "t", "b")
+        message = str(raised.exception)
+        self.assertIn("gh CLI", message)
+        self.assertNotIn("GH_TOKEN", message)
+        self.assertNotIn("GITHUB_TOKEN", message)

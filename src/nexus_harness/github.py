@@ -39,7 +39,7 @@ class PullRequest:
 
 
 _SECRET_ASSIGNMENT = re.compile(
-    r"(?i)\b(?:GH_TOKEN|GITHUB_TOKEN|\bPAT\b|Authorization)\s*[:=]\s*\S+"
+    r"(?i)\b(?:GH_TOKEN|GITHUB_TOKEN|PAT\b|Authorization)\s*[:=]\s*.+"
 )
 _BEARER = re.compile(r"(?i)\bBearer\s+\S+")
 _GITHUB_TOKEN_VALUE = re.compile(
