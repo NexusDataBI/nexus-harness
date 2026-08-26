@@ -122,7 +122,9 @@ def _project_from_entry(key: object, raw: object) -> Project:
     if "id" in raw:
         declared = _required_text(raw["id"], "id")
         if declared != project_id:
-            raise ProjectRegistryError(f"duplicate project id: {declared}")
+            raise ProjectRegistryError(
+                f"id field '{declared}' does not match key '{project_id}'"
+            )
     missing = [field for field in REQUIRED_FIELDS if field not in raw]
     if missing:
         raise ProjectRegistryError(

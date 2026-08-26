@@ -128,7 +128,7 @@
     "dist/src/nexus_harness/memory/store.py": "f726246562f2544af11a16d25c10f130142ed495a509e011f15648c51fb5e196",
     "dist/src/nexus_harness/migrate.py": "5f411624cb91fec827c1c1c7fc4feff99185e8e60b44c9e65674ddf5e9d923f8",
     "dist/src/nexus_harness/pretool.py": "04e6b4070106fd5e23e5fb61bc1f97b2bbbe2da83f6dbc4671ffbf60b8aac29a",
-    "dist/src/nexus_harness/project.py": "767d80af5313f381f663198baa0f6611399402876aba99c04018bbef029e4b15",
+    "dist/src/nexus_harness/project.py": "29aec9bc01517827720b359caf89167f6eae4b59bef8cd216f8abfb9f6d3711a",
     "dist/src/nexus_harness/quality.py": "6ee561a41808b0e9bef405620d988c97024da0211b425bcf4230c3f2ebaf4576",
     "dist/src/nexus_harness/runtime_claude.py": "1f827e4da687f311d686d0bb91cf3f5d6a888f892dd6ffdc4eab797a1711dc1c",
     "dist/src/nexus_harness/runtime_codex.py": "41c28c1814d820f6a34100130fc1ea717f3d07dbb2a1fbfbe61e11f7bb070779",

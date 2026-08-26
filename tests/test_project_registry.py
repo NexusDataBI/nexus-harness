@@ -106,7 +106,7 @@ class ProjectRegistryTests(unittest.TestCase):
             )
 
     def test_duplicate_id_rejected(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as raised:
             ProjectRegistry.from_dict(
                 {
                     "projects": {
@@ -119,6 +119,7 @@ class ProjectRegistryTests(unittest.TestCase):
                     }
                 }
             )
+        self.assertIn("does not match key", str(raised.exception))
 
     def test_missing_required_fields_rejected(self):
         for field in ("repository", "client", "status"):
