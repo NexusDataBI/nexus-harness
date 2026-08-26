@@ -124,3 +124,96 @@ class ClaudeAdapterTests(unittest.TestCase):
             self.files["hooks/claude_event.py"],
             Path("hooks/claude_event.py").read_text(encoding="utf-8"),
         )
+
+    def test_generated_commands_use_python3(self):
+        settings = json.loads(self.files["claude/settings.json"])
+        commands = [
+            hook["command"]
+            for groups in settings["hooks"].values()
+            for group in groups
+            for hook in group["hooks"]
+        ]
+        self.assertTrue(commands)
+        for command in commands:
+            self.assertTrue(command.startswith("python3 "), command)
+
+    def _run_wrapper(self, wrapper, argv, stdin="{}", dispatch=None):
+        common_hooks = types.ModuleType("nexus_harness.hooks")
+        if dispatch is not None:
+            common_hooks.dispatch = dispatch
+        stdout = io.StringIO()
+        modules = {"nexus_harness.hooks": common_hooks} if dispatch is not None else {}
+        with patch.dict(sys.modules, modules):
+            with patch.object(sys, "argv", argv):
+                with patch.object(sys, "stdin", io.StringIO(stdin)):
+                    with patch.object(sys, "stdout", stdout):
+                        code = wrapper.main()
+        return code, stdout.getvalue()
+
+    def test_session_start_prints_official_hook_protocol_without_task_state(self):
+        wrapper = self._load_wrapper()
+
+        class Result:
+            exit_code = 0
+            output = {
+                "capsule": "SAFE CAPSULE TEXT",
+                "warnings": [{"code": "stale", "message": "pointer src/x.py"}],
+                "task": {
+                    "task_id": "SECRET-TASK-XYZ",
+                    "intent": "DUMPED-INTENT-MUST-NOT-APPEAR",
+                },
+            }
+
+        code, raw = self._run_wrapper(
+            wrapper,
+            ["claude_event.py", "--event", "SessionStart"],
+            dispatch=lambda *_args, **_kwargs: Result(),
+        )
+        payload = json.loads(raw)
+        context = payload["hookSpecificOutput"]["additionalContext"]
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["hookSpecificOutput"]["hookEventName"], "SessionStart")
+        self.assertIn("SAFE CAPSULE TEXT", context)
+        self.assertIn("pointer src/x.py", context)
+        self.assertNotIn("SECRET-TASK-XYZ", context)
+        self.assertNotIn("DUMPED-INTENT-MUST-NOT-APPEAR", raw)
+        self.assertNotIn("task_id", raw)
+
+    def test_user_prompt_submit_prints_official_hook_protocol(self):
+        wrapper = self._load_wrapper()
+
+        class Result:
+            exit_code = 0
+            output = {"capsule": "WARM CAPSULE", "warnings": [], "refreshed": True}
+
+        code, raw = self._run_wrapper(
+            wrapper,
+            ["claude_event.py", "--event", "UserPromptSubmit"],
+            dispatch=lambda *_args, **_kwargs: Result(),
+        )
+        payload = json.loads(raw)
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            payload["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit"
+        )
+        self.assertEqual(
+            payload["hookSpecificOutput"]["additionalContext"], "WARM CAPSULE"
+        )
+        self.assertNotIn("refreshed", raw)
+
+    def test_other_events_keep_neutral_json_output(self):
+        wrapper = self._load_wrapper()
+
+        class Result:
+            exit_code = 0
+            output = {"drift": True, "task": {"task_id": "keep-me"}}
+
+        code, raw = self._run_wrapper(
+            wrapper,
+            ["claude_event.py", "--event", "ConfigChange"],
+            dispatch=lambda *_args, **_kwargs: Result(),
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            json.loads(raw), {"drift": True, "task": {"task_id": "keep-me"}}
+        )
