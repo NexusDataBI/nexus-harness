@@ -16,6 +16,8 @@ from typing import Any
 from nexus_harness.completion import evaluate_completion
 from nexus_harness.failures import FailureMemory
 from nexus_harness.state import TaskState, load_task_state, save_task_state
+from nexus_harness.memory.lifecycle import CandidateSignal
+from nexus_harness.memory.models import MemorySource
 
 try:
     from nexus_harness.memory import (
@@ -98,6 +100,37 @@ def _as_drafts(items: list | tuple) -> list:
         ]
     except (ImportError, KeyError, TypeError, ValueError):
         return list(items)
+
+
+def _as_signals(items: list | tuple) -> tuple[CandidateSignal, ...]:
+    signals = []
+    for item in items:
+        if isinstance(item, CandidateSignal):
+            signals.append(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        try:
+            sources = tuple(
+                source
+                if isinstance(source, MemorySource)
+                else MemorySource(str(source["kind"]), str(source["ref"]))
+                for source in item.get("sources", ())
+            )
+            signals.append(
+                CandidateSignal(
+                    kind=str(item["kind"]),
+                    title=str(item["title"]),
+                    statement=str(item["statement"]),
+                    sources=sources,
+                    evidence_ids=tuple(map(str, item.get("evidence_ids", ()))),
+                    related_paths=tuple(map(str, item.get("related_paths", ()))),
+                    tags=tuple(map(str, item.get("tags", ()))),
+                )
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return tuple(signals)
 
 
 def completion_gate(payload: dict | None = None) -> HookResult:
@@ -205,6 +238,23 @@ def config_drift(payload: dict) -> HookResult:
     return HookResult(0, {"drift": bool(payload.get("drift", False))})
 
 
+def stop_handler(payload: dict) -> HookResult:
+    """Prevent repeated Stop delivery from recursively re-entering the gate."""
+    marker = _root(payload) / ".nexus" / "stop-loop.json"
+    identity = str(payload.get("event_id") or payload.get("generation") or "default")
+    try:
+        previous = (
+            json.loads(marker.read_text(encoding="utf-8")) if marker.exists() else {}
+        )
+        if previous.get("identity") == identity:
+            return HookResult(0, {"loop_protected": True, "identity": identity})
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({"identity": identity}), encoding="utf-8")
+    except (OSError, json.JSONDecodeError, TypeError):
+        return HookResult(0, {"loop_protected": True, "warning": "guard unavailable"})
+    return policy_gate(payload)
+
+
 def task_completed(payload: dict) -> HookResult:
     gate = completion_gate(payload)
     if gate.exit_code != 0:
@@ -212,7 +262,7 @@ def task_completed(payload: dict) -> HookResult:
     if collect_memory_candidates is None or consolidate_memory is None:
         return HookResult(0, {**(gate.output or {}), "memory": "unavailable"})
     task = _task(payload) or {}
-    signals = tuple(payload.get("signals", ()))
+    signals = _as_signals(payload.get("signals", ()))
     candidates = _as_drafts(payload.get("candidates", ()))
     if not candidates:
         candidates = collect_memory_candidates(
@@ -263,7 +313,7 @@ _HANDLERS = {
     "PostToolUseFailure": failure_memory,
     "PostToolBatch": batch_maintenance,
     "TaskCompleted": task_completed,
-    "Stop": policy_gate,
+    "Stop": stop_handler,
     "PreCompact": compact_observation,
     "PostCompact": session_start,
     "ConfigChange": config_drift,

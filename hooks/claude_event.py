@@ -34,6 +34,8 @@ def main() -> int:
         return 0
     if result is None:
         return 2 if args.completion_gate else 0
+    if getattr(result, "output", None) is not None:
+        print(json.dumps(result.output, default=str))
     exit_code = getattr(result, "exit_code", result)
     try:
         return int(exit_code)

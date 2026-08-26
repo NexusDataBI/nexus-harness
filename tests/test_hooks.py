@@ -1,9 +1,12 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 from unittest.mock import patch
 
-from nexus_harness.hooks import completion_gate, dispatch
+from nexus_harness.hooks import completion_gate, dispatch, session_start
+from nexus_harness.memory.freshness import AuthorityContradiction, TruthStrength
+from nexus_harness.memory.models import MemoryDraft
 
 
 class HookTests(unittest.TestCase):
@@ -72,6 +75,89 @@ class HookTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         save.assert_called_once()
         checkpoint.assert_called_once()
+
+    @patch("nexus_harness.hooks.evaluate_completion")
+    @patch("nexus_harness.hooks.consolidate_memory")
+    def test_completion_accepts_json_signal_dicts(self, consolidate, evaluate):
+        evaluate.return_value = type(
+            "Result", (), {"status": "READY_TO_SHIP", "reasons": []}
+        )()
+        result = dispatch(
+            "TaskCompleted",
+            {
+                "task": {"task_id": "t", "repo_id": "r"},
+                "project_root": tempfile.gettempdir(),
+                "base_commit": "base",
+                "signals": [
+                    {
+                        "kind": "invariant",
+                        "title": "Safe sessions",
+                        "statement": "Sessions remain isolated.",
+                        "sources": [{"kind": "approved_spec", "ref": "SPEC-1"}],
+                    }
+                ],
+            },
+        )
+        self.assertEqual(result.exit_code, 0)
+        consolidate.assert_called_once()
+        self.assertIsInstance(consolidate.call_args.args[1][0], MemoryDraft)
+
+    def test_stop_same_generation_is_protected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = {"project_root": tmp, "event_id": "same-generation"}
+            with patch("nexus_harness.hooks.policy_gate") as gate:
+                gate.return_value = type("Result", (), {"exit_code": 0, "output": {}})()
+                first = dispatch("Stop", payload)
+                second = dispatch("Stop", payload)
+        self.assertEqual(first.exit_code, 0)
+        self.assertTrue(second.output["loop_protected"])
+        self.assertEqual(gate.call_count, 1)
+
+    def test_compact_session_start_restores_candidates_and_invalid_memory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            candidate_path = Path(tmp) / "candidates.json"
+            candidate_path.write_text("[]", encoding="utf-8")
+            invalid = Path(tmp) / ".nexus" / "memory" / "invariants"
+            invalid.mkdir(parents=True)
+            (invalid / "bad.md").write_text("Never inject this", encoding="utf-8")
+            (invalid / "bad.json").write_text("{", encoding="utf-8")
+            result = session_start(
+                {
+                    "project_root": tmp,
+                    "project_id": "repo",
+                    "compact": True,
+                    "candidate_path": candidate_path,
+                    "query": "invalid",
+                }
+            )
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.output["candidate_count"], 0)
+        self.assertNotIn("Never inject this", result.output["capsule"])
+        self.assertTrue(
+            result.output["warnings"] or "excluded" in result.output["capsule"]
+        )
+
+    def test_contradiction_is_forwarded_without_injecting_body(self):
+        contradiction = AuthorityContradiction(
+            memory_id="mem-x", authority=TruthStrength.CURRENT_REPO, pointer="src/x.py"
+        )
+        with patch("nexus_harness.hooks.session_recall") as recall:
+            recall.return_value = type("Capsule", (), {"text": "safe capsule"})()
+            result = session_start(
+                {
+                    "project_root": tempfile.gettempdir(),
+                    "project_id": "repo",
+                    "query": "x",
+                    "contradictions": [contradiction],
+                }
+            )
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(recall.call_args.kwargs["contradictions"], (contradiction,))
+
+    def test_wrapper_output_is_json_serializable(self):
+        result = dispatch("ConfigChange", {"drift": True})
+        encoded = json.dumps(result.output)
+        self.assertIn("drift", encoded)
 
 
 if __name__ == "__main__":
