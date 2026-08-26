@@ -41,7 +41,7 @@ class MemoryDoctorReport:
 
 def memory_doctor(project_root, portfolio_root=None) -> MemoryDoctorReport:
     findings: list[MemoryDoctorFinding] = []
-    loaded: list[MemoryRecord] = []
+    loaded: list[tuple[MemoryRecord, Path]] = []
     project_root = Path(project_root)
     project_parsed, project_stale = _scan_tree(
         findings,
@@ -63,7 +63,8 @@ def memory_doctor(project_root, portfolio_root=None) -> MemoryDoctorReport:
             loaded,
         )
     _check_capsule_policy(findings)
-    _check_index_rebuildable(findings, loaded)
+    _check_superseded_consistency(findings, loaded)
+    _check_index_rebuildable(findings, [record for record, _path in loaded])
     fail = any(item.severity == "FAIL" for item in findings)
     return MemoryDoctorReport(
         gate="FAIL" if fail else "PASS",
@@ -151,6 +152,30 @@ def _check_index_rebuildable(
         )
 
 
+def _check_superseded_consistency(
+    findings: list[MemoryDoctorFinding],
+    loaded: list[tuple[MemoryRecord, Path]],
+) -> None:
+    claimed_ids = {
+        memory_id for record, _path in loaded for memory_id in record.supersedes
+    }
+    for record, path in loaded:
+        if (
+            record.status == MemoryStatus.SUPERSEDED
+            and not record.supersedes
+            and record.id not in claimed_ids
+        ):
+            findings.append(
+                MemoryDoctorFinding(
+                    code="superseded_without_target",
+                    severity="FAIL",
+                    memory_id=record.id,
+                    path=str(path),
+                    message="SUPERSEDED memory has no incoming or outgoing supersedes link",
+                )
+            )
+
+
 def _invalid_related_path(value: str) -> bool:
     normalized = value.replace("\\", "/").strip()
     if not normalized:
@@ -164,7 +189,7 @@ def _scan_tree(
     root: Path,
     categories,
     project_root: Path,
-    loaded: list[MemoryRecord],
+    loaded: list[tuple[MemoryRecord, Path]],
 ) -> tuple[int, int]:
     parsed = 0
     stale = 0
@@ -228,7 +253,7 @@ def _scan_tree(
             if record is None:
                 continue
             parsed += 1
-            loaded.append(record)
+            loaded.append((record, json_path))
             seen_ids[record.id].append(json_path)
             _check_record(findings, record, json_path, project_root)
             if _is_stale(project_root, record):
@@ -302,16 +327,6 @@ def _check_record(
                 memory_id=record.id,
                 path=str(path),
                 message="VERIFIED memory requires provenance sources",
-            )
-        )
-    if record.status == MemoryStatus.SUPERSEDED and not record.supersedes:
-        findings.append(
-            MemoryDoctorFinding(
-                code="superseded_without_target",
-                severity="FAIL",
-                memory_id=record.id,
-                path=str(path),
-                message="SUPERSEDED memory is missing a supersedes target",
             )
         )
     if any(_invalid_related_path(related) for related in record.related_paths):

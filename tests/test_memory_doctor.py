@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from nexus_harness.memory.doctor import memory_doctor
+from nexus_harness.memory.lifecycle import supersede_memory
 from nexus_harness.memory.models import (
     MemoryConfidence,
     MemoryDraft,
@@ -203,6 +204,45 @@ class MemoryDoctorTests(unittest.TestCase):
             )
             self.assertEqual(finding.severity, "FAIL")
             self.assertEqual(finding.memory_id, record.id)
+
+    def test_supersede_memory_with_incoming_replacement_link_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            old = write_memory(root, _candidate(title="Old rule").to_record())
+            replacement = write_memory(
+                root,
+                replace(
+                    _candidate(title="Replacement rule").to_record(),
+                    supersedes=(old.id,),
+                ),
+            )
+
+            supersede_memory(root, old.id, replacement.id)
+            report = memory_doctor(root)
+
+            old_findings = [
+                finding
+                for finding in report.findings
+                if finding.memory_id == old.id
+                and finding.code == "superseded_without_target"
+            ]
+            self.assertEqual(old_findings, [])
+
+    def test_superseded_with_outgoing_link_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            record = replace(
+                _candidate(title="Old rule").to_record(),
+                status=MemoryStatus.SUPERSEDED,
+                supersedes=("mem-invariant-replacement-deadbeef",),
+            )
+            write_memory(root, record)
+
+            report = memory_doctor(root)
+
+            self.assertNotIn("superseded_without_target", _finding_codes(report))
 
     def test_verified_stale_status_is_inconsistent(self):
         root, commit_a = make_repo_with_changed_file("src/auth.py")
