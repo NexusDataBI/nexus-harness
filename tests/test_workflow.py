@@ -31,6 +31,34 @@ class WorkflowTests(unittest.TestCase):
 
         self.assertEqual(advanced.stage, 5)
 
+    def test_tracking_requires_positive_issue_before_implement(self):
+        state = TaskState.new("task-1", "repo-1")
+        state.stage = 4
+        state.tracking_required = True
+        state.acceptance = [
+            AcceptanceCriterion(id="AC-001", statement="does the thing"),
+        ]
+        with self.assertRaisesRegex(ValueError, "issue"):
+            advance_stage(state, 5)
+
+        state.issue = 0
+        with self.assertRaisesRegex(ValueError, "issue"):
+            advance_stage(state, 5)
+
+        state.issue = 42
+        self.assertEqual(advance_stage(state, 5).stage, 5)
+
+    def test_read_only_intents_are_exempt_from_issue_requirement(self):
+        for intent in ("inspect", "read-only"):
+            state = TaskState.new("task-1", "repo-1")
+            state.stage = 4
+            state.intent = intent
+            state.tracking_required = True
+            state.acceptance = [
+                AcceptanceCriterion(id="AC-001", statement="does the thing"),
+            ]
+            self.assertEqual(advance_stage(state, 5).stage, 5)
+
     def test_acceptance_criterion_defaults_to_fail(self):
         criterion = AcceptanceCriterion(id="AC-001", statement="does the thing")
         self.assertEqual(criterion.status, "FAIL")

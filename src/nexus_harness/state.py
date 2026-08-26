@@ -38,6 +38,16 @@ class TaskState:
     current_diff_hash: str | None = None
     intent: str | None = None
     failures: FailureMemory | dict | None = None
+    quality_gate: object | None = None
+    security_gate: object | None = None
+    review_gate: object | None = None
+    verified_diff_hash: str | None = None
+    reviewed_diff_hash: str | None = None
+    findings: list = field(default_factory=list)
+    evidence: list = field(default_factory=list)
+    skip_reason: str | None = None
+    approvals_required: list | dict = field(default_factory=list)
+    approvals_recorded: list | dict | bool = field(default_factory=list)
 
     @classmethod
     def new(cls, task_id: str, repo_id: str) -> "TaskState":
@@ -80,6 +90,21 @@ class TaskState:
                 if hasattr(self.failures, "to_dict")
                 else self.failures
             )
+        for key in (
+            "quality_gate",
+            "security_gate",
+            "review_gate",
+            "verified_diff_hash",
+            "reviewed_diff_hash",
+            "findings",
+            "evidence",
+            "skip_reason",
+            "approvals_required",
+            "approvals_recorded",
+        ):
+            value = getattr(self, key)
+            if value is not None and value != []:
+                payload[key] = _json_value(value)
         return payload
 
     @classmethod
@@ -108,6 +133,16 @@ class TaskState:
             current_diff_hash=payload.get("current_diff_hash"),
             intent=payload.get("intent"),
             failures=_failures_from_payload(payload.get("failures")),
+            quality_gate=payload.get("quality_gate"),
+            security_gate=payload.get("security_gate"),
+            review_gate=payload.get("review_gate"),
+            verified_diff_hash=payload.get("verified_diff_hash"),
+            reviewed_diff_hash=payload.get("reviewed_diff_hash"),
+            findings=payload.get("findings", []),
+            evidence=payload.get("evidence", []),
+            skip_reason=payload.get("skip_reason"),
+            approvals_required=payload.get("approvals_required", []),
+            approvals_recorded=payload.get("approvals_recorded", []),
         )
 
 
@@ -117,6 +152,20 @@ def _failures_from_payload(raw):
     if isinstance(raw, FailureMemory):
         return raw
     return FailureMemory.from_dict(raw)
+
+
+def _json_value(value):
+    if hasattr(value, "to_dict"):
+        return value.to_dict()
+    if isinstance(value, dict):
+        return {key: _json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_value(item) for item in value]
+    if hasattr(value, "__dataclass_fields__"):
+        return {
+            key: _json_value(getattr(value, key)) for key in value.__dataclass_fields__
+        }
+    return value
 
 
 def save_task_state(state: TaskState, path: Path) -> None:

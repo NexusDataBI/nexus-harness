@@ -56,10 +56,10 @@
       "origin": "plan-2-final-review",
       "severity": "medium",
       "description": "core/workflow/completion.toml is not fully applied at runtime: required_approvals_recorded is unread; DONE_NOT_SHIPPED and shipping_is_not_implied are not distinct completion results.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "evaluate_completion reads completion.toml; missing required approvals fail closed; READY_TO_SHIP stays distinct from DONE_NOT_SHIPPED; shipping is never implied by DONE.",
-      "defer_reason": "Approvals, ship, and adapters land in Plans 3/8. This round only closed freshness, finding status, and issue validity."
+      "defer_reason": "Resolved: completion.toml is loaded at runtime, required approvals fail closed, and READY_TO_SHIP remains distinct from DONE_NOT_SHIPPED."
     },
     {
       "id": "P2-D02",
@@ -106,20 +106,20 @@
       "origin": "plan-2-final-review",
       "severity": "low",
       "description": "Stage 5 (implement) does not require a GitHub Issue; only the Done Gate checks issue when tracking_required.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "If project-tracking requires an Issue before implement, advance_stage(5) fail-closes; otherwise document that Issue is a Done Gate-only check.",
-      "defer_reason": "Spec tracking is enforced at completion. GitHub Issue creation is Plan 3."
+      "defer_reason": "Resolved: implementation-bearing Stage 5 transitions require a positive issue id when tracking_required is enabled; no issue is created."
     },
     {
       "id": "P2-D07",
       "origin": "plan-2-final-review",
       "severity": "medium",
       "description": "Operational completion fields (quality_gate, security_gate, review_gate, verified/reviewed hashes, findings, evidence, skip_reason) are not in task-state schema or TaskState.to_dict. Load is fail-closed (no false DONE) but has no roundtrip.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-3",
       "resolution_condition": "Extend task-state.schema.json (R8) and persist those fields through save/load so a READY_TO_SHIP state survives restart without reconstructing gates in memory.",
-      "defer_reason": "This round persisted failures only. Extra completion fields stay in-memory to avoid a wide schema+lock change without Plan 3 adapters."
+      "defer_reason": "Resolved: operational completion fields are explicit in the schema and survive TaskState save/load roundtrips."
     },
     {
       "id": "P25-D01",

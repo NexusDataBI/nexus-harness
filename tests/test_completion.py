@@ -251,6 +251,26 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(result.status, "READY_TO_SHIP")
         self.assertEqual(result.reasons, [])
 
+    def test_required_approvals_are_loaded_from_completion_policy(self):
+        result = evaluate_completion(_ready_state(approvals_required=["review"]))
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(any("approval" in reason for reason in result.reasons))
+
+    def test_explicitly_unrecorded_approvals_fail_closed(self):
+        result = evaluate_completion(_ready_state(approvals_recorded=False))
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(any("approval" in reason for reason in result.reasons))
+
+    def test_recorded_required_approvals_allow_ready_to_ship(self):
+        result = evaluate_completion(
+            _ready_state(
+                approvals_required=["review"],
+                approvals_recorded=["review"],
+            )
+        )
+        self.assertEqual(result.status, "READY_TO_SHIP")
+        self.assertEqual(result.reasons, [])
+
     def test_promote_and_evaluate_accept_task_state(self):
         state = TaskState.new("task-1", "repo-1")
         state.tracking_required = True
@@ -298,3 +318,39 @@ class CompletionTests(unittest.TestCase):
         advanced = advance_stage(state, 8)
         self.assertEqual(advanced.stage, 8)
         self.assertEqual(evaluate_completion(advanced).status, "READY_TO_SHIP")
+
+    def test_completion_state_roundtrips_without_changing_result(self):
+        import tempfile
+        from pathlib import Path
+        from nexus_harness.state import load_task_state, save_task_state
+
+        state = TaskState.new("task-1", "repo-1")
+        state.tracking_required = True
+        state.issue = 123
+        state.current_diff_hash = "abc"
+        state.acceptance = [
+            AcceptanceCriterion(
+                id="AC-1", statement="does the thing", status="PASS", evidence="ev-1"
+            )
+        ]
+        state.quality_gate = {"gate": "PASS", "diff_hash": "abc", "report": "q"}
+        state.security_gate = {"gate": "PASS", "diff_hash": "abc", "report": "s"}
+        state.review_gate = "SKIP"
+        state.skip_reason = "not applicable"
+        state.verified_diff_hash = "abc"
+        state.reviewed_diff_hash = "abc"
+        state.findings = [{"severity": "low", "status": "confirmed"}]
+        state.evidence = [
+            {"id": "ev-1", "exit_code": 0, "diff_hash": "abc", "base_commit": "base"}
+        ]
+        state.approvals_required = ["review"]
+        state.approvals_recorded = ["review"]
+
+        before = evaluate_completion(state)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            save_task_state(state, path)
+            loaded = load_task_state(path)
+        self.assertEqual(evaluate_completion(loaded), before)
+        self.assertEqual(loaded.skip_reason, "not applicable")
+        self.assertEqual(loaded.approvals_recorded, ["review"])

@@ -1,8 +1,13 @@
 from dataclasses import dataclass, field
+from pathlib import Path
+import tomllib
 
 from nexus_harness.evidence import Evidence
 
 _BLOCKING_FINDINGS = frozenset({"blocker", "high"})
+_COMPLETION_POLICY = (
+    Path(__file__).resolve().parents[2] / "core" / "workflow" / "completion.toml"
+)
 
 
 @dataclass
@@ -17,6 +22,9 @@ def evaluate_completion(state) -> CompletionResult:
 
     if _get(state, "tracking_required") and not _has_issue(state):
         reasons.append("issue required when tracking_required")
+
+    if _required_approvals_missing(state):
+        reasons.append("required approvals are not recorded")
 
     acceptance = list(_get(state, "acceptance") or [])
     if not acceptance or any(_item_status(item) != "PASS" for item in acceptance):
@@ -52,6 +60,31 @@ def evaluate_completion(state) -> CompletionResult:
     if reasons:
         return CompletionResult(status="FAIL", reasons=reasons)
     return CompletionResult(status="READY_TO_SHIP", reasons=[])
+
+
+def _load_completion_policy() -> dict:
+    with _COMPLETION_POLICY.open("rb") as policy_file:
+        return tomllib.load(policy_file)
+
+
+def _required_approvals_missing(state) -> bool:
+    policy = _load_completion_policy()
+    if not policy.get("require", {}).get("required_approvals_recorded", False):
+        return False
+    required = _get(state, "approvals_required") or []
+    recorded = _get(state, "approvals_recorded")
+    if recorded is None:
+        recorded = _get(state, "approvals") or []
+    if isinstance(recorded, bool):
+        return not recorded
+    if isinstance(required, dict):
+        required = required.keys()
+    if isinstance(recorded, dict):
+        recorded = recorded.keys()
+    try:
+        return not set(required).issubset(set(recorded))
+    except TypeError:
+        return True
 
 
 def promote_acceptance(state, evidence, ledger=None):

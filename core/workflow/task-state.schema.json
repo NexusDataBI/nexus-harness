@@ -37,7 +37,37 @@
     "tracking_required": { "type": "boolean" },
     "current_diff_hash": { "type": ["string", "null"] },
     "intent": { "type": ["string", "null"] },
-    "failures": { "$ref": "#/$defs/failureMemory" }
+    "failures": { "$ref": "#/$defs/failureMemory" },
+    "quality_gate": { "$ref": "#/$defs/operationalReport" },
+    "security_gate": { "$ref": "#/$defs/operationalReport" },
+    "review_gate": {
+      "type": ["string", "null"],
+      "enum": ["PASS", "FAIL", "SKIP", null]
+    },
+    "verified_diff_hash": { "type": ["string", "null"] },
+    "reviewed_diff_hash": { "type": ["string", "null"] },
+    "findings": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "skip_reason": { "type": ["string", "null"] },
+    "approvals_required": {
+      "oneOf": [
+        { "type": "array", "items": { "type": "string" } },
+        { "type": "object", "additionalProperties": { "type": "string" } }
+      ]
+    },
+    "approvals_recorded": {
+      "oneOf": [
+        { "type": "boolean" },
+        { "type": "array", "items": { "type": "string" } },
+        { "type": "object", "additionalProperties": true }
+      ]
+    }
   },
   "$defs": {
     "stageState": {
@@ -67,6 +97,13 @@
         "count": { "type": "integer", "minimum": 0 },
         "last_diff_hash": { "type": ["string", "null"] }
       }
+    },
+    "operationalReport": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" },
+        { "type": "object", "additionalProperties": true }
+      ]
     }
   }
 }
