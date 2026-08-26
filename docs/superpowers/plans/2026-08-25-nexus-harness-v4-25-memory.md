@@ -1777,4 +1777,3 @@ NOT STARTED
 ## Stop condition
 
 After the report, stop. Do not merge Plan 2.5 into main, push, open a PR, start Plan 3, create the user's real Obsidian vault, access the VPS or configure any runtime globally. The user will review Plan 2 + Plan 2.5 before authorizing Plan 3.
-

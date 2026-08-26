@@ -1,6 +1,6 @@
 # Nexus Memory Contract for Plan 3 Runtime Adapters & Hooks
 
-**Status before Plan 2.5:** approved target contract  
+**Status before Plan 2.5:** approved target contract
 **Status after Plan 2.5:** public API validated against `nexus_harness.memory`. Plan 3 consumes these exports; it does not own storage.
 
 ## Purpose

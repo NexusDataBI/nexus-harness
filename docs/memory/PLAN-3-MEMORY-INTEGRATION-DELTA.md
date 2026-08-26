@@ -217,4 +217,3 @@ portfolio absent
 compact/restart
 → operational state restored + canonical capsule rebuilt
 ```
-

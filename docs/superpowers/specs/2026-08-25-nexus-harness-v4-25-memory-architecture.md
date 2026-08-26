@@ -1,8 +1,8 @@
 # Nexus Harness v4 — Plan 2.5 Memory Architecture
 
-**Status:** Approved architecture extension for implementation between Plan 2 and Plan 3  
-**Date:** 2026-08-25  
-**Parent spec:** `docs/superpowers/specs/2026-08-25-nexus-harness-v4-final-design.md`  
+**Status:** Approved architecture extension for implementation between Plan 2 and Plan 3
+**Date:** 2026-08-25
+**Parent spec:** `docs/superpowers/specs/2026-08-25-nexus-harness-v4-final-design.md`
 **Next consumer:** `docs/superpowers/plans/2026-08-25-nexus-harness-v4-03-runtime-adapters-hooks.md`
 
 ## 1. Purpose
@@ -1227,4 +1227,3 @@ Not part of Plan 2.5:
 The governing rule is:
 
 > **Memory helps the agent find context; memory never grants permission, proves correctness or overrides current truth.**
-
