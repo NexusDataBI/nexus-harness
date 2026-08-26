@@ -100,7 +100,7 @@
     "dist/src/nexus_harness/affected.py": "1e1ed73f492668ec63e5e86e47dc1c831fcfce981cf59b990076db6127933814",
     "dist/src/nexus_harness/build.py": "a2318f4b121d892a2b9db501f5e3f14ee5fe59b46b798f2b16ed012b35b75179",
     "dist/src/nexus_harness/ci.py": "5f1fce9ea0053155cec2440a0f81731b62e58bdfdbd747e64854da11dc47ecc7",
-    "dist/src/nexus_harness/command.py": "f402721d44a61592d5ff71ccca9a3de5b0aa792131b42a2428843c25137aa249",
+    "dist/src/nexus_harness/command.py": "23f5a20b830406daa90fb0cb6dff8c9fd99c35b76fd5a0d984702f55287aae7e",
     "dist/src/nexus_harness/compile.py": "02781e7f1db41bee647e3961e04d87484f4470055f922967c3bbc4ceb1f13ab3",
     "dist/src/nexus_harness/completion.py": "c810ddefaa2874ebfb33f38077eeaec38112e01956f96706234e1c2957d2b8bc",
     "dist/src/nexus_harness/config.py": "d7b900f819a1bd05d71f8adf96e3f1d84698898e7c3dec2a2b675dcbae88a757",
@@ -139,7 +139,7 @@
     "dist/src/nexus_harness/skills.py": "f0612f10a821bc1ad804bc72bc4d18d34295d1071b00fe1b1b03606d2956ae85",
     "dist/src/nexus_harness/state.py": "641f5bef6bc5da11488ca7c33d093d0f08ec2968e403328f5d3b110ce9b3015c",
     "dist/src/nexus_harness/tooling.py": "106b7f5c7c7181f38f1ab1c9b7ca10a0dd90699d82501fa6d2cdaddbaa074409",
-    "dist/src/nexus_harness/validate.py": "1bedafeca9b023a50000e3b84d8b21f1b4e0780a5a287ec960db2afb88b25493",
+    "dist/src/nexus_harness/validate.py": "2dc3994e1ec29977a4d79d6daf12d8050e367aafbe326aa0d948ab9a00da56ea",
     "dist/src/nexus_harness/workflow.py": "7599763db916f99b45243bfe12cd6a3162c2315319bc6e4cdbd719d94ad442ba"
   },
   "schema_version": 1

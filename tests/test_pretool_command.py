@@ -68,6 +68,21 @@ class PretoolCommandPolicyTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertTrue(output.get("denied"))
 
+    def test_malformed_quoted_ssh_fails_closed(self):
+        code, output = evaluate_pretool(_bash("'ssh example-host uname"))
+        self.assertEqual(code, 2)
+        self.assertTrue(output.get("denied"))
+
+    def test_exec_ssh_is_protected(self):
+        code, output = evaluate_pretool(_bash("exec ssh example-host uname"))
+        self.assertEqual(code, 2)
+        self.assertEqual(output.get("reason"), "production requires approval")
+
+    def test_nested_exec_ssh_is_protected(self):
+        code, output = evaluate_pretool(_bash("bash -c 'exec ssh example-host uname'"))
+        self.assertEqual(code, 2)
+        self.assertEqual(output.get("reason"), "production requires approval")
+
     def test_explicit_production_approval_permits_ssh(self):
         code, output = evaluate_pretool(
             _bash("ssh example-host uname", approvals_recorded=["production"])

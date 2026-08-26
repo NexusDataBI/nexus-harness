@@ -9,7 +9,18 @@ from pathlib import PurePosixPath
 
 _SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh"})
 _PREFIX_WRAPPERS = frozenset(
-    {"sudo", "doas", "env", "nice", "nohup", "command", "time", "timeout"}
+    {
+        "sudo",
+        "doas",
+        "env",
+        "nice",
+        "nohup",
+        "command",
+        "time",
+        "timeout",
+        "exec",
+        "builtin",
+    }
 )
 _COMPOSE_VALUE_FLAGS = frozenset(
     {
@@ -29,7 +40,7 @@ _SQL_CLIENTS = frozenset({"psql", "mysql", "mysqlsh", "sqlite3"})
 _MAX_UNWRAP = 6
 
 _SENSITIVE_RAW = re.compile(
-    r"(?:^|[\s;&|])(?:ssh|scp|kubectl|helm)\b"
+    r"\b(?:ssh|scp|kubectl|helm)\b"
     r"|docker(?:-compose)?(?:\s+compose)?\b"
     r"|\brm\s+-[^\s]*[rR]"
     r"|\bmkfs"
@@ -137,8 +148,6 @@ def _extract_shell_script(tokens: list[str]) -> str | None:
             if index + 1 >= len(tokens):
                 return None
             return tokens[index + 1]
-        if token == "--" and index + 1 < len(tokens):
-            return tokens[index + 1]
         index += 1
     return None
 
@@ -214,15 +223,10 @@ def _verb_after_flags(tokens: list[str], value_flags: frozenset[str]) -> str | N
 
 
 def _rm_is_destructive(argv: tuple[str, ...]) -> bool:
-    clustered = False
     recursive = False
-    force = False
     for token in argv[1:]:
         if token in {"--recursive", "-R", "-r"}:
             recursive = True
-            continue
-        if token in {"--force", "-f"}:
-            force = True
             continue
         if token.startswith("--"):
             continue
@@ -230,10 +234,7 @@ def _rm_is_destructive(argv: tuple[str, ...]) -> bool:
             letters = token[1:]
             if "r" in letters.lower() or "R" in letters:
                 recursive = True
-                clustered = clustered or ("f" in letters.lower())
-            if "f" in letters.lower():
-                force = True
-    return recursive and (force or clustered or recursive)
+    return recursive
 
 
 def _sql_destructive(argv: tuple[str, ...]) -> bool:
