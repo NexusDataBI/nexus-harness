@@ -4,6 +4,8 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class RenderedFile:
+    """A generated runtime file owned by the harness compiler."""
+
     relative_path: str
     content: bytes
 
