@@ -7,12 +7,14 @@
 # This is NOT a general interactive shell.
 set -euo pipefail
 
-INSTALL_BIN="${NEXUS_DEPLOY_BIN:-/usr/local/bin/nexus-deploy}"
-ROOTLESS_SOCK="${NEXUS_DEPLOY_DOCKER_SOCK:-/home/nexus-deploy/.docker/run/docker.sock}"
+INSTALL_BIN="/usr/local/bin/nexus-deploy"
+ROOTLESS_SOCK="/home/nexus-deploy/.docker/run/docker.sock"
 
-if [[ -S "${ROOTLESS_SOCK}" ]]; then
-  export DOCKER_HOST="unix://${ROOTLESS_SOCK}"
+if [[ ! -S "${ROOTLESS_SOCK}" ]]; then
+  printf 'ERROR: rootless docker socket missing at %s\n' "${ROOTLESS_SOCK}" >&2
+  exit 2
 fi
+export DOCKER_HOST="unix://${ROOTLESS_SOCK}"
 
 if [[ "${1:-}" == "-c" ]]; then
   # OpenSSH forced-command form — discard the -c string; always run nexus-deploy.

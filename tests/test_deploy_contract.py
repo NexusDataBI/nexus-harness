@@ -523,6 +523,9 @@ class ClientVmFilesTests(unittest.TestCase):
         self.assertIn('[[ "${1:-}" == "-c" ]]', text)
         self.assertNotRegex(text, r"(?m)^\s*eval\b")
         self.assertIn("not an interactive shell", text.lower())
+        self.assertNotIn("NEXUS_DEPLOY_DOCKER_SOCK", text)
+        self.assertIn('[[ ! -S "${ROOTLESS_SOCK}" ]]', text)
+        self.assertIn("export DOCKER_HOST=", text)
 
     def test_readme_documents_rootless_and_shell(self):
         text = README.read_text(encoding="utf-8")
