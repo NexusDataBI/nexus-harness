@@ -23,10 +23,12 @@ something the runner binary gives you for free.
 3. **Prefer ephemeral job containers when viable** — run build/test steps inside
    containers that discard state on exit. Host-level tooling is for the runner
    agent and bounded caches only.
-4. **Avoid unrestricted Docker socket when possible** — mounting
-   `/var/run/docker.sock` into jobs grants host-level control. Prefer rootless
-   Docker for `nexus-ci` and job-scoped containers. The installer warns when
-   only the system socket is available.
+4. **Rootless Docker required** — mounting `/var/run/docker.sock` (or adding
+   `nexus-ci` to group `docker`) is root-equivalent. The installer **fails
+   closed** unless a rootless socket exists at
+   `/home/nexus-ci/.docker/run/docker.sock`. It never runs `usermod -aG docker`.
+   `ALLOW_SYSTEM_DOCKER=1` only acknowledges the system socket loudly and still
+   dies with rootless setup instructions.
 5. **Shared disk & network** — one compromised job can read sibling workspaces,
    caches under `/var/lib/nexus-ci`, and reach the same egress IP. Private
    repositories only; no multi-tenant untrusted workloads on this host.
@@ -46,10 +48,27 @@ something the runner binary gives you for free.
 ## Prerequisites
 
 - Ubuntu with sudo/root
-- Docker Engine installed; **rootless** for `nexus-ci` preferred
+- Docker Engine with **rootless** mode for `nexus-ci` (socket
+  `/home/nexus-ci/.docker/run/docker.sock`). System `/var/run/docker.sock`
+  alone is insufficient; do not add `nexus-ci` to group `docker`.
 - Private-repository GitHub runner **registration token** (ephemeral; create
   from the repo/org settings at install time)
 - Runner binary version chosen at install time (not pinned in this repo)
+
+### Rootless Docker (required)
+
+Before `./install.sh`, configure rootless Docker for the `nexus-ci` account
+(create the user first if needed, or re-run after `useradd`). Typical outline:
+
+```bash
+# As root: ensure nexus-ci exists, then enable rootless for that user
+# (exact steps follow current Docker rootless docs for your distro).
+# Expected socket after success:
+#   /home/nexus-ci/.docker/run/docker.sock
+```
+
+`ALLOW_SYSTEM_DOCKER=1` does **not** grant group `docker` or unlock install
+against the system socket — it only prints a louder warning before failing.
 
 ## Install
 

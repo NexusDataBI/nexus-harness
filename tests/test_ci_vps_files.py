@@ -14,12 +14,6 @@ SERVICE_UNIT = CI_VPS / "nexus-ci.service"
 README = CI_VPS / "README.md"
 DOCTOR = CI_VPS / "nexus-ci-host-doctor.sh"
 
-# Forbidden client / known project hosts — never hardcode.
-FORBIDDEN_IPS = (
-    "76.13.225.91",
-    "187.77.49.147",
-)
-
 SAAS_AGENTS = (
     "sentry",
     "datadog",
@@ -129,13 +123,13 @@ class InstallShPolicyTests(unittest.TestCase):
     def test_no_embedded_github_tokens(self):
         self.assertIsNone(TOKEN_LITERAL_RE.search(self.install))
 
-    def test_no_client_ip_addresses(self):
-        text = self.install
-        for ip in FORBIDDEN_IPS:
-            self.assertNotIn(ip, text)
-        # No IPv4 literals at all in the installer.
+    def test_no_ipv4_literals(self):
+        # No IPv4 at all (incl. production/client hosts). TEST-NET (192.0.2.0/24,
+        # 198.51.100.0/24, 203.0.113.0/24) may only appear as negative fixtures
+        # elsewhere — never in infra/ci-vps install artifacts.
         self.assertIsNone(
-            IPV4_RE.search(text), "install.sh must not embed IPv4 addresses"
+            IPV4_RE.search(self.install),
+            "install.sh must not embed IPv4 addresses",
         )
 
     def test_no_analytics_saas_agents(self):
@@ -150,6 +144,58 @@ class InstallShPolicyTests(unittest.TestCase):
             "rootless" in text or "docker.sock" in text or "dockerd" in text,
             "install.sh must verify Docker/rootless prerequisites",
         )
+
+    def test_does_not_grant_docker_group(self):
+        """Fail closed: never usermod -aG docker (root-equivalent socket access)."""
+        text = self.install
+        self.assertNotIn("usermod -aG docker", text)
+        self.assertNotRegex(
+            text,
+            r"usermod\s+[^\n]*\b-aG\b[^\n]*\bdocker\b|usermod\s+[^\n]*\bdocker\b[^\n]*\b-aG\b",
+        )
+        self.assertNotRegex(
+            text,
+            r"gpasswd\s+[^\n]*\bdocker\b|adduser\s+[^\n]+\s+docker\b",
+        )
+        # Rootless socket required; system sock alone must not unlock install.
+        self.assertIn("/home/${NEXUS_USER}/.docker/run/docker.sock", text)
+        self.assertRegex(text, r"ALLOW_SYSTEM_DOCKER")
+
+    def test_configure_runner_c_string_avoids_interpolation(self):
+        """User-controlled values must not be concatenated into the su -c script."""
+        text = self.install
+        fn = re.search(
+            r"configure_runner\(\)\s*\{(?P<body>.*?)^\}",
+            text,
+            re.DOTALL | re.MULTILINE,
+        )
+        self.assertIsNotNone(fn, "configure_runner() must exist")
+        body = fn.group("body")
+        # Vulnerable pattern: double-quoted -c embedding ${RUNNER_*} / ${REG_TOKEN}.
+        self.assertNotRegex(
+            body,
+            r"""-c\s*(?:\\\s*)?"[^"]*\$\{?(?:RUNNER_REPO_URL|RUNNER_NAME|RUNNER_LABELS|REG_TOKEN|name|labels)\}?""",
+        )
+        # Safe: single-quoted -c template with positional params ($1 $2 ...).
+        c_match = re.search(r"""-c\s*(?:\\\s*)?'([^']+)'""", body, re.DOTALL)
+        self.assertIsNotNone(
+            c_match,
+            "configure_runner must use a single-quoted -c template",
+        )
+        c_body = c_match.group(1)
+        self.assertRegex(c_body, r"\$1")
+        self.assertRegex(c_body, r"\$2")
+        for needle in (
+            "RUNNER_REPO_URL",
+            "RUNNER_NAME",
+            "RUNNER_LABELS",
+            "REG_TOKEN",
+        ):
+            self.assertNotIn(
+                needle,
+                c_body,
+                f"{needle} must not appear inside the -c template string",
+            )
 
     def test_idempotent_markers(self):
         text = self.install
@@ -226,8 +272,15 @@ class CrossFileSecretPolicyTests(unittest.TestCase):
                 match,
                 f"forbidden token/key literal in {rel}: {match.group(0)[:20] if match else ''}",
             )
-            for ip in FORBIDDEN_IPS:
-                self.assertNotIn(ip, text, f"forbidden IP in {rel}")
+
+    def test_no_ipv4_literals_in_ci_vps(self):
+        """Infra artifacts must not embed any IPv4 (real or otherwise)."""
+        for rel, text in _all_ci_vps_texts().items():
+            match = IPV4_RE.search(text)
+            self.assertIsNone(
+                match,
+                f"IPv4 literal in {rel}: {match.group(0) if match else ''}",
+            )
 
 
 if __name__ == "__main__":

@@ -74,15 +74,13 @@ check_docker() {
     else
       fail "docker: rootless socket present but docker info failed"
     fi
-  elif [[ -S /var/run/docker.sock ]]; then
-    if docker info >/dev/null 2>&1; then
-      warn "docker: system docker.sock in use — prefer rootless; avoid unrestricted socket for jobs"
-    else
-      fail "docker: system socket present but docker info failed"
-    fi
-  else
-    fail "docker: no rootless or system socket found"
+    return
   fi
+  if [[ -S /var/run/docker.sock ]]; then
+    fail "docker: only system /var/run/docker.sock — rootless required at ${rootless_sock}; do not add ${NEXUS_USER} to group docker"
+    return
+  fi
+  fail "docker: no rootless socket at ${rootless_sock}"
 }
 
 check_runner_dirs() {

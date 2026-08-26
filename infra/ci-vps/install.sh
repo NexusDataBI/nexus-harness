@@ -9,6 +9,9 @@
 #   RUNNER_REPO_URL         Private repo URL for registration (required to configure)
 #   RUNNER_LABELS           Extra labels (default: self-hosted,nexus-ci)
 #   RUNNER_NAME             Runner name (default: hostname)
+#   ALLOW_SYSTEM_DOCKER=1   Loud ack that only system docker.sock exists — still
+#                           fails closed (never adds nexus-ci to the docker group);
+#                           set up rootless instead.
 #
 # Usage:
 #   sudo RUNNER_VERSION=2.321.0 RUNNER_REPO_URL=https://github.com/ORG/REPO \
@@ -103,24 +106,23 @@ ensure_directories() {
 
 check_docker_prerequisites() {
   if ! command -v docker >/dev/null 2>&1; then
-    die "docker CLI not found — install Docker Engine (prefer rootless) before provisioning"
+    die "docker CLI not found — install Docker Engine (rootless for ${NEXUS_USER}) before provisioning"
   fi
-  if ! docker info >/dev/null 2>&1; then
-    log "WARN: docker info failed for root — checking rootless hints for ${NEXUS_USER}"
-  fi
-  # Prefer rootless: look for per-user docker socket under nexus-ci home.
+  # Fail closed: require rootless socket. Never grant the docker group (root-equivalent).
   local rootless_sock="/home/${NEXUS_USER}/.docker/run/docker.sock"
   if [[ -S "${rootless_sock}" ]]; then
     log "rootless docker socket detected at ${rootless_sock}"
-  elif [[ -S /var/run/docker.sock ]]; then
-    log "WARN: system docker.sock present — prefer rootless for ${NEXUS_USER}; avoid unrestricted socket exposure to jobs when possible"
-    # Ensure nexus-ci can talk to docker if using the system daemon (group docker).
-    if getent group docker >/dev/null 2>&1; then
-      usermod -aG docker "${NEXUS_USER}" || true
-    fi
-  else
-    die "no docker socket found (rootless or system) — configure Docker/rootless first"
+    return 0
   fi
+  if [[ -S /var/run/docker.sock ]]; then
+    log "WARN: system /var/run/docker.sock present — refusing docker group membership for ${NEXUS_USER}"
+    if [[ "${ALLOW_SYSTEM_DOCKER:-}" == "1" ]]; then
+      log "WARN: ALLOW_SYSTEM_DOCKER=1 set — still will NOT add ${NEXUS_USER} to the docker group"
+      log "WARN: unrestricted system docker.sock is root-equivalent; configure rootless instead"
+    fi
+    die "rootless socket missing at ${rootless_sock} — set up rootless Docker for ${NEXUS_USER} (see README); do not grant the docker group"
+  fi
+  die "no docker socket found — configure rootless Docker for ${NEXUS_USER} first (expected ${rootless_sock})"
 }
 
 install_runner_binary() {
@@ -167,16 +169,19 @@ configure_runner() {
   fi
   local labels="${RUNNER_LABELS:-self-hosted,nexus-ci}"
   local name="${RUNNER_NAME:-$(hostname -s)}"
-  # Pass token via env to config.sh without printing it.
+  # Fixed -c template + positional params: never concatenate user-controlled
+  # values into the shell script string (avoids injection via repo URL / labels / token).
+  # $0 = nexus-config; $1..$6 = dir, url, token, name, labels, work.
   # GitHub config.sh accepts --token; we do not log argv with the secret.
   su -s /bin/bash "${NEXUS_USER}" -c \
-    "cd '${RUNNER_DIR}' && ./config.sh --unattended \
-      --url '${RUNNER_REPO_URL}' \
-      --token '${REG_TOKEN}' \
-      --name '${name}' \
-      --labels '${labels}' \
-      --work '${CACHE_DIR}/_work' \
-      --replace"
+    'cd "$1" && ./config.sh --unattended --url "$2" --token "$3" --name "$4" --labels "$5" --work "$6" --replace' \
+    nexus-config \
+    "${RUNNER_DIR}" \
+    "${RUNNER_REPO_URL}" \
+    "${REG_TOKEN}" \
+    "${name}" \
+    "${labels}" \
+    "${CACHE_DIR}/_work"
 }
 
 install_systemd_unit() {
