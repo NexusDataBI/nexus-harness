@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import ipaddress
+import re
 import tomllib
 from pathlib import Path
 
@@ -36,29 +38,32 @@ Nexus Harness is the source of truth for lifecycle state and completion.
 - Never expose secrets or invent context when memory retrieval is unavailable.
 """
 
-_PROFILE_CANDIDATES = (
-    Path(".nexus/project-profile.toml"),
-    Path("project-profile.toml"),
-    Path("profiles/active.toml"),
-    Path("profiles/project.toml"),
-)
+_HOSTNAME = re.compile(r"^[A-Za-z0-9.-]+$")
 
 
 def _allowed_hosts(root: Path) -> list[str]:
-    for relative in _PROFILE_CANDIDATES:
-        path = root / relative
-        if not path.is_file():
+    path = root / "profiles" / "active.toml"
+    if not path.is_file():
+        return []
+    try:
+        profile = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+        return []
+    network = profile.get("network")
+    if not isinstance(network, dict):
+        return []
+    values = network.get("allowed_hosts")
+    if not isinstance(values, list):
+        return []
+    hosts = set()
+    for value in values:
+        if not isinstance(value, str) or not _HOSTNAME.fullmatch(value):
             continue
         try:
-            profile = tomllib.loads(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
-            continue
-        network = profile.get("network", {})
-        values = network.get("allowed_hosts", network.get("allowedHosts", []))
-        if not isinstance(values, list):
-            return []
-        return sorted({host for host in values if isinstance(host, str) and host})
-    return []
+            ipaddress.ip_address(value)
+        except ValueError:
+            hosts.add(value)
+    return sorted(hosts)
 
 
 def render(root: Path) -> tuple[RenderedFile, ...]:

@@ -15,6 +15,15 @@ class CursorAdapterTests(unittest.TestCase):
         self.assertEqual(sandbox["networkPolicy"]["allowedHosts"], [])
         self.assertNotIn("disabled", sandbox)
 
+    def test_no_profile_means_no_allowed_hosts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sandbox = json.loads(
+                {item.relative_path: item.content for item in render(Path(tmp))}[
+                    "cursor/sandbox.json"
+                ]
+            )
+        self.assertEqual(sandbox["networkPolicy"]["allowedHosts"], [])
+
     def test_cursor_rules_are_minimal_and_runtime_neutral(self):
         files = {
             item.relative_path: item.content.decode() for item in render(Path("."))
@@ -49,6 +58,42 @@ class CursorAdapterTests(unittest.TestCase):
             sandbox["networkPolicy"]["allowedHosts"],
             ["api.example.test", "registry.example.test"],
         )
+
+    def test_credentials_urls_and_ip_literals_are_omitted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "profiles").mkdir()
+            (root / "profiles" / "active.toml").write_text(
+                "[network]\nallowed_hosts = [\n"
+                '"https://api.example.test/path",\n'
+                '"user:pass@example.test",\n'
+                '"127.0.0.1",\n'
+                '"[::1]",\n'
+                '"api.example.test",\n'
+                "]\n",
+                encoding="utf-8",
+            )
+            sandbox = json.loads(
+                {item.relative_path: item.content for item in render(root)}[
+                    "cursor/sandbox.json"
+                ]
+            )
+        self.assertEqual(sandbox["networkPolicy"]["allowedHosts"], ["api.example.test"])
+
+    def test_malformed_network_section_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "profiles").mkdir()
+            (root / "profiles" / "active.toml").write_text(
+                'network = "not-a-table"\n',
+                encoding="utf-8",
+            )
+            sandbox = json.loads(
+                {item.relative_path: item.content for item in render(root)}[
+                    "cursor/sandbox.json"
+                ]
+            )
+        self.assertEqual(sandbox["networkPolicy"]["allowedHosts"], [])
 
     def test_generated_output_has_no_machine_or_memory_leakage(self):
         files = {
