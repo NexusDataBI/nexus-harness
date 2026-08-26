@@ -156,27 +156,21 @@ class MemoryIntegrationProofTests(unittest.TestCase):
             freshness = compute_memory_freshness(root, read_memory(root, record.id))
             self.assertEqual(freshness.status, FreshnessStatus.STALE)
 
-            # 10. rebuilt capsule leaves HOT/WARM and only warns
-            stale_hits = search_memory(
+            # 10. public session_recall leaves HOT/WARM and only warns
+            stale_capsule = session_recall(
                 root,
-                "auth session",
-                MemoryQueryContext(
-                    project_id="repo-1",
-                    affected_paths=("src/auth/session.py",),
-                    include_stale=True,
-                ),
-                cache_home=cache_home,
-            )
-            stale_capsule = build_context_capsule(
                 project_id="repo-1",
-                diff_hash="B",
-                hits=stale_hits,
-                hot_memory_ids=(record.id,),
-                policy=load_capsule_policy(),
+                query="auth session",
+                affected_paths=("src/auth/session.py",),
+                cache_home=cache_home,
             )
             self.assertNotIn(record.id, stale_capsule.hot)
             self.assertNotIn(record.id, stale_capsule.warm)
-            self.assertIn(record.id, stale_capsule.warnings)
+            warned = record.id in stale_capsule.warnings or (
+                "STALE/CONFLICT WARNINGS" in stale_capsule.text
+                and record.id in stale_capsule.text
+            )
+            self.assertTrue(warned, "stale memory must appear in capsule warnings")
 
             # 11. delete derived SQLite index — search still works through fallback
             db_path = default_index_path("repo-1", cache_home=cache_home)
@@ -211,12 +205,16 @@ class MemoryIntegrationProofTests(unittest.TestCase):
                 )
             self.assertNotIn(secret, str(ctx.exception))
 
-            # 13. no portfolio vault — project behavior remains valid
+            # 13. no portfolio vault — project memory stays valid; stale VERIFIED is a doctor finding
             loaded = load_project_memories(root)
             self.assertEqual([item.id for item in loaded], [record.id])
             report = memory_doctor(root)
-            self.assertEqual(report.gate, "PASS")
             self.assertEqual(report.portfolio_records, 0)
+            self.assertIn(
+                "stale_status_inconsistent",
+                [finding.code for finding in report.findings],
+            )
+            self.assertEqual(report.gate, "FAIL")
 
 
 class MemorySessionFacadeTests(unittest.TestCase):

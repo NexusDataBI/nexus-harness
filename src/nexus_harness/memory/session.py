@@ -22,6 +22,7 @@ def session_recall(
     context = MemoryQueryContext(
         project_id=project_id,
         affected_paths=tuple(affected_paths),
+        include_stale=True,
     )
     hits = search_memory(
         Path(project_root),

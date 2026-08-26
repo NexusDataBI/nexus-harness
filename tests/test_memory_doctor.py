@@ -3,16 +3,19 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from nexus_harness.memory.doctor import memory_doctor
 from nexus_harness.memory.models import (
     MemoryConfidence,
     MemoryDraft,
     MemoryScope,
+    MemorySource,
     MemoryStatus,
     MemoryType,
 )
 from nexus_harness.memory.store import init_project_memory, write_memory
+from tests.memory_git_helper import make_repo_with_changed_file
 
 
 def _candidate(**overrides) -> MemoryDraft:
@@ -177,3 +180,117 @@ class MemoryDoctorTests(unittest.TestCase):
             for finding in report.findings:
                 self.assertNotIn(secret, finding.message)
                 self.assertNotIn("abcdefghijklmnopqrstuvwxyz01", finding.message)
+
+    def test_superseded_without_target_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            record = write_memory(root, _candidate().to_record())
+            write_memory(
+                root,
+                replace(record, status=MemoryStatus.SUPERSEDED, supersedes=()),
+                replace=True,
+            )
+
+            report = memory_doctor(root)
+
+            self.assertEqual(report.gate, "FAIL")
+            self.assertIn("superseded_without_target", _finding_codes(report))
+            finding = next(
+                item
+                for item in report.findings
+                if item.code == "superseded_without_target"
+            )
+            self.assertEqual(finding.severity, "FAIL")
+            self.assertEqual(finding.memory_id, record.id)
+
+    def test_verified_stale_status_is_inconsistent(self):
+        root, commit_a = make_repo_with_changed_file("src/auth.py")
+        init_project_memory(root)
+        record = replace(
+            _candidate(
+                related_paths=("src/auth.py",),
+                sources=(MemorySource("approved_spec", "SPEC-AUTH"),),
+            ).to_record(),
+            status=MemoryStatus.VERIFIED,
+            confidence=MemoryConfidence.HIGH,
+            verified_at="2026-08-25T00:00:00Z",
+            valid_at_commit=commit_a,
+        )
+        write_memory(root, record)
+
+        report = memory_doctor(root)
+
+        self.assertEqual(report.gate, "FAIL")
+        self.assertIn("stale_status_inconsistent", _finding_codes(report))
+        finding = next(
+            item for item in report.findings if item.code == "stale_status_inconsistent"
+        )
+        self.assertEqual(finding.severity, "FAIL")
+        self.assertEqual(finding.memory_id, record.id)
+        self.assertGreaterEqual(report.stale_records, 1)
+
+    def test_invalid_related_path_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            traversal = write_memory(
+                root,
+                _candidate(
+                    title="Parent traversal path",
+                    related_paths=("../../etc/passwd",),
+                ).to_record(),
+            )
+            absolute = write_memory(
+                root,
+                _candidate(
+                    title="Absolute home path",
+                    related_paths=("/Users/someone/secret",),
+                ).to_record(),
+            )
+
+            report = memory_doctor(root)
+
+            self.assertEqual(report.gate, "FAIL")
+            codes = _finding_codes(report)
+            self.assertGreaterEqual(codes.count("invalid_related_path"), 2)
+            ids = {
+                item.memory_id
+                for item in report.findings
+                if item.code == "invalid_related_path"
+            }
+            self.assertEqual(ids, {traversal.id, absolute.id})
+            for finding in report.findings:
+                self.assertEqual(finding.severity, "FAIL")
+                self.assertNotIn("someone", finding.message)
+
+    def test_glob_related_path_is_allowed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            write_memory(root, _candidate(related_paths=("src/auth/**",)).to_record())
+
+            report = memory_doctor(root)
+
+            self.assertEqual(report.gate, "PASS")
+            self.assertNotIn("invalid_related_path", _finding_codes(report))
+
+    def test_index_rebuild_failure_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            write_memory(root, _candidate().to_record())
+
+            with patch(
+                "nexus_harness.memory.doctor.rebuild_index",
+                side_effect=OSError("index write failed"),
+            ):
+                report = memory_doctor(root)
+
+            self.assertEqual(report.gate, "FAIL")
+            self.assertIn("index_unrebuildable", _finding_codes(report))
+            finding = next(
+                item for item in report.findings if item.code == "index_unrebuildable"
+            )
+            self.assertEqual(finding.severity, "FAIL")
+            self.assertNotIn("index write failed", finding.message)

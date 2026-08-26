@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from nexus_harness.memory.capsule import load_capsule_policy
 from nexus_harness.memory.freshness import FreshnessStatus, compute_memory_freshness
@@ -14,6 +15,7 @@ from nexus_harness.memory.guard import (
 )
 from nexus_harness.memory.models import MemoryRecord, MemoryStatus
 from nexus_harness.memory.portfolio import _PORTFOLIO_CATEGORIES
+from nexus_harness.memory.retrieval import rebuild_index
 from nexus_harness.memory.store import CATEGORY_BY_TYPE, _project_memory_root
 
 _SECRET_FINDING = "secret_like_content"
@@ -39,12 +41,14 @@ class MemoryDoctorReport:
 
 def memory_doctor(project_root, portfolio_root=None) -> MemoryDoctorReport:
     findings: list[MemoryDoctorFinding] = []
+    loaded: list[MemoryRecord] = []
     project_root = Path(project_root)
     project_parsed, project_stale = _scan_tree(
         findings,
         _project_memory_root(project_root),
         CATEGORY_BY_TYPE.values(),
         project_root,
+        loaded,
     )
     portfolio_parsed = 0
     portfolio_stale = 0
@@ -56,8 +60,10 @@ def memory_doctor(project_root, portfolio_root=None) -> MemoryDoctorReport:
             vault,
             _PORTFOLIO_CATEGORIES,
             project_root,
+            loaded,
         )
     _check_capsule_policy(findings)
+    _check_index_rebuildable(findings, loaded)
     fail = any(item.severity == "FAIL" for item in findings)
     return MemoryDoctorReport(
         gate="FAIL" if fail else "PASS",
@@ -127,11 +133,38 @@ def _check_capsule_policy(findings: list[MemoryDoctorFinding]) -> None:
         )
 
 
+def _check_index_rebuildable(
+    findings: list[MemoryDoctorFinding], records: list[MemoryRecord]
+) -> None:
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            rebuild_index(list(records), Path(tmp) / "memory.db")
+    except Exception:
+        findings.append(
+            MemoryDoctorFinding(
+                code="index_unrebuildable",
+                severity="FAIL",
+                memory_id=None,
+                path=None,
+                message="derived memory index could not be rebuilt",
+            )
+        )
+
+
+def _invalid_related_path(value: str) -> bool:
+    normalized = value.replace("\\", "/").strip()
+    if not normalized:
+        return False
+    posix = PurePosixPath(normalized)
+    return posix.is_absolute() or normalized.startswith("/") or ".." in posix.parts
+
+
 def _scan_tree(
     findings: list[MemoryDoctorFinding],
     root: Path,
     categories,
     project_root: Path,
+    loaded: list[MemoryRecord],
 ) -> tuple[int, int]:
     parsed = 0
     stale = 0
@@ -195,8 +228,9 @@ def _scan_tree(
             if record is None:
                 continue
             parsed += 1
+            loaded.append(record)
             seen_ids[record.id].append(json_path)
-            _check_record(findings, record, json_path)
+            _check_record(findings, record, json_path, project_root)
             if _is_stale(project_root, record):
                 stale += 1
             md_path = markdown.get(stem)
@@ -246,6 +280,7 @@ def _check_record(
     findings: list[MemoryDoctorFinding],
     record: MemoryRecord,
     path: Path,
+    project_root: Path,
 ) -> None:
     try:
         validate_memory_record(record)
@@ -267,6 +302,36 @@ def _check_record(
                 memory_id=record.id,
                 path=str(path),
                 message="VERIFIED memory requires provenance sources",
+            )
+        )
+    if record.status == MemoryStatus.SUPERSEDED and not record.supersedes:
+        findings.append(
+            MemoryDoctorFinding(
+                code="superseded_without_target",
+                severity="FAIL",
+                memory_id=record.id,
+                path=str(path),
+                message="SUPERSEDED memory is missing a supersedes target",
+            )
+        )
+    if any(_invalid_related_path(related) for related in record.related_paths):
+        findings.append(
+            MemoryDoctorFinding(
+                code="invalid_related_path",
+                severity="FAIL",
+                memory_id=record.id,
+                path=str(path),
+                message="related_paths contains an absolute or parent-directory path",
+            )
+        )
+    if record.status == MemoryStatus.VERIFIED and _is_stale(project_root, record):
+        findings.append(
+            MemoryDoctorFinding(
+                code="stale_status_inconsistent",
+                severity="FAIL",
+                memory_id=record.id,
+                path=str(path),
+                message="VERIFIED memory is stale against the current repository",
             )
         )
 
