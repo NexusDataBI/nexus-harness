@@ -1,0 +1,81 @@
+# Nexus Quality Gate — self-hosted control-plane template
+#
+# GitHub = control plane; VPS labels [self-hosted, nexus-ci] = compute.
+# Graph nodes are batched into jobs (not one GHA job per component).
+# Do not add workflow-level paths: filters — the required Quality Gate
+# must always report an explicit PASS/FAIL (never skip into Pending).
+
+name: Nexus Quality Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  quality-gate:
+    name: Quality Gate
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, nexus-ci]
+    concurrency:
+      group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve affected plan
+        id: affected
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          nexus ci affected --base "${BASE_SHA}" --head "${HEAD_SHA}" --output affected.json
+          echo "plan=affected.json" >> "$GITHUB_OUTPUT"
+
+      - name: Run batched quality checks
+        run: |
+          set -euo pipefail
+          # Always finish the required check with an explicit aggregate.
+          # Empty affected set → PASS (nothing to validate). Non-empty →
+          # one batched quality command (graph node ≠ GHA job).
+          if nexus quality run --profile standard --from-affected affected.json; then
+            echo "Quality Gate aggregate: PASS"
+          else
+            status=$?
+            echo "Quality Gate aggregate: FAIL"
+            exit "${status}"
+          fi
+
+  build-images:
+    name: Build affected images
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: [self-hosted, nexus-ci]
+    concurrency:
+      group: ${{ github.workflow }}-build-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve affected image plan
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          nexus ci affected --base "${BASE_SHA}" --head "${HEAD_SHA}" --output affected.json
+
+      - name: Build changed production images
+        run: |
+          set -euo pipefail
+          # Post-merge: build/push only affected images. Do not rerun the
+          # full PR Quality Gate (branch protection already required it).
+          nexus images build --from-affected affected.json
