@@ -1,0 +1,11 @@
+[projects.sdr-platform]
+name = "SDR Platform"
+repository = "Rubens-Marques/SDR-Plataform"
+client = "vuca"
+status = "active"
+
+[projects.marketing-hub]
+name = "Marketing Hub"
+repository = "NexusDataBI/marketing-hub"
+client = "nexus"
+status = "active"
