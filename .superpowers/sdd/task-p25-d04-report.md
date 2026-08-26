@@ -25,3 +25,13 @@ Concluído na branch `feat/v4-memory`.
 
 - `b1b161c` — checkpoint RED dos testes.
 - Commit de implementação: `fix: fail-soft session recall on schema-invalid memory`.
+
+## P25-D04 review follow-up
+
+- Narrowed the outer `session_recall` fallback to `MemoryStoreError` and
+  `JSONDecodeError`; schema/model failures remain handled per record by the
+  tolerant loaders, while programming errors in search now propagate.
+- Existing focused coverage already proves a valid sibling is injected beside
+  a schema-invalid sidecar.
+- Follow-up tests: session suite passed (6 tests); full discovery passed (228
+  tests).

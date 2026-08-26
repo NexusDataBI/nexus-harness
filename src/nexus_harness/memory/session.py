@@ -60,7 +60,7 @@ def session_recall(
             cache_home=cache_home,
             findings=findings,
         )
-    except (MemoryStoreError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+    except (MemoryStoreError, json.JSONDecodeError):
         findings.append(
             {
                 "code": "memory_record_excluded",
