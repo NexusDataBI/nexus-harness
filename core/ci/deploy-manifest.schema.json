@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.local/schemas/deploy-manifest.schema.json",
+  "title": "DeployManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["repository", "commit", "artifacts"],
+  "properties": {
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "description": "GitHub owner/name of the source repository."
+    },
+    "commit": {
+      "type": "string",
+      "minLength": 7,
+      "description": "Git commit SHA that produced the artifacts."
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["service", "image", "digest"],
+      "properties": {
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Logical service name (e.g. web, server)."
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Registry repository path without tag; production identity is digest."
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Immutable content digest; never latest or a mutable tag."
+        }
+      }
+    }
+  }
+}
