@@ -256,8 +256,18 @@ def config_drift(payload: dict) -> HookResult:
 
 def stop_handler(payload: dict) -> HookResult:
     """Prevent repeated Stop delivery from recursively re-entering the gate."""
+    identity_value = next(
+        (
+            payload.get(key)
+            for key in ("session_id", "transcript_path", "event_id")
+            if payload.get(key)
+        ),
+        None,
+    )
+    if identity_value is None:
+        return policy_gate(payload)
     marker = _root(payload) / ".nexus" / "stop-loop.json"
-    identity = str(payload.get("event_id") or payload.get("generation") or "default")
+    identity = str(identity_value)
     try:
         previous = (
             json.loads(marker.read_text(encoding="utf-8")) if marker.exists() else {}

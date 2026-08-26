@@ -8,6 +8,7 @@ from nexus_harness.hooks import completion_gate, dispatch, session_start
 from nexus_harness.memory.freshness import AuthorityContradiction, TruthStrength
 from nexus_harness.memory.models import MemoryDraft
 from nexus_harness.memory.models import MemoryScope, MemorySource, MemoryType
+from nexus_harness.memory.store import init_project_memory, write_memory
 from nexus_harness.state import TaskState
 
 
@@ -114,6 +115,34 @@ class HookTests(unittest.TestCase):
         self.assertEqual(first.exit_code, 0)
         self.assertTrue(second.output["loop_protected"])
         self.assertEqual(gate.call_count, 1)
+
+    def test_stop_without_identity_is_never_globally_debounced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("nexus_harness.hooks.policy_gate") as gate:
+                gate.return_value = type("Result", (), {"exit_code": 0, "output": {}})()
+                first = dispatch("Stop", {"project_root": tmp})
+                second = dispatch("Stop", {"project_root": tmp})
+        self.assertFalse(first.output.get("loop_protected", False))
+        self.assertFalse(second.output.get("loop_protected", False))
+        self.assertEqual(gate.call_count, 2)
+
+    def test_session_start_excludes_candidate_memory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            draft = MemoryDraft(
+                type=MemoryType.INVARIANT,
+                scope=MemoryScope.PROJECT,
+                project_id="repo",
+                title="Candidate only",
+                body="Do not inject this candidate.",
+                sources=(MemorySource("approved_spec", "SPEC-1"),),
+            )
+            write_memory(root, draft.to_record())
+            result = session_start(
+                {"project_root": root, "project_id": "repo", "query": "candidate"}
+            )
+        self.assertNotIn("Do not inject this candidate.", result.output["capsule"])
 
     def test_compact_session_start_restores_candidates_and_invalid_memory(self):
         with tempfile.TemporaryDirectory() as tmp:
