@@ -4,10 +4,35 @@ import json
 from pathlib import Path
 
 from nexus_harness.memory.capsule import build_context_capsule, load_capsule_policy
+from nexus_harness.memory.freshness import FreshnessStatus
+from nexus_harness.memory.guard import validate_memory_record
 from nexus_harness.memory.lifecycle import MemoryPromotionError, verify_record
-from nexus_harness.memory.models import MemoryDraft
-from nexus_harness.memory.retrieval import MemoryQueryContext, search_memory
-from nexus_harness.memory.store import atomic_write_json, write_memory
+from nexus_harness.memory.models import (
+    MemoryDraft,
+    MemorySensitivity,
+    MemoryStatus,
+    MemoryType,
+)
+from nexus_harness.memory.retrieval import MemoryHit, MemoryQueryContext, search_memory
+from nexus_harness.memory.store import MemoryStoreError, atomic_write_json, write_memory
+
+_HOT_PREFERRED = (MemoryType.INVARIANT, MemoryType.DECISION)
+_HOT_ITEM_CAP = 4
+
+
+def _hot_memory_ids(hits: list[MemoryHit], max_items: int) -> tuple[str, ...]:
+    eligible = [
+        hit
+        for hit in hits
+        if hit.record.status == MemoryStatus.VERIFIED
+        and hit.record.sensitivity != MemorySensitivity.CONFIDENTIAL
+        and hit.freshness != FreshnessStatus.STALE
+        and hit.record.status != MemoryStatus.STALE
+    ]
+    preferred = [hit for hit in eligible if hit.record.type in _HOT_PREFERRED]
+    others = [hit for hit in eligible if hit.record.type not in _HOT_PREFERRED]
+    cap = min(_HOT_ITEM_CAP, max_items)
+    return tuple(hit.record.id for hit in (*preferred, *others)[:cap])
 
 
 def session_recall(
@@ -24,23 +49,35 @@ def session_recall(
         affected_paths=tuple(affected_paths),
         include_stale=True,
     )
-    hits = search_memory(
-        Path(project_root),
-        query,
-        context,
-        portfolio_root=portfolio_root,
-        cache_home=cache_home,
-    )
+    policy = load_capsule_policy()
+    try:
+        hits = search_memory(
+            Path(project_root),
+            query,
+            context,
+            portfolio_root=portfolio_root,
+            cache_home=cache_home,
+        )
+    except (MemoryStoreError, json.JSONDecodeError):
+        return build_context_capsule(
+            project_id=project_id,
+            diff_hash=None,
+            hits=(),
+            hot_memory_ids=(),
+            policy=policy,
+        )
     return build_context_capsule(
         project_id=project_id,
         diff_hash=None,
         hits=hits,
-        hot_memory_ids=(),
-        policy=load_capsule_policy(),
+        hot_memory_ids=_hot_memory_ids(hits, policy.max_items),
+        policy=policy,
     )
 
 
 def checkpoint_memory_candidates(path, candidates):
+    for item in candidates:
+        validate_memory_record(item.to_record())
     payload = [item.to_json_dict() for item in candidates]
     atomic_write_json(Path(path), payload)
     return Path(path)

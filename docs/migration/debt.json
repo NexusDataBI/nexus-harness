@@ -120,6 +120,26 @@
       "target_plan": "plan-3",
       "resolution_condition": "Extend task-state.schema.json (R8) and persist those fields through save/load so a READY_TO_SHIP state survives restart without reconstructing gates in memory.",
       "defer_reason": "This round persisted failures only. Extra completion fields stay in-memory to avoid a wide schema+lock change without Plan 3 adapters."
+    },
+    {
+      "id": "P25-D01",
+      "origin": "plan-2.5-final-review",
+      "severity": "medium",
+      "description": "resolve_contradiction exists but recall does not auto-exclude vs CURRENT_REPO.",
+      "status": "deferred",
+      "target_plan": "plan-3",
+      "resolution_condition": "search_memory/session_recall apply resolve_contradiction so memories contradicted by CURRENT_REPO are excluded or downranked.",
+      "defer_reason": "Contradiction resolution is not wired into search. Out of this HIGH-fix scope."
+    },
+    {
+      "id": "P25-D02",
+      "origin": "plan-2.5-final-review",
+      "severity": "medium",
+      "description": "Capsule stale-warning section has no own char budget.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "STALE/CONFLICT WARNINGS has a dedicated char budget distinct from hot/warm.",
+      "defer_reason": "Warnings currently append without a section budget. Not required to close Plan 2.5 HIGH findings."
     }
   ]
 }

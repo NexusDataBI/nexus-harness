@@ -117,12 +117,57 @@ class MemoryLifecycleTests(unittest.TestCase):
             self.assertEqual(stored.status, MemoryStatus.VERIFIED)
             self.assertEqual(stored.valid_at_commit, "abc")
 
-            superseded = supersede_memory(
-                root, record.id, "mem-decision-replacement-deadbeef"
+            replacement = write_memory(
+                root,
+                _decision_draft(
+                    title="Use queue Y",
+                    body="Queue Y replaces queue X.",
+                    sources=(MemorySource("adr", "ADR-002"),),
+                ).to_record(),
             )
+            superseded = supersede_memory(root, record.id, replacement.id)
             reread = read_memory(root, record.id)
             self.assertEqual(superseded.status, MemoryStatus.SUPERSEDED)
             self.assertEqual(reread.status, MemoryStatus.SUPERSEDED)
+
+    def test_supersede_memory_links_both_sides(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            old = write_memory(
+                root,
+                _decision_draft(
+                    title="Use queue X",
+                    sources=(MemorySource("adr", "ADR-001"),),
+                ).to_record(),
+            )
+            replacement = write_memory(
+                root,
+                _decision_draft(
+                    title="Use queue Y",
+                    body="Queue Y replaces queue X.",
+                    sources=(MemorySource("adr", "ADR-002"),),
+                ).to_record(),
+            )
+
+            supersede_memory(root, old.id, replacement.id)
+
+            stored_old = read_memory(root, old.id)
+            stored_new = read_memory(root, replacement.id)
+            self.assertEqual(stored_old.status, MemoryStatus.SUPERSEDED)
+            self.assertIn(replacement.id, stored_old.supersedes)
+            self.assertIn(old.id, stored_new.supersedes)
+
+            from nexus_harness.memory.doctor import memory_doctor
+
+            report = memory_doctor(root)
+            self.assertFalse(
+                any(
+                    finding.code == "superseded_without_target"
+                    and finding.severity == "FAIL"
+                    for finding in report.findings
+                )
+            )
 
     def test_promote_to_portfolio_draft_requires_verified_project_source(self):
         candidate = _decision_draft(

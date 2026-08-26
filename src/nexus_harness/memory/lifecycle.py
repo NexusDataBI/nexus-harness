@@ -187,7 +187,8 @@ def collect_memory_candidates(
 def supersede_record(old: MemoryRecord, new_id: str) -> MemoryRecord:
     if old.id == new_id:
         raise MemoryPromotionError("cannot supersede a memory with itself")
-    return replace(old, status=MemoryStatus.SUPERSEDED)
+    linked = old.supersedes if new_id in old.supersedes else (*old.supersedes, new_id)
+    return replace(old, status=MemoryStatus.SUPERSEDED, supersedes=linked)
 
 
 def verify_memory(
@@ -209,9 +210,19 @@ def verify_memory(
 
 
 def supersede_memory(project_root, old_memory_id, replacement_memory_id):
-    old = read_memory(Path(project_root), old_memory_id)
-    updated = supersede_record(old, replacement_memory_id)
-    return write_memory(Path(project_root), updated, replace=True)
+    root = Path(project_root)
+    old = read_memory(root, old_memory_id)
+    replacement = read_memory(root, replacement_memory_id)
+    updated_old = supersede_record(old, replacement_memory_id)
+    linked_new = (
+        replacement.supersedes
+        if old.id in replacement.supersedes
+        else (*replacement.supersedes, old.id)
+    )
+    updated_new = replace(replacement, supersedes=linked_new)
+    write_memory(root, updated_old, replace=True)
+    write_memory(root, updated_new, replace=True)
+    return updated_old
 
 
 def promote_to_portfolio_draft(records, title, body, tags) -> MemoryDraft:
