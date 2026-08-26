@@ -10,12 +10,14 @@ from nexus_harness.memory.models import (
     MemoryRecord,
     MemoryScope,
     MemorySensitivity,
+    MemorySource,
     MemoryStatus,
     MemoryType,
 )
 from nexus_harness.memory.retrieval import (
     MemoryQueryContext,
     default_index_path,
+    fts5_available,
     rebuild_index,
     search_memory,
 )
@@ -33,6 +35,7 @@ def _draft(title: str, **overrides) -> MemoryDraft:
         "project_id": "repo-1",
         "title": title,
         "body": "Recall boundary behavior.",
+        "sources": (MemorySource("approved_spec", "SPEC-1"),),
     }
     payload.update(overrides)
     return MemoryDraft(**payload)
@@ -102,8 +105,12 @@ class MemoryRetrievalExclusionTests(unittest.TestCase):
 
 
 def _verified(record):
+    sources = record.sources or (MemorySource("approved_spec", "SPEC-1"),)
     return replace(
-        record, status=MemoryStatus.VERIFIED, confidence=MemoryConfidence.HIGH
+        record,
+        status=MemoryStatus.VERIFIED,
+        confidence=MemoryConfidence.HIGH,
+        sources=sources,
     )
 
 
@@ -208,3 +215,55 @@ class MemoryRetrievalTests(unittest.TestCase):
             self.assertGreaterEqual(len(second_hits), 1)
             self.assertEqual(second_hits[0].record.id, top_id)
             self.assertEqual(top_id, record.id)
+
+    def test_fts_does_not_drop_path_matching_record_without_query_tokens(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_home = root / "cache"
+            init_project_memory(root)
+            path_hit = _verified(
+                MemoryDraft(
+                    type=MemoryType.INVARIANT,
+                    scope=MemoryScope.PROJECT,
+                    project_id="repo-1",
+                    title="Auth session isolation",
+                    body="Session cookies stay isolated per tenant.",
+                    related_paths=("src/auth/**",),
+                    tags=("auth",),
+                    sources=(MemorySource("approved_spec", "SPEC-AUTH"),),
+                ).to_record()
+            )
+            decoy = _verified(
+                MemoryDraft(
+                    type=MemoryType.LESSON,
+                    scope=MemoryScope.PROJECT,
+                    project_id="repo-1",
+                    title="zzzz-no-token decoy",
+                    body="This decoy mentions zzzz-no-token so FTS MATCH is non-empty.",
+                    tags=("unrelated",),
+                    sources=(MemorySource("review_finding", "rev-1"),),
+                ).to_record()
+            )
+            write_memory(root, path_hit)
+            write_memory(root, decoy)
+            hits = search_memory(
+                root,
+                "zzzz-no-token",
+                MemoryQueryContext(
+                    project_id="repo-1",
+                    affected_paths=("src/auth/session.py",),
+                    tags=("auth",),
+                ),
+                cache_home=cache_home,
+            )
+            hit_ids = [hit.record.id for hit in hits]
+            self.assertIn(path_hit.id, hit_ids)
+            path_reasons = next(
+                hit.reasons for hit in hits if hit.record.id == path_hit.id
+            )
+            self.assertTrue(
+                {"exact_path", "path_prefix"} & set(path_reasons),
+                path_reasons,
+            )
+            if fts5_available():
+                self.assertIn(decoy.id, hit_ids)

@@ -9,6 +9,7 @@ from nexus_harness.memory.models import (
     MemoryDraft,
     MemoryRecord,
     MemoryScope,
+    MemorySource,
     MemoryStatus,
     MemoryType,
 )
@@ -44,6 +45,7 @@ def _verified_project(title: str) -> MemoryRecord:
             project_id="repo-1",
             title=title,
             body="Project-scoped recall control.",
+            sources=(MemorySource("approved_spec", "SPEC-1"),),
         ).to_record(),
         status=MemoryStatus.VERIFIED,
         confidence=MemoryConfidence.HIGH,

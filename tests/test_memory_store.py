@@ -6,10 +6,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 from nexus_harness.memory.guard import MemoryGuardError
+from nexus_harness.memory.lifecycle import MemoryPromotionError
 from nexus_harness.memory.models import (
     MemoryDraft,
     MemoryScope,
     MemorySource,
+    MemoryStatus,
     MemoryType,
 )
 from nexus_harness.memory.store import (
@@ -241,3 +243,68 @@ class MemoryStoreTests(unittest.TestCase):
                         )
                     self.assertFalse((root / ".nexus" / "etc").exists())
                     self.assertFalse((root / "etc").exists())
+
+    def test_orphan_json_is_not_loaded_as_memory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            record = replace(
+                _component_draft().to_record(),
+                status=MemoryStatus.VERIFIED,
+                sources=(MemorySource("approved_spec", "SPEC-1"),),
+            )
+            write_memory(root, record)
+            md_path = root / ".nexus" / "memory" / "components" / f"{record.id}.md"
+            json_path = root / ".nexus" / "memory" / "components" / f"{record.id}.json"
+            self.assertTrue(json_path.exists())
+            md_path.unlink()
+
+            loaded = load_project_memories(root)
+            self.assertNotIn(record.id, [item.id for item in loaded])
+            with self.assertRaises(MemoryStoreError):
+                read_memory(root, record.id)
+
+    def test_markdown_publish_failure_rolls_back_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            record = _component_draft().to_record()
+            from nexus_harness.memory import store as store_mod
+
+            original = store_mod.os.replace
+
+            def fail_markdown_publish(src, dst, *args, **kwargs):
+                if Path(dst).name.endswith(".md"):
+                    raise OSError("simulated markdown publish failure")
+                return original(src, dst, *args, **kwargs)
+
+            with patch.object(
+                store_mod.os, "replace", side_effect=fail_markdown_publish
+            ):
+                with self.assertRaises(OSError):
+                    write_memory(root, record)
+
+            category = root / ".nexus" / "memory" / "components"
+            self.assertFalse((category / f"{record.id}.json").exists())
+            self.assertFalse((category / f"{record.id}.md").exists())
+            self.assertFalse((category / f"{record.id}.json.tmp").exists())
+            self.assertFalse((category / f"{record.id}.md.tmp").exists())
+            self.assertEqual(load_project_memories(root), [])
+            with self.assertRaises(MemoryStoreError):
+                read_memory(root, record.id)
+
+    def test_write_memory_verified_requires_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project_memory(root)
+            record = replace(
+                _component_draft().to_record(),
+                status=MemoryStatus.VERIFIED,
+                sources=(),
+            )
+            with self.assertRaises((MemoryStoreError, MemoryPromotionError)):
+                write_memory(root, record)
+            category = root / ".nexus" / "memory" / "components"
+            self.assertFalse((category / f"{record.id}.json").exists())
+            self.assertFalse((category / f"{record.id}.md").exists())
+            self.assertEqual(load_project_memories(root), [])

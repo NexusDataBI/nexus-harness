@@ -134,24 +134,23 @@ def search_memory(
         records.extend(load_portfolio_memories(portfolio_root))
 
     eligible = [record for record in records if _is_eligible(record, context)]
-    candidates = eligible
+    fts_ids: set[str] = set()
     db_path = default_index_path(context.project_id or "default", cache_home=cache_home)
     if fts5_available():
         try:
             rebuild_index(records, db_path)
-            matched = _fts_match_ids(db_path, query)
-            if matched:
-                wanted = set(matched)
-                candidates = [record for record in eligible if record.id in wanted]
+            fts_ids = set(_fts_match_ids(db_path, query))
         except (OSError, sqlite3.Error):
-            candidates = eligible
+            fts_ids = set()
 
     hits: list[MemoryHit] = []
-    for record in candidates:
+    for record in eligible:
         freshness = _freshness_for(project_root, record)
         if freshness.status == FreshnessStatus.STALE and not context.include_stale:
             continue
-        score, reasons = _score_record(record, query, context, freshness.status)
+        score, reasons = _score_record(
+            record, query, context, freshness.status, fts_matched=record.id in fts_ids
+        )
         hits.append(
             MemoryHit(
                 record=record,
@@ -227,6 +226,8 @@ def _score_record(
     query: str,
     context: MemoryQueryContext,
     freshness: FreshnessStatus,
+    *,
+    fts_matched: bool = False,
 ) -> tuple[int, list[str]]:
     weights = _weights()
     score = 0
@@ -278,6 +279,9 @@ def _score_record(
     if freshness == FreshnessStatus.STALE or record.status == MemoryStatus.STALE:
         score += int(weights["stale"])
         reasons.append("stale")
+
+    if fts_matched:
+        reasons.append("fts_match")
 
     return score, reasons
 

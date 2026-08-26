@@ -7,7 +7,7 @@ from pathlib import Path
 
 from nexus_harness.config import load_toml
 from nexus_harness.memory.guard import validate_memory_record
-from nexus_harness.memory.models import MemoryRecord, MemoryType
+from nexus_harness.memory.models import MemoryRecord, MemoryStatus, MemoryType
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _POLICY_PATH = _REPO_ROOT / "core" / "memory" / "memory-policy.toml"
@@ -72,6 +72,14 @@ def _sidecar_paths(project_root: Path) -> list[Path]:
             )
         )
     return paths
+
+
+def _pair_markdown(json_path: Path) -> Path:
+    return json_path.with_suffix(".md")
+
+
+def _is_complete_pair(json_path: Path) -> bool:
+    return _pair_markdown(json_path).is_file()
 
 
 def _load_sidecar(path: Path) -> MemoryRecord:
@@ -149,6 +157,8 @@ def write_memory(
 ) -> MemoryRecord:
     _assert_safe_memory_id(record.id)
     validate_memory_record(record)
+    if record.status == MemoryStatus.VERIFIED and not record.sources:
+        raise MemoryStoreError("VERIFIED memory requires provenance sources")
     existing_paths = [
         path for path in _sidecar_paths(project_root) if path.stem == record.id
     ]
@@ -180,19 +190,30 @@ def write_memory(
     json_tmp = category_dir / f"{record.id}.json.tmp"
     for path in (md_path, json_path, md_tmp, json_tmp):
         _assert_inside_dir(path, category_dir)
+    published_json = False
     try:
         _write_temp_file(md_tmp, _render_markdown(record))
         _write_temp_file(json_tmp, json.dumps(record.to_json_dict(), indent=2) + "\n")
         os.replace(json_tmp, json_path)
+        published_json = True
         os.replace(md_tmp, md_path)
     except Exception:
         _cleanup_temps(md_tmp, json_tmp)
+        if published_json:
+            try:
+                json_path.unlink(missing_ok=True)
+            except OSError:
+                pass
         raise
     return record
 
 
 def read_memory(project_root: Path, memory_id: str) -> MemoryRecord:
-    matches = [p for p in _sidecar_paths(project_root) if p.stem == memory_id]
+    matches = [
+        path
+        for path in _sidecar_paths(project_root)
+        if path.stem == memory_id and _is_complete_pair(path)
+    ]
     if len(matches) != 1:
         raise MemoryStoreError(
             f"expected exactly one sidecar for {memory_id}; found {len(matches)}"
@@ -205,6 +226,7 @@ def load_project_memories(project_root: Path) -> list[MemoryRecord]:
     records = [
         MemoryRecord.from_json_dict(json.loads(p.read_text(encoding="utf-8")))
         for p in _sidecar_paths(project_root)
+        if _is_complete_pair(p)
     ]
     ids = [r.id for r in records]
     if len(ids) != len(set(ids)):

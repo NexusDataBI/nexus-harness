@@ -120,7 +120,14 @@ class MemoryDoctorTests(unittest.TestCase):
                 valid_at_commit="abc123",
                 sources=(),
             )
-            write_memory(root, record)
+            category = root / ".nexus" / "memory" / "invariants"
+            (category / f"{record.id}.md").write_text(
+                f"# {record.title}\n", encoding="utf-8"
+            )
+            (category / f"{record.id}.json").write_text(
+                json.dumps(record.to_json_dict(), indent=2) + "\n",
+                encoding="utf-8",
+            )
 
             report = memory_doctor(root)
 
