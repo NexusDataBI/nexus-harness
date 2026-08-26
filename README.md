@@ -6,7 +6,7 @@ This repository is the **Canonical Source of Truth**. Runtime trees under `dist/
 
 ## Status
 
-Plans 1, 2, 2.5 and 3 are implemented on `feat/v4-runtime-adapters-hooks` (repair gate over `bedfb13`). Plan 4 (CI VPS, Security & Docker) has **not** started.
+Plans 1–4 are implemented. `dist/` is generated-only; verification hashes expected artifacts from canonical sources.
 
 Operational TaskState lives outside the git worktree (`NEXUS_RUNTIME_HOME` or `~/.nexus-harness/runtime/<repo-id>/<task-id>/`). Project memory remains under `<repo>/.nexus/memory`.
 
@@ -33,17 +33,25 @@ Operational TaskState lives outside the git worktree (`NEXUS_RUNTIME_HOME` or `~
 
 If legacy contradicts the spec, the spec wins.
 
-## Setup
+## Canonical verification (fresh checkout)
+
+`dist/` is generated and gitignored. `harness.lock` records **expected** generated hashes computed from canonical sources (`render_all()`, `src/nexus_harness`, `core/`). Validation does **not** require a previously materialized `dist/`.
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
+scripts/validate
+git diff --check
+PYTHONPATH=src python3 -m compileall -q src
+```
+
+## Setup / install
 
 ```bash
 tar -xzf inputs/nexus-harness-export-20260825-094238.tar.gz -C legacy
 # flatten to legacy/v3-export if the archive has a top-level directory
-PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
-scripts/compile
-scripts/validate
 ```
 
-`scripts/compile` materializes `render_all()` into `dist/`, copies the Python hook engine to `dist/src/nexus_harness`, and refreshes `harness.lock` `generated_hashes`.
+`scripts/compile` materializes `render_all()` into `dist/`, copies the Python hook engine to `dist/src/nexus_harness`, copies `core/`, and refreshes `harness.lock`. Use it when installing a runtime tree — not as a prerequisite for the verification sequence above.
 
 Install a compiled tree locally (never to a global runtime without approval):
 

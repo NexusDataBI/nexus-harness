@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from nexus_harness.compile import compile_harness
 from nexus_harness.lockfile import write_lock
 from nexus_harness.validate import validate_repository
 
@@ -149,6 +150,48 @@ class ValidateTests(unittest.TestCase):
             root = _minimal_repo(Path(tmp))
             (root / "dist" / "generated.txt").write_text(
                 "changed",
+                encoding="utf-8",
+            )
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any("drift" in error.lower() for error in result.errors),
+                msg=result.errors,
+            )
+
+    def _wipe_generated_dist(self, root: Path) -> None:
+        dist = root / "dist"
+        for path in sorted(dist.rglob("*"), reverse=True):
+            if path.name == ".gitkeep" or path == dist:
+                continue
+            if path.is_file() or path.is_symlink():
+                path.unlink()
+            elif path.is_dir():
+                path.rmdir()
+        (dist / ".gitkeep").write_bytes(b"")
+
+    def test_fresh_checkout_empty_dist_validates_from_sources(self):
+        """harness.lock + dist/.gitkeep only must validate without stale dist."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            compile_harness(root)
+            self._wipe_generated_dist(root)
+            generated = [
+                p
+                for p in (root / "dist").rglob("*")
+                if p.is_file() and p.name != ".gitkeep"
+            ]
+            self.assertEqual(generated, [])
+            result = validate_repository(root)
+            self.assertEqual(result.errors, ())
+
+    def test_generated_source_change_still_fails_drift_with_empty_dist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            compile_harness(root)
+            self._wipe_generated_dist(root)
+            (root / "core" / "constitution.md").write_text(
+                "NEXUS WORKFLOW IS MANDATORY.\nchanged-source\n",
                 encoding="utf-8",
             )
             result = validate_repository(root)

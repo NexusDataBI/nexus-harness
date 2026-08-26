@@ -8,7 +8,11 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-from nexus_harness.lockfile import build_lock
+from nexus_harness.lockfile import (
+    build_lock,
+    expected_generated_hashes,
+    on_disk_generated_hashes,
+)
 
 CANONICAL_SKILL_NAMES = frozenset(
     {
@@ -251,8 +255,13 @@ def _check_generated_drift(root: Path, errors: list[str]) -> None:
     current = build_lock(root)
     if recorded.get("canonical_hashes") != current["canonical_hashes"]:
         errors.append("canonical hash drift vs harness.lock")
-    if recorded.get("generated_hashes") != current["generated_hashes"]:
+    expected = expected_generated_hashes(root)
+    if recorded.get("generated_hashes") != expected:
         errors.append("generated hash drift vs harness.lock")
+    else:
+        on_disk = on_disk_generated_hashes(root)
+        if on_disk and on_disk != expected:
+            errors.append("generated hash drift vs harness.lock")
     if recorded.get("adapter_versions") != current["adapter_versions"]:
         errors.append("adapter version drift vs harness.lock")
 
