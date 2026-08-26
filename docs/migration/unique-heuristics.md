@@ -16,15 +16,22 @@ Superpowers **are** in `upstream/vendor-lock.json` (`id: superpowers`, `canonica
 - `receiving-code-review`
 - `finishing-a-development-branch`
 
+## Evaluated — Plan 6 Task 1 (frontend slice)
+
+P1-D05 is **not** resolved. Only the three frontend rows below were evaluated.
+
+| Source                                                                                                                                                           | Relationship         | Status                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `better-accessibility` reference files (`semantics-and-aria.md`, `focus-and-keyboard.md`, `forms.md`, `hit-areas.md`, `motion-and-zoom.md`, `screen-readers.md`) | exact_duplicate      | PRESERVE: copied to `skills/accessibility/references/`. Same a11y skill; no second a11y product. `agents/openai.yaml` not copied.                                                                                                        |
+| `ui-styling`                                                                                                                                                     | exact_duplicate      | ALREADY COVERED: stack-honor / do-not-impose-shadcn policy in `skills/nexus-frontend` implement + `references/router.md`. Encyclopedia, CLI recipes, and scripts DISCARD (generic shadcn/Tailwind docs; remain in the immutable export). |
+| `ui-ux-pro-max`                                                                                                                                                  | divergent (3 hashes) | PRESERVE: search/explore contract and "recommendations never outrank brand/Figma/brief" in `skills/nexus-frontend/references/router.md`. Catalogs, scripts, and the three divergent entrypoints DISCARD (export only).                   |
+
 ## Pending extract
 
-| Source                                                                                                                                                           | Relationship         | Status                                                                                    |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------- |
-| `better-accessibility` reference files (`semantics-and-aria.md`, `focus-and-keyboard.md`, `forms.md`, `hit-areas.md`, `motion-and-zoom.md`, `screen-readers.md`) | exact_duplicate      | Pending: optional references under `skills/accessibility/`                                |
-| `ui-styling`                                                                                                                                                     | exact_duplicate      | Pending extract into `nexus-frontend` implement/design-system; listed in that skill       |
-| `ui-ux-pro-max`                                                                                                                                                  | divergent (3 hashes) | Pending extract of unique search/explore heuristics; listed in `nexus-frontend`           |
-| `implement` Claude vs Codex                                                                                                                                      | divergent            | Pending extract into `upstream/matt-pocock/implement`; Claude copy imported               |
-| `code-review` Claude vs Codex                                                                                                                                    | divergent            | Two-axis + smell baseline in `nexus-quality`; tracker-setup prose pending reviewer agents |
-| `tdd-workflow`                                                                                                                                                   | divergent            | Runner/plan-as-data glue in `nexus-workflow`; TDD loop stays Superpowers                  |
-| `root-cause-tracing`                                                                                                                                             | divergent            | Pending `agents/root-cause-analyst.md` (not this task)                                    |
-| `napkin`                                                                                                                                                         | divergent            | Reference only; not a canonical skill                                                     |
+| Source                        | Relationship | Status                                                                                    |
+| ----------------------------- | ------------ | ----------------------------------------------------------------------------------------- |
+| `implement` Claude vs Codex   | divergent    | Pending extract into `upstream/matt-pocock/implement`; Claude copy imported               |
+| `code-review` Claude vs Codex | divergent    | Two-axis + smell baseline in `nexus-quality`; tracker-setup prose pending reviewer agents |
+| `tdd-workflow`                | divergent    | Runner/plan-as-data glue in `nexus-workflow`; TDD loop stays Superpowers                  |
+| `root-cause-tracing`          | divergent    | Pending `agents/root-cause-analyst.md` (not this task)                                    |
+| `napkin`                      | divergent    | Reference only; not a canonical skill                                                     |

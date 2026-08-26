@@ -7,6 +7,8 @@ description: "Single frontend entry skill. Mode router: implement, redesign, aud
 
 Single frontend entrypoint. Routes to locked upstream specialists. Does not copy Motion Principles, Vercel React guidance, or Impeccable into this file.
 
+Authority order, load budget, and retained specialists: [references/router.md](references/router.md).
+
 ## Modes
 
 Choose **one** primary mode:
@@ -23,21 +25,20 @@ Choose **one** primary mode:
 
 ## Source of truth (precedence)
 
-1. Explicit user request
-2. Project skill / `DESIGN.md` / existing design system
-3. Explicit Figma or visual target
-4. Surface specialist for this mode
-5. Framework engineering guidance
-6. Craft / polish
-7. Generic design intelligence
+1. explicit user request
+2. project design system / brand
+3. explicit Figma or visual target
+4. surface specialist
+5. framework engineering guidance
+6. polish/generic guidance
 
-Never silently override project brand or an explicit visual target.
+Never silently override project brand or an explicit visual target. Details in [references/router.md](references/router.md).
 
 ## Surface class (implement / redesign)
 
 `marketing` | `product` | `data-dense` | `motion` | `figma` | `architecture` | `validation`
 
-Load budget: 1 source of truth + 1 surface specialist + 0–1 technical specialist + `visual-validation` at the end of material visual work.
+Load budget: 1 source of truth + 1 surface specialist + 0–1 technical specialist + `visual-validation` at the end of material visual work. Do not load multiple generic visual specialists without a concrete reason.
 
 - **marketing:** Impeccable critique/craft plus `design-motion-principles` or `vercel-react-best-practices` as appropriate. Anti-slop heuristic: declare a one-line Design Read before generating; do not default to AI-purple / three-card heroes / Inter+slate. Deny `ui-craft-dense-dashboard`.
 - **data-dense:** `ui-craft-dense-dashboard`. Deny Taste.
@@ -82,9 +83,8 @@ Animate only when motion improves comprehension. Skeletons only when content sha
 
 ## Accessibility
 
-Route `accessibility` for a11y-bearing work. Do not duplicate that skill here.
+Route `accessibility` for a11y-bearing work. Do not duplicate that skill here. Optional recipes: `skills/accessibility/references/`.
 
-## Pending extract
+## Frontend heuristic slice
 
-- `ui-styling` — shadcn/Tailwind encyclopedia; extract only stack-specific recipes still missing after this router, then drop the entrypoint.
-- `ui-ux-pro-max` — divergent copies; extract unique search/explore heuristics, then drop the broad entrypoint. Recommendation never outranks brand/Figma/brief.
+`ui-styling` stack-honor policy lives in Implementation policy and [references/router.md](references/router.md); the encyclopedia stays in the export. `ui-ux-pro-max` search/explore rules live in the router; catalogs stay in the export. See `docs/migration/unique-heuristics.md`.

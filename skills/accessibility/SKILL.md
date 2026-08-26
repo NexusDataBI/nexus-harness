@@ -78,6 +78,13 @@ Severity: `HIGH` blocks a task, hides content from AT, or is systemic; `MEDIUM` 
 
 `Block` if any `HIGH` remains, else `Approve`. Never approve coverage you did not inspect. Empty result: "No actionable accessibility findings" plus what was verified.
 
-## Pending extract
+## Optional references
 
-Supporting reference files from `better-accessibility` (`semantics-and-aria.md`, `focus-and-keyboard.md`, `forms.md`, `hit-areas.md`, `motion-and-zoom.md`, `screen-readers.md`) remain in the v3 export until copied as optional skill references.
+Recipes from `better-accessibility`, kept here so this remains the only a11y skill:
+
+- [references/semantics-and-aria.md](references/semantics-and-aria.md)
+- [references/focus-and-keyboard.md](references/focus-and-keyboard.md)
+- [references/forms.md](references/forms.md)
+- [references/hit-areas.md](references/hit-areas.md)
+- [references/motion-and-zoom.md](references/motion-and-zoom.md)
+- [references/screen-readers.md](references/screen-readers.md)
