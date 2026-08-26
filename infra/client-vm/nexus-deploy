@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Restricted client-VM deploy entrypoint.
+# Accepts ONLY: deploy <allowlisted-service> <sha256:digest>
+# Never evaluate user strings in a shell; pass argv via exec "$@" only.
+#
+# Installed as root-owned /usr/local/bin/nexus-deploy and bound via
+# authorized_keys command= for the nexus-deploy system user.
+set -euo pipefail
+
+HELPER="${NEXUS_DEPLOY_HELPER:-/usr/local/lib/nexus-deploy/deploy_contract.py}"
+# Repo / test fallback: sibling of this script when helper not yet installed.
+if [[ ! -f "${HELPER}" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  # Prefer installed tree; then worktree src module via PYTHONPATH.
+  if [[ -f "${SCRIPT_DIR}/../../src/nexus_harness/deploy_contract.py" ]]; then
+    export PYTHONPATH="${SCRIPT_DIR}/../../src${PYTHONPATH:+:${PYTHONPATH}}"
+    exec /usr/bin/env python3 -m nexus_harness.deploy_contract "$@"
+  fi
+  printf 'ERROR: deploy helper missing at %s\n' "${HELPER}" >&2
+  exit 2
+fi
+
+# Fixed interpreter + helper path + "$@": argv is not interpolated into a shell.
+exec /usr/bin/env python3 "${HELPER}" "$@"
