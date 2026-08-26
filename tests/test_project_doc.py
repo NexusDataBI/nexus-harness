@@ -23,6 +23,7 @@ SECTIONS = (
 UNSAFE = {
     "token": "ghp_AAAAAAAAAAAAAAAAAAAA",
     "vm_ip": "203.0.113.10",
+    "vm_ip6": "2001:db8::10",
     "ssh": "ssh deploy@203.0.113.10",
     "key": "-----BEGIN OPENSSH PRIVATE KEY-----",
     "home": "/Users/someone/Projects/secret",
@@ -146,7 +147,7 @@ class ProjectDocTests(unittest.TestCase):
         markdown = render_project_doc(
             project,
             profile,
-            current_focus=f"Ship to {UNSAFE['vm_ip']} via {UNSAFE['ssh']}",
+            current_focus=f"Ship to {UNSAFE['vm_ip']} {UNSAFE['vm_ip6']} via {UNSAFE['ssh']}",
         )
         for value in UNSAFE.values():
             self.assertNotIn(value, markdown)

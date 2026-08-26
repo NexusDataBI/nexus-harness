@@ -26,6 +26,7 @@ DEFAULT_LINKS = "None declared. See repository docs and GitHub."
 _IPV4 = re.compile(
     r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"
 )
+_IPV6 = re.compile(r"(?i)\b(?:[0-9a-f]{1,4}:){2,7}[0-9a-f:.]*[0-9a-f]\b")
 _SSH = re.compile(
     r"(?i)(?:\b(?:ssh|scp)://[^\s\"'<>]+"
     r"|\b(?:ssh|scp)\s+[A-Za-z0-9._-]+@[A-Za-z0-9.-]+(?::[^\s\"'<>]+)?)"
@@ -191,6 +192,7 @@ def _safe_text(value: object, fallback: str = "") -> str:
 def _is_unsafe(text: str) -> bool:
     return bool(
         _IPV4.search(text)
+        or _IPV6.search(text)
         or _SSH.search(text)
         or _ABS_PATH.search(text)
         or _SECRET.search(text)
