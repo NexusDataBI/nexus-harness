@@ -1,30 +1,32 @@
-# Plan 6 ledger
+# Plan 7 ledger
 
-Worktree: /Users/USER1/Projects/nexus-harness/.worktrees/feat-v4-frontend-visual-qa
-Branch: feat/v4-frontend-visual-qa
-PLAN_6_BASELINE: df2e5fbebe6f4918fbc6ae63ee00f718057e976d
+Worktree: /Users/USER1/Projects/nexus-harness/.worktrees/feat-v4-posthog-incident-intelligence
+Branch: feat/v4-posthog-incident-intelligence
+PLAN_7_BASELINE: 48d0ab4449ab91dfa1c4b90a93de9b46474cf5f8
 
-## Plan 5 integration
+## Plan 6 integration
 
-Plan 5 audited HEAD: 5dedbb4cedc28b7caa18dfb96967831a53ffd5e9
-P5-D01 commit: df2e5fbebe6f4918fbc6ae63ee00f718057e976d
-main after FF: df2e5fbebe6f4918fbc6ae63ee00f718057e976d
-fresh post-FF tests: 553/553; scripts/validate PASS
+Plan 6 repaired HEAD: 48d0ab4449ab91dfa1c4b90a93de9b46474cf5f8
+P6-R01 commit: ff80292c6d997b98dac3e3d4ab6aeb31528fd752
+P6-D02 commit: 48d0ab4449ab91dfa1c4b90a93de9b46474cf5f8
+main after FF: 48d0ab4449ab91dfa1c4b90a93de9b46474cf5f8
+fresh post-FF tests: 698/698; scripts/validate PASS
 
 ## Tasks
 
-- Task 1: complete (commits df2e5fb..2941dc9, review clean; minors: substring authority tests)
-- Task 2: complete (commits 2941dc9..4e2fd8d, review clean; minors: weaker asserts on progress/optimistic/lazy)
-- Task 3: complete (commits 4e2fd8d..1b72ee6, review clean after loopback-redirect fix)
-- Task 4: complete (commits 1b72ee6..6d35beb, review clean after task-id confine + grep escape)
-- Task 5: complete (commits 6d35beb..38d2e24, review clean after relative-artifact confine)
-- Task 6: complete (review contract + visual gate; Task 7 pending)
+- Task 1: complete (commits 48d0ab4..73dc6d6, review approved after secret/spend fixes)
+- Task 2: complete (commits 73dc6d6..HEAD, digest validation aligned to Plan 4)
+- Task 3: complete (see task-3-report.md)
+- Task 4: pending
+- Task 5: pending
+- Task 6: pending
 - Task 7: pending
 
 ## Constraints
 
-No push. No GitHub mutations. No VPS. No client repo edits.
-Playwright only. shell=False for processes.
-Do not overwrite tests/test_frontend_skill.py or skills/nexus-frontend/SKILL.md blindly.
-P1-D05: frontend slice only; do not mark whole item resolved unless all heuristics handled.
-P5-D01: leave deferred.
+No push. No GitHub mutations. No VPS. No real PostHog project/token/events.
+authorize_remote_mutation=False by default.
+PostHog Cloud is the only baseline observability SaaS.
+Reuse src/nexus_harness/github.py. Reuse Plan 4 deploy digest.
+Do not invent RCA. Network-free unit tests.
+P6-D01 remains deferred. P6-D02 is resolved.
