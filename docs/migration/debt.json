@@ -231,6 +231,16 @@
         "tests/test_frontend_review.py",
         "tests/test_frontend_integration.py"
       ]
+    },
+    {
+      "id": "P7-D01",
+      "origin": "plan-7-final-review",
+      "severity": "medium",
+      "description": "PostHogConfig is secret-bearing and generic dataclass serialization may expose personal_api_key if future Harness code calls dataclasses.asdict().",
+      "status": "in_progress",
+      "target_plan": "plan-8",
+      "resolution_condition": "CLI, logs, doctor, reports, exceptions, and JSON output serialize PostHogConfig only via an explicit safe serializer (safe_dict / safe_serialize). Source and tests prove the injected token never appears. Do not monkeypatch dataclasses.asdict.",
+      "defer_reason": "repr() and safe_dict() already redact; asdict() is a Python dataclass hazard, not a Plan 7 functional blocker."
     }
   ]
 }
