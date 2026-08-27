@@ -98,17 +98,20 @@ def classify_incident(
 
     occ = _as_int(occurrences, default=0)
     users = _as_int(affected_users, default=0)
-    if rules.release_regression and regression:
-        return PolicyDecision(action=ACTION_CREATE, reason="release regression")
     if rules.fatal and fatal:
         return PolicyDecision(action=ACTION_CREATE, reason="fatal")
     if rules.security_adjacent and security_adjacent:
         return PolicyDecision(action=ACTION_CREATE, reason="security-adjacent")
+    crossed = (
+        occ >= rules.min_occurrences_create or users >= rules.min_affected_users_create
+    )
+    if not crossed:
+        return PolicyDecision(action=ACTION_IGNORE, reason="below actionable threshold")
+    if rules.release_regression and regression:
+        return PolicyDecision(action=ACTION_CREATE, reason="release regression")
     if occ >= rules.min_occurrences_create:
         return PolicyDecision(action=ACTION_CREATE, reason="occurrence threshold")
-    if users >= rules.min_affected_users_create:
-        return PolicyDecision(action=ACTION_CREATE, reason="affected-user threshold")
-    return PolicyDecision(action=ACTION_IGNORE, reason="below actionable threshold")
+    return PolicyDecision(action=ACTION_CREATE, reason="affected-user threshold")
 
 
 def _matching_open_issue(

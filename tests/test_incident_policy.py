@@ -28,6 +28,12 @@ class IncidentPolicyTests(unittest.TestCase):
         )
         self.assertEqual(result.action, ACTION_IGNORE)
 
+    def test_isolated_regression_below_threshold_is_ignored(self):
+        result = classify_incident(
+            occurrences=1, affected_users=1, regression=True, fatal=False
+        )
+        self.assertEqual(result.action, ACTION_IGNORE)
+
     def test_release_regression_creates_issue(self):
         result = classify_incident(
             occurrences=4, affected_users=3, regression=True, fatal=False
