@@ -486,5 +486,58 @@ def _failing_transport(secret: str):
     return _transport
 
 
+class PostHogSafeSerializationTests(unittest.TestCase):
+    def _config(self) -> PostHogConfig:
+        return PostHogConfig(
+            project_id="123",
+            host="https://us.posthog.com",
+            personal_api_key=SECRET,
+        )
+
+    def test_asdict_is_unsafe_and_must_not_be_the_report_path(self):
+        from dataclasses import asdict
+
+        leaked = asdict(self._config())
+        self.assertEqual(leaked["personal_api_key"], SECRET)
+        self.assertIn(SECRET, json.dumps(leaked, default=str))
+
+    def test_canonical_safe_serialize_redacts_secret(self):
+        from nexus_harness.serialize import dumps_report, safe_serialize
+
+        cfg = self._config()
+        rendered = dumps_report({"posthog": cfg})
+        payload = safe_serialize(cfg)
+        blob = json.dumps(payload)
+        self.assertNotIn(SECRET, blob)
+        self.assertNotIn(SECRET, rendered)
+        self.assertNotIn(SECRET, json.dumps(payload, default=str))
+        self.assertEqual(payload["personal_api_key"], "[REDACTED]")
+
+    def test_cli_and_doctor_report_paths_never_emit_token(self):
+        from nexus_harness.serialize import (
+            dumps_report,
+            observability_cli_json,
+            observability_doctor_report,
+        )
+
+        cfg = self._config()
+        cli = observability_cli_json(cfg)
+        doctor = observability_doctor_report(cfg)
+        combined = dumps_report({"cli": cfg, "doctor": doctor})
+        for text in (cli, json.dumps(doctor), combined, repr(cfg), str(cfg)):
+            self.assertNotIn(SECRET, text)
+
+    def test_harness_source_does_not_asdict_posthog_config(self):
+        src = ROOT / "src" / "nexus_harness"
+        offenders = []
+        for path in src.rglob("*.py"):
+            text = path.read_text(encoding="utf-8")
+            if "asdict(" not in text:
+                continue
+            if "PostHogConfig" in text or "personal_api_key" in text:
+                offenders.append(str(path.relative_to(ROOT)))
+        self.assertEqual(offenders, [])
+
+
 if __name__ == "__main__":
     unittest.main()

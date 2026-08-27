@@ -150,7 +150,12 @@ class PostHogConfig:
         return repr(self)
 
     def safe_dict(self) -> dict[str, Any]:
-        """Serialize config with secrets redacted for logs / prompts."""
+        """Serialize config with secrets redacted for logs / prompts / JSON.
+
+        This is the PostHog-specific safe serializer. Generic CLI/doctor/report
+        paths must use ``nexus_harness.serialize.safe_serialize`` / ``dumps_report``
+        rather than ``dataclasses.asdict``.
+        """
         return {
             "project_id": self.project_id,
             "host": self.host,

@@ -167,6 +167,7 @@
     "dist/src/nexus_harness/runtime_home.py": "0516cbf2965ac904b705303cf2f74572bc11b1e723b545510edd9044be4340c2",
     "dist/src/nexus_harness/safe.py": "7df4fb7b06326fd9f221fb2bc91c65bd2ed72ace2ec4803c76cd4a89e109a12c",
     "dist/src/nexus_harness/security.py": "51a61aa40019ca6f4e131d91258d6d82e1c8e2e3374cbc687b580de1464e0ef9",
+    "dist/src/nexus_harness/serialize.py": "645a81bdfbd6de511f337e06178e3f46cdcea1ca537cf76c6ff9f793b082d522",
     "dist/src/nexus_harness/skills.py": "f0612f10a821bc1ad804bc72bc4d18d34295d1071b00fe1b1b03606d2956ae85",
     "dist/src/nexus_harness/state.py": "fb5b3a961bcb07fec01989c12b3246122a7d6ffeafbf78107a46a7377ce1c42b",
     "dist/src/nexus_harness/tooling.py": "106b7f5c7c7181f38f1ab1c9b7ca10a0dd90699d82501fa6d2cdaddbaa074409",
