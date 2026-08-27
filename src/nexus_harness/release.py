@@ -65,7 +65,6 @@ EXCLUDE_DIR_NAMES = frozenset(
         "venv",
         "legacy",
         "inputs",
-        "release",
         "screenshots",
         "traces",
         "htmlcov",
@@ -442,6 +441,8 @@ def _run_preconditions(root: Path, checks: ReleaseChecks) -> None:
 
 def _excluded(relative: str, path: Path) -> bool:
     parts = Path(relative).parts
+    if relative == "release" or relative.startswith("release/"):
+        return True
     if any(part in EXCLUDE_DIR_NAMES for part in parts):
         return True
     if any(part.endswith(".egg-info") for part in parts):

@@ -67,6 +67,7 @@ def _fixture(root: Path) -> Path:
     _write(root / "skills" / "nexus-workflow" / "SKILL.md", "# workflow\n")
     _write(root / "scripts" / "validate", "#!/bin/sh\necho ok\n")
     _write(root / "docs" / "migration" / "final-report.md", "# migration\n")
+    _write(root / "docs" / "release" / "v4-acceptance.md", "# acceptance\n")
     _write(
         root / "docs" / "migration" / "debt.json",
         json.dumps(
@@ -198,6 +199,9 @@ class ReleaseAssemblyTests(unittest.TestCase):
             self.assertTrue((bundle / "scripts" / "validate").is_file())
             self.assertTrue(
                 (bundle / "docs" / "migration" / "final-report.md").is_file()
+            )
+            self.assertTrue(
+                (bundle / "docs" / "release" / "v4-acceptance.md").is_file()
             )
             self.assertTrue((bundle / "harness.lock").is_file())
             self.assertTrue((bundle / "INSTALL.md").is_file())
