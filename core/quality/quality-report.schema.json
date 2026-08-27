@@ -34,8 +34,11 @@
         "direction": { "type": "string", "enum": ["lower", "higher"] },
         "required": { "type": "boolean" },
         "threshold": { "type": ["number", "integer", "boolean", "null"] },
-        "tolerance": { "type": ["number", "integer"] },
-        "status": { "type": "string", "enum": ["PASS", "FAIL"] }
+        "tolerance": { "type": ["number", "integer", "null"] },
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "FAIL", "BOOTSTRAP_REQUIRED", "NOT_APPLICABLE"]
+        }
       }
     }
   }

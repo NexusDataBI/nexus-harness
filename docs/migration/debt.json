@@ -16,10 +16,13 @@
       "origin": "plan-1-final-review",
       "severity": "low",
       "description": "JSON/TOML under upstream/ besides vendor-lock.json is not parse-validated.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "Doctor/release validation walks imported upstream machine files without treating them as canonical policy.",
-      "defer_reason": "Vendor copies are locked by content hash; Plan 2 does not change upstream import."
+      "defer_reason": "Vendor copies are locked by content hash; Plan 2 does not change upstream import.",
+      "resolution_commit": "1f9a056574c869f1a0c88e254a8058c2cd8b0746",
+      "resolution_description": "_check_parseable now walks upstream/ for .json/.toml belonging to the imported contract. Paths with an examples or fixtures segment are skipped as intentional malformed fixtures. Invalid locked machine config FAILs. vendor-lock.json remains covered.",
+      "tests": ["tests/test_validate.py"]
     },
     {
       "id": "P1-D03",
@@ -36,20 +39,26 @@
       "origin": "plan-1-task-6-review",
       "severity": "low",
       "description": "migrate CLI --dry-run is a no-op (store_true with default True).",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "Expose explicit --apply vs default dry-run without changing fail-closed cleanup.",
-      "defer_reason": "Cleanup already dry-run-first; Plan 2 does not extend migrate."
+      "defer_reason": "Cleanup already dry-run-first; Plan 2 does not extend migrate.",
+      "resolution_commit": "31ad5cec20191d1f5c9a74c8d5b008cf2015e9a5",
+      "resolution_description": "Removed the fake --dry-run flag. Public migrate is preview-only. generate_cleanup_report stays dry_run True by default; --apply-tempfile is explicit opt-in for tempfile copy. Destructive cleanup is never implicit.",
+      "tests": ["tests/test_migrate.py"]
     },
     {
       "id": "P1-D05",
       "origin": "plan-1-task-4",
       "severity": "medium",
       "description": "Unique heuristics listed in docs/migration/unique-heuristics.md are not fully materialized into the v4 tree.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "Each pending extract copied, discarded with rationale, or blocked explicitly before source deletion.",
-      "defer_reason": "Extract remains gitignored input. Spec forbids deleting divergent skills until unique content is preserved."
+      "defer_reason": "Extract remains gitignored input. Spec forbids deleting divergent skills until unique content is preserved.",
+      "resolution_commit": "d0e448d635fbec37827aa547d0265ec667daa177",
+      "resolution_description": "Closed remaining unique-heuristics rows (implement, code-review, tdd-workflow, root-cause-tracing, napkin) as PRESERVED, ALREADY_COVERED, or DISCARDED_WITH_REASON. Unresolved divergent decisions = 0. nexus-quality SKILL.md no longer has a pending extract section.",
+      "tests": ["tests/test_skills.py"]
     },
     {
       "id": "P2-D01",
@@ -76,20 +85,26 @@
       "origin": "plan-2-final-review",
       "severity": "medium",
       "description": "Ratchet and budget metrics fail-open when baseline is None; ratchet.toml [budget] default_tolerance is unused.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "Missing baseline is fail-closed for required ratchet/budget metrics, or documented as explicit bootstrap; default_tolerance is applied when Metric.tolerance is unset.",
-      "defer_reason": "Changing fail-open would break current quality tests and needs a policy ruling. Not a Done Gate freshness bug."
+      "defer_reason": "Changing fail-open would break current quality tests and needs a policy ruling. Not a Done Gate freshness bug.",
+      "resolution_commit": "76b4e2772738fac672437e9c9ebe8620982225fb",
+      "resolution_description": "Required ratchet/budget without baseline is BOOTSTRAP_REQUIRED, not silent PASS. Optional metrics may be NOT_APPLICABLE. Budget mode applies [budget] default_tolerance when Metric.tolerance is unset. quality-report schema enumerates the new statuses and allows null tolerance.",
+      "tests": ["tests/test_quality.py"]
     },
     {
       "id": "P2-D04",
       "origin": "plan-2-final-review",
       "severity": "medium",
       "description": "Trivy normalize: unknown severity is counted nowhere; HIGH secret without Resolution does not block; non-dict payload is unhandled.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "UNKNOWN/INFO severity is counted or rejected; HIGH secrets follow policy; normalize_trivy fail-closes on non-object payloads.",
-      "defer_reason": "Scanner edge cases are not required to close the Done Gate hash bind. Trivy-only kernel already blocks CRITICAL and HIGH-with-fix."
+      "defer_reason": "Scanner edge cases are not required to close the Done Gate hash bind. Trivy-only kernel already blocks CRITICAL and HIGH-with-fix.",
+      "resolution_commit": "519554cfefa47dcd1ba4c68ee10943dfa1afae92",
+      "resolution_description": "normalize_trivy fail-closes on non-dict payload and malformed Results. Unknown severity is counted as unknown and FAILs. HIGH secrets without Resolution block via high_secret_blocks in policy.toml. Counts include critical/high/medium/low/info/unknown.",
+      "tests": ["tests/test_security.py"]
     },
     {
       "id": "P2-D05",
@@ -136,10 +151,13 @@
       "origin": "plan-2.5-final-review",
       "severity": "medium",
       "description": "Capsule stale-warning section has no own char budget.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "STALE/CONFLICT WARNINGS has a dedicated char budget distinct from hot/warm.",
-      "defer_reason": "Warnings currently append without a section budget. Not required to close Plan 2.5 HIGH findings."
+      "defer_reason": "Warnings currently append without a section budget. Not required to close Plan 2.5 HIGH findings.",
+      "resolution_commit": "cde70513bee69979df158888bfd1893660b9cadd",
+      "resolution_description": "CapsulePolicy.stale_warnings_max_chars (default 2000) is loaded from retrieval-policy.toml. STALE/CONFLICT warnings truncate deterministically with a count summary (… and N more). HOT/WARM/COLD budgets are unchanged.",
+      "tests": ["tests/test_memory_capsule.py"]
     },
     {
       "id": "P25-D03",
@@ -166,10 +184,18 @@
       "origin": "plan-3-final-review",
       "severity": "low",
       "description": "Empty base_commit on Evidence is accepted by the Done Gate; completeness of evidence identity is not fail-closed.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "evaluate_completion / promote_acceptance reject evidence without base_commit when policy requires a bound commit, without changing READY_TO_SHIP semantics for already-complete evidence.",
-      "defer_reason": "Controller left Done Gate semantics unchanged in the Plan 3 final-review fix wave."
+      "defer_reason": "Controller left Done Gate semantics unchanged in the Plan 3 final-review fix wave.",
+      "resolution_commit": "bbe52897993c12496a5daf72552308253d67c46d",
+      "resolution_description": "Mutable completion evidence requires a non-empty base_commit. commit_independent=True or command static-policy/policy-file remains independent. Visual evidence and playwright capture fail closed without a real commit. READY_TO_SHIP meaning for already-complete valid evidence is unchanged.",
+      "tests": [
+        "tests/test_completion.py",
+        "tests/test_playwright_render.py",
+        "tests/test_visual.py",
+        "tests/test_frontend_cli.py"
+      ]
     },
     {
       "id": "P3-R01",
@@ -189,30 +215,39 @@
       "origin": "plans-1-3-repair-gate",
       "severity": "low",
       "description": "harness.lock generated_hashes includes the compiled engine copy under dist/src/nexus_harness, so any engine byte change churns the lock even when render_all() adapters are unchanged.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "Split adapter hashes from engine hashes, or hash only render_all() outputs plus a single engine archive digest.",
-      "defer_reason": "Non-empty generated_hashes and installable engine were the repair requirement. Hash partitioning is release hygiene."
+      "defer_reason": "Non-empty generated_hashes and installable engine were the repair requirement. Hash partitioning is release hygiene.",
+      "resolution_commit": "2619a3e0fb9d5e02a70d32b1d2e5c7e43700e9c4",
+      "resolution_description": "generated_hashes now covers render_all() adapters plus dist/core/*. engine_hashes covers dist/src/nexus_harness/*. validate.py reports adapter vs engine drift separately. write_lock persists both keys. Fresh checkout with dist only .gitkeep remains deterministic.",
+      "tests": ["tests/test_compile.py"]
     },
     {
       "id": "P5-D01",
       "origin": "plan-5-final-review",
       "severity": "low",
       "description": "GitHub hierarchy parent_issue/child_issues is not persisted in TaskState; restart recovery relies on GitHub/Project authority rather than local TaskState roundtrip.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "Either persist hierarchy references in TaskState or explicitly prove and document GitHub as the sole recoverable hierarchy authority across restart.",
-      "defer_reason": "Does not affect Plan 6 frontend visual quality or bounded Issue tracking."
+      "defer_reason": "Does not affect Plan 6 frontend visual quality or bounded Issue tracking.",
+      "resolution_commit": "8bef27777590971efa0278713961b91de19f5cc2",
+      "resolution_description": "Choice B: GitHub is the sole recoverable hierarchy authority. TaskState does not persist parent_issue/child_issues. recover_hierarchy reads GitHub-shaped input after restart. Module docstring in hierarchy.py documents the ownership split.",
+      "tests": ["tests/test_hierarchy.py"]
     },
     {
       "id": "P6-D01",
       "origin": "plan-6-whole-branch-review",
       "severity": "low",
       "description": "A failed recapture does not invalidate prior VisualEvidence still fresh for the same diff_hash; leftover desktop/mobile bundles can keep completion READY.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "Failed capture for a route/viewport must drop or mark stale the previous VisualEvidence for that pair on the current diff_hash, with a focused test.",
-      "defer_reason": "Failed capture no longer promotes new evidence; leftover prior PASS on the same hash is restart/retry hygiene, not the abc→def freshness proof."
+      "defer_reason": "Failed capture no longer promotes new evidence; leftover prior PASS on the same hash is restart/retry hygiene, not the abc→def freshness proof.",
+      "resolution_commit": "c75337dc5a14801d7860455bed8eb01c48a7fa5d",
+      "resolution_description": "Failed capture appends attempt_ok=false records with captured_at. visual_completion_reasons uses newest attempt per (route, viewport, diff_hash); newest FAIL wins over older PASS. Screenshots are not promoted on failure. History is retained rather than replaced.",
+      "tests": ["tests/test_playwright_render.py", "tests/test_visual.py"]
     },
     {
       "id": "P6-D02",
