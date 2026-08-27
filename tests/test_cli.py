@@ -164,28 +164,12 @@ class CliHelpTests(unittest.TestCase):
 
 
 class CliUnavailableCommandTests(unittest.TestCase):
-    def test_doctor_exits_unavailable_without_fake_pass(self):
-        code, stdout, stderr = _run_main(["doctor"])
-        self.assertEqual(code, 2)
-        combined = stdout + stderr
-        self.assertRegex(combined, r"not (yet )?available|not implemented")
-        self.assertNotRegex(combined, r"\bPASS\b")
-
     def test_evals_exits_unavailable_without_fake_pass(self):
         code, stdout, stderr = _run_main(["evals"])
         self.assertEqual(code, 2)
         combined = stdout + stderr
         self.assertRegex(combined, r"not (yet )?available|not implemented")
         self.assertNotRegex(combined, r"\bPASS\b")
-
-    def test_doctor_json_is_unavailable_not_pass(self):
-        code, stdout, stderr = _run_main(["--json", "doctor"])
-        self.assertEqual(code, 2)
-        payload = json.loads(stdout)
-        self.assertEqual(payload["status"], "unavailable")
-        self.assertEqual(payload["command"], "doctor")
-        self.assertNotEqual(payload["status"], "PASS")
-        self.assertEqual(stderr.strip(), "")
 
 
 class CliValidateJsonTests(unittest.TestCase):

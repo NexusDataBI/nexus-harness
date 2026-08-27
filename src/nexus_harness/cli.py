@@ -6,7 +6,7 @@ Command surface:
 - ``ci affected`` / ``quality run`` / ``images build``
 - ``workflow advance`` / ``project show`` / ``frontend capture``
 - ``incidents classify|render`` (local/policy/render only)
-- ``doctor`` / ``evals`` (subparsers reserved; unavailable until those modules exist)
+- ``doctor --profile local|release|ci-host`` / ``evals`` (evals reserved until the module exists)
 """
 
 from __future__ import annotations
@@ -355,7 +355,19 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("source", type=Path)
     install.add_argument("target", type=Path)
 
-    sub.add_parser("doctor", help="environment doctor")
+    doctor = sub.add_parser("doctor", help="environment doctor")
+    doctor.add_argument(
+        "--profile",
+        choices=("local", "release", "ci-host"),
+        default="local",
+        help="local harness, local release assembly, or hermetic CI-host fixture",
+    )
+    doctor.add_argument(
+        "--project",
+        dest="doctor_project",
+        default=None,
+        help="optional managed project id for Biome/Vitest/Playwright/Trivy checks",
+    )
     sub.add_parser("evals", help="eval runner")
 
     workflow = sub.add_parser("workflow", help="task lifecycle")
@@ -681,6 +693,27 @@ def cmd_incidents_render(
     return 0
 
 
+def cmd_doctor(
+    *,
+    project_root: Path,
+    profile: str,
+    json_mode: bool,
+    selected_project: str | None = None,
+) -> int:
+    from nexus_harness.doctor import format_doctor_report, run_doctor
+
+    report = run_doctor(
+        project_root,
+        profile=profile,
+        selected_project=selected_project,
+    )
+    if json_mode:
+        print(dumps_report(report.to_dict()))
+    else:
+        print(format_doctor_report(report))
+    return 1 if report.gate == "FAIL" else 0
+
+
 def cmd_optional_module(command: str, module: str, *, json_mode: bool) -> int:
     handler = _try_optional_main(module)
     if handler is None:
@@ -726,7 +759,12 @@ def main(
                 json_mode=json_mode,
             )
         if args.group == "doctor":
-            return cmd_optional_module("doctor", "doctor", json_mode=json_mode)
+            return cmd_doctor(
+                project_root=root,
+                profile=getattr(args, "profile", "local"),
+                json_mode=json_mode,
+                selected_project=getattr(args, "doctor_project", None),
+            )
         if args.group == "evals":
             return cmd_optional_module("evals", "evals", json_mode=json_mode)
         if args.group == "workflow" and args.workflow_cmd == "advance":
