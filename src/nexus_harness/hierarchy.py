@@ -3,6 +3,11 @@
 Bounded bugs/improvements stay one Issue. Epic → Feature → Task is only the
 shape for architectural/long-horizon features. Empty child Issues are never
 created to fill that shape.
+
+GitHub is the sole recoverable hierarchy authority. TaskState intentionally
+does not own ``parent_issue`` / ``child_issues``. Restart recovery reads
+GitHub-shaped input via ``recover_hierarchy``; local task-state roundtrip
+persists only the tracking ``issue`` number.
 """
 
 from __future__ import annotations
@@ -109,6 +114,33 @@ def apply_hierarchy(
     return result
 
 
+def recover_hierarchy(github_issue) -> HierarchyResult:
+    """Rebuild hierarchy from a GitHub Issue payload. TaskState is not used."""
+    if not isinstance(github_issue, dict):
+        return HierarchyResult(shape=())
+    parent = _positive(
+        (github_issue.get("parent") or {}).get("number")
+        if isinstance(github_issue.get("parent"), dict)
+        else github_issue.get("number")
+    )
+    children: list[int] = []
+    sub = github_issue.get("subIssues") or github_issue.get("sub_issues") or {}
+    nodes = sub.get("nodes") if isinstance(sub, dict) else sub
+    for node in nodes or ():
+        number = None
+        if isinstance(node, dict):
+            number = _positive(node.get("number"))
+        else:
+            number = _positive(node)
+        if number is not None:
+            children.append(number)
+    return HierarchyResult(
+        shape=(),
+        parent=parent,
+        children=tuple(children),
+    )
+
+
 def _allows_children(shape: tuple[str, ...]) -> bool:
     return len(shape) > 1
 
@@ -144,5 +176,3 @@ def _persist(state: TaskState | None, result: HierarchyResult) -> None:
     if state is None or result.parent is None:
         return
     state.issue = result.parent
-    state.parent_issue = result.parent
-    state.child_issues = result.children

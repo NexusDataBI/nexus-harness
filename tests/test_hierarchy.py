@@ -1,9 +1,12 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock
 
 from nexus_harness.github import GitHub
-from nexus_harness.hierarchy import apply_hierarchy, tracking_shape
-from nexus_harness.state import TaskState
+from nexus_harness.hierarchy import apply_hierarchy, recover_hierarchy, tracking_shape
+from nexus_harness.state import TaskState, load_task_state, save_task_state
 
 
 class HierarchyTests(unittest.TestCase):
@@ -169,5 +172,44 @@ class HierarchyTests(unittest.TestCase):
         self.assertEqual(result.children, (11,))
         self.assertFalse(result.linked)
         self.assertEqual(state.issue, 10)
-        self.assertEqual(getattr(state, "parent_issue", None), 10)
-        self.assertEqual(getattr(state, "child_issues", None), (11,))
+        self.assertNotIn("parent_issue", state.to_dict())
+        self.assertNotIn("child_issues", state.to_dict())
+
+    def test_task_state_roundtrip_does_not_persist_hierarchy(self):
+        github = Mock(spec=GitHub)
+        state = TaskState.new("task-1", "x/y")
+        apply_hierarchy(
+            github,
+            repo="x/y",
+            scope="architectural",
+            work_type="feature",
+            parent=10,
+            children=(11, 12),
+            state=state,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            save_task_state(state, path)
+            loaded = load_task_state(path)
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        self.assertNotIn("parent_issue", payload)
+        self.assertNotIn("child_issues", payload)
+        self.assertNotIn("parent_issue", loaded.to_dict())
+        self.assertNotIn("child_issues", loaded.to_dict())
+        self.assertEqual(loaded.issue, 10)
+
+    def test_restart_recovers_hierarchy_from_github_shaped_input(self):
+        recovered = recover_hierarchy(
+            {
+                "number": 10,
+                "parent": {"number": 10},
+                "subIssues": {"nodes": [{"number": 11}, {"number": 12}]},
+            }
+        )
+        self.assertEqual(recovered.parent, 10)
+        self.assertEqual(recovered.children, (11, 12))
+        state = TaskState.new("task-1", "x/y")
+        state.issue = recovered.parent
+        self.assertEqual(state.to_dict().get("issue"), 10)
+        self.assertNotIn("parent_issue", state.to_dict())
+        self.assertNotIn("child_issues", state.to_dict())

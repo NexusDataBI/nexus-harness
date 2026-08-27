@@ -81,7 +81,7 @@
     "dist/src/nexus_harness/frontend_review.py": "fa696fc1b1381119bf1bc240b3ba66f486107084f366364d5ac223b99ea0931b",
     "dist/src/nexus_harness/github.py": "eea83803ba75f03093b006822b35f0ed68cec48d83eaa3627ab5ddda61f38794",
     "dist/src/nexus_harness/graph.py": "5dbc8a8a5eda70bbd3ebc28eb25267eee887efd1819934e822dd4ba9120e0d8e",
-    "dist/src/nexus_harness/hierarchy.py": "79b74265d9b3b9be0f074ad12717e669f853e1100cc0526a857d4d272aa08fb9",
+    "dist/src/nexus_harness/hierarchy.py": "59a4a818fca2ae4c152c678e6eae21607882757cc31e2357f788ff26b7073b2a",
     "dist/src/nexus_harness/hooks.py": "a044ca685e302f01fc086eca3fca830cb0aaabda32ddab15baaa635d00a1a6b5",
     "dist/src/nexus_harness/incident_issue.py": "43e45697c0abee0c921dc74588807c7224460b9578e96f23fb2e89144b38878d",
     "dist/src/nexus_harness/incident_policy.py": "76652c6363f836b627e91f155a297ac6d2fabbd7a8849d2f2c170df483b82398",
