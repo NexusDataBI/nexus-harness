@@ -19,6 +19,7 @@ from nexus_harness.posthog import (
     PostHogError,
     ProviderResultStatus,
     QuotaAvailability,
+    config_from_profile,
     load_posthog_config,
     validate_host,
 )
@@ -52,6 +53,18 @@ def _schema_object_ok(instance: dict, schema: dict) -> bool:
 
 class PostHogConfigTests(unittest.TestCase):
     def test_personal_api_key_is_never_serialized(self):
+        cfg = PostHogConfig(
+            project_id="123",
+            host="https://us.posthog.com",
+            personal_api_key=SECRET,
+        )
+        values = list(cfg.safe_dict().values())
+        flat = json.dumps(cfg.safe_dict())
+        self.assertNotIn(SECRET, values)
+        self.assertNotIn(SECRET, flat)
+        self.assertNotIn(SECRET, str(cfg.safe_dict()))
+        self.assertNotIn(SECRET, repr(cfg))
+        self.assertNotIn(SECRET, str(cfg))
         cfg = PostHogConfig(
             project_id="123",
             host="https://us.posthog.com",
@@ -143,10 +156,8 @@ class PostHogConfigTests(unittest.TestCase):
                 'host = "https://us.posthog.com"\n',
                 encoding="utf-8",
             )
-            explicit = load_posthog_config(path, environ={})
-            self.assertIs(explicit.enabled, True)
-            self.assertIs(explicit.runtime_automation_enabled, True)
-            self.assertIs(explicit.free_tier_preferred, False)
+            with self.assertRaises(ValueError):
+                load_posthog_config(path, environ={})
 
     def test_https_only_host_rejects_unsafe_urls(self):
         validate_host("https://us.posthog.com")
@@ -301,6 +312,7 @@ class PostHogConfigTests(unittest.TestCase):
         self.assertIn("provider", props)
         self.assertIn("id", props)
         self.assertIn("host", props)
+        self.assertIn("region", props)
         self.assertNotIn("token", props)
         self.assertNotIn("personal_api_key", props)
         self.assertNotIn("api_key", props)
@@ -334,6 +346,80 @@ class PostHogConfigTests(unittest.TestCase):
         self.assertNotIn("phx_", text)
         # Production profile stays unconfigured for PostHog ids.
         self.assertNotRegex(text, r"(?m)^\[observability\]")
+
+    def test_quota_log_redacts_secret_on_unexpected_failure(self):
+        cfg = PostHogConfig(
+            project_id="123",
+            host="https://us.posthog.com",
+            personal_api_key=SECRET,
+        )
+        log_buffer = io.StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        logger = logging.getLogger("nexus_harness.posthog")
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+
+        def _boom(request: Request):
+            raise RuntimeError(f"unexpected {SECRET}")
+
+        try:
+            quota = PostHogClient(cfg, transport=_boom).get_quota()
+        finally:
+            logger.removeHandler(handler)
+        self.assertEqual(quota.status, QuotaAvailability.UNKNOWN)
+        self.assertNotIn(SECRET, log_buffer.getvalue())
+
+    def test_config_from_profile_merges_safe_observability_and_ignores_secrets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "posthog.toml"
+            path.write_text(
+                'project_id = "core-id"\nhost = "https://us.posthog.com"\n',
+                encoding="utf-8",
+            )
+            missing = config_from_profile({}, base=path, environ={})
+            self.assertEqual(missing.project_id, "core-id")
+            self.assertEqual(missing.host, "https://us.posthog.com")
+
+            merged = config_from_profile(
+                {
+                    "observability": {
+                        "id": "fixture-project",
+                        "host": "https://eu.posthog.com",
+                        "region": "eu",
+                        "token": SECRET,
+                        "personal_api_key": SECRET,
+                    }
+                },
+                base=path,
+                environ={},
+            )
+            self.assertEqual(merged.project_id, "fixture-project")
+            self.assertEqual(merged.host, "https://eu.posthog.com")
+            self.assertEqual(merged.region, "eu")
+            self.assertIsNone(merged.personal_api_key)
+            self.assertNotIn(SECRET, repr(merged))
+
+            with self.assertRaises(ValueError):
+                config_from_profile(
+                    {"observability": {"host": "http://localhost/posthog"}},
+                    base=path,
+                    environ={},
+                )
+
+    def test_oversized_response_is_invalid_payload(self):
+        cfg = PostHogConfig(
+            project_id="123",
+            host="https://us.posthog.com",
+            max_response_bytes=8,
+        )
+        client = PostHogClient(
+            cfg,
+            transport=MagicMock(return_value=_FakeResponse(b"0123456789", status=200)),
+        )
+        result = client.list_problems()
+        self.assertEqual(result.status, ProviderResultStatus.UNKNOWN)
+        self.assertEqual(result.error_kind, "invalid_payload")
+        self.assertIsNone(result.problems)
 
 
 class _FakeResponse:

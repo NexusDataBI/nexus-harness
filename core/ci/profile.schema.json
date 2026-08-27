@@ -107,6 +107,11 @@
           "type": "string",
           "minLength": 1,
           "description": "https PostHog Cloud host/region base URL."
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional PostHog Cloud region label (e.g. us, eu)."
         }
       }
     }

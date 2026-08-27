@@ -127,7 +127,7 @@ class PrivacyDefaults:
 class PostHogConfig:
     project_id: str
     host: str
-    personal_api_key: str | None = None
+    personal_api_key: str | None = field(default=None, repr=False)
     enabled: bool = False
     runtime_automation_enabled: bool = False
     free_tier_preferred: bool = True
@@ -139,6 +139,14 @@ class PostHogConfig:
     def __post_init__(self) -> None:
         if self.host:
             object.__setattr__(self, "host", validate_host(self.host))
+        if self.runtime_automation_enabled and not self.free_tier_preferred:
+            raise ValueError("runtime automation requires free_tier_preferred")
+
+    def __repr__(self) -> str:
+        return f"PostHogConfig({self.safe_dict()!r})"
+
+    def __str__(self) -> str:
+        return repr(self)
 
     def safe_dict(self) -> dict[str, Any]:
         """Serialize config with secrets redacted for logs / prompts."""
@@ -339,7 +347,10 @@ class PostHogClient:
         except PostHogError:
             return QuotaInfo(status=QuotaAvailability.UNKNOWN)
         except Exception as exc:  # noqa: BLE001 — normalize to UNKNOWN
-            _LOG.warning("posthog quota unavailable: %s", _redact(str(exc)))
+            _LOG.warning(
+                "posthog quota unavailable: %s",
+                _redact(str(exc), self._config.personal_api_key),
+            )
             return QuotaInfo(status=QuotaAvailability.UNKNOWN)
 
         if not isinstance(payload, dict):
