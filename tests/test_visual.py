@@ -428,6 +428,65 @@ class VisualReviewRequiredTests(unittest.TestCase):
         )
 
 
+class VisualAttemptHistoryTests(unittest.TestCase):
+    def test_newest_failed_attempt_wins_over_older_pass(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [
+                _bundle(
+                    "desktop",
+                    attempt_ok=True,
+                    captured_at="2026-08-27T10:00:00+00:00",
+                ),
+                _bundle(
+                    "mobile",
+                    attempt_ok=True,
+                    captured_at="2026-08-27T10:00:00+00:00",
+                ),
+                _bundle(
+                    "desktop",
+                    screenshot=None,
+                    reviewer_status="FAIL",
+                    attempt_ok=False,
+                    captured_at="2026-08-27T11:00:00+00:00",
+                ),
+                _bundle(
+                    "mobile",
+                    screenshot=None,
+                    reviewer_status="FAIL",
+                    attempt_ok=False,
+                    captured_at="2026-08-27T11:00:00+00:00",
+                ),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(reasons)
+        self.assertTrue(any("recapture failed" in reason for reason in reasons))
+
+    def test_later_index_failed_attempt_wins_without_timestamp(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [
+                _bundle("desktop"),
+                _bundle("mobile"),
+                _bundle(
+                    "desktop",
+                    screenshot=None,
+                    reviewer_status="FAIL",
+                    attempt_ok=False,
+                ),
+                _bundle(
+                    "mobile",
+                    screenshot=None,
+                    reviewer_status="FAIL",
+                    attempt_ok=False,
+                ),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(reasons)
+
+
 class VisualContractTests(unittest.TestCase):
     def test_schema_requires_route_viewport_diff_hash(self):
         self.assertTrue(SCHEMA.is_file())
@@ -443,6 +502,8 @@ class VisualContractTests(unittest.TestCase):
             "failed_request_count",
             "reviewer_status",
             "limitation",
+            "attempt_ok",
+            "captured_at",
         ):
             self.assertIn(field, schema["properties"])
 

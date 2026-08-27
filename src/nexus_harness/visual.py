@@ -53,6 +53,8 @@ class VisualEvidence:
     failed_request_urls: tuple[str, ...] = ()
     limitation: str | None = DEFAULT_LIMITATION
     base_commit: str = ""
+    attempt_ok: bool = True
+    captured_at: str | None = None
 
     def is_fresh(self, current_diff_hash: str) -> bool:
         return self.diff_hash == current_diff_hash
@@ -179,6 +181,8 @@ def as_visual_evidence(value) -> VisualEvidence | None:
         failed_request_urls=_str_tuple(value.get("failed_request_urls")),
         limitation=limitation,
         base_commit=str(value.get("base_commit") or ""),
+        attempt_ok=_as_bool(value.get("attempt_ok"), default=True),
+        captured_at=_opt_str(value.get("captured_at")),
     )
 
 
@@ -222,6 +226,8 @@ def confine_visual_artifacts(evidence: VisualEvidence, root: Path) -> VisualEvid
         failed_request_urls=evidence.failed_request_urls,
         limitation=evidence.limitation,
         base_commit=evidence.base_commit,
+        attempt_ok=evidence.attempt_ok,
+        captured_at=evidence.captured_at,
     )
 
 
@@ -240,15 +246,17 @@ def visual_completion_reasons(state, current_diff_hash=None) -> list[str]:
         if record is not None:
             items.append(record)
 
+    newest = _newest_attempts(items, current or "")
     ready_viewports: set[str] = set()
-    stale = False
+    stale = any(not evidence.is_fresh(current or "") for evidence in items)
     runtime_fail = False
     baseline_fail = False
     review_fail = False
     missing_commit = False
-    for evidence in items:
-        if not evidence.is_fresh(current or ""):
-            stale = True
+    recapture_fail = False
+    for evidence in newest:
+        if evidence.attempt_ok is False:
+            recapture_fail = True
             continue
         if not _opt_str(evidence.screenshot):
             continue
@@ -284,6 +292,8 @@ def visual_completion_reasons(state, current_diff_hash=None) -> list[str]:
         reasons.append("visual review is not PASS")
     if missing_commit:
         reasons.append("visual evidence is missing base_commit")
+    if recapture_fail:
+        reasons.append("visual recapture failed")
     return reasons
 
 
@@ -322,6 +332,41 @@ def _opt_str(value) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _newest_attempts(
+    items: Sequence[VisualEvidence], current_diff_hash: str
+) -> list[VisualEvidence]:
+    """Newest attempt per (route, viewport) on the current diff wins."""
+    groups: dict[tuple[str, str], list[tuple[int, VisualEvidence]]] = {}
+    for index, evidence in enumerate(items):
+        if not evidence.is_fresh(current_diff_hash):
+            continue
+        key = (evidence.route, evidence.viewport)
+        groups.setdefault(key, []).append((index, evidence))
+    newest: list[VisualEvidence] = []
+    for ranked in groups.values():
+        _index, evidence = max(ranked, key=_attempt_rank)
+        newest.append(evidence)
+    return newest
+
+
+def _attempt_rank(item: tuple[int, VisualEvidence]) -> tuple[str, int]:
+    index, evidence = item
+    return (evidence.captured_at or "", index)
+
+
+def _as_bool(value, *, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"1", "true", "yes"}:
+            return True
+        if text in {"0", "false", "no"}:
+            return False
+        return default
+    return bool(value)
 
 
 def _as_int(value) -> int:

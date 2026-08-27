@@ -7,6 +7,7 @@ always an argv list with ``shell=False``.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 import re
 import subprocess
@@ -188,6 +189,7 @@ def capture_route(
         ),
     )
     records: list[VisualEvidence] = []
+    captured_at = _now_captured_at()
     if int(exit_code) == 0:
         records = _record_visual_evidence(
             artifact_root=root,
@@ -195,9 +197,17 @@ def capture_route(
             route=safe_route,
             diff_hash=diff_hash,
             base_commit=commit,
+            captured_at=captured_at,
         )
-        if task_state is not None:
-            _attach_visual_evidence(task_state, records, state_path)
+    else:
+        records = _failed_visual_evidence(
+            route=safe_route,
+            diff_hash=diff_hash,
+            base_commit=commit,
+            captured_at=captured_at,
+        )
+    if task_state is not None and records:
+        _attach_visual_evidence(task_state, records, state_path)
     return CaptureResult(
         ok=int(exit_code) == 0,
         exit_code=int(exit_code),
@@ -359,9 +369,11 @@ def _record_visual_evidence(
     route: str,
     diff_hash: str,
     base_commit: str = "",
+    captured_at: str | None = None,
 ) -> list[VisualEvidence]:
     output_dir.mkdir(parents=True, exist_ok=True)
     records: list[VisualEvidence] = []
+    stamp = captured_at or _now_captured_at()
     for viewport in REQUIRED_VIEWPORTS:
         sidecar = _read_runtime_sidecar(output_dir, viewport)
         screenshot = output_dir / f"{viewport}-after.png"
@@ -382,9 +394,37 @@ def _record_visual_evidence(
             console_messages=sidecar["console_messages"],
             failed_request_urls=sidecar["failed_request_urls"],
             base_commit=base_commit,
+            attempt_ok=True,
+            captured_at=stamp,
         )
         records.append(confine_visual_artifacts(evidence, artifact_root))
     return records
+
+
+def _failed_visual_evidence(
+    *,
+    route: str,
+    diff_hash: str,
+    base_commit: str,
+    captured_at: str,
+) -> list[VisualEvidence]:
+    return [
+        VisualEvidence(
+            route=route,
+            viewport=viewport,
+            diff_hash=diff_hash,
+            screenshot=None,
+            reviewer_status="FAIL",
+            base_commit=base_commit,
+            attempt_ok=False,
+            captured_at=captured_at,
+        )
+        for viewport in REQUIRED_VIEWPORTS
+    ]
+
+
+def _now_captured_at() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _visual_payload(evidence: VisualEvidence) -> dict:
@@ -403,6 +443,8 @@ def _visual_payload(evidence: VisualEvidence) -> dict:
         "failed_request_urls": list(evidence.failed_request_urls),
         "limitation": evidence.limitation,
         "base_commit": evidence.base_commit,
+        "attempt_ok": evidence.attempt_ok,
+        "captured_at": evidence.captured_at,
     }
 
 
@@ -411,16 +453,14 @@ def _attach_visual_evidence(
     records: list[VisualEvidence],
     state_path: Path | None,
 ) -> None:
-    incoming = {(item.route, item.viewport): _visual_payload(item) for item in records}
+    incoming = [_visual_payload(item) for item in records]
     merged: list[dict] = []
     for raw in list(task_state.visual_evidence or []):
         existing = as_visual_evidence(raw)
         if existing is None:
             continue
-        if (existing.route, existing.viewport) in incoming:
-            continue
         merged.append(raw if isinstance(raw, dict) else _visual_payload(existing))
-    merged.extend(incoming.values())
+    merged.extend(incoming)
     task_state.visual_evidence = merged
     if state_path is not None:
         save_task_state(task_state, Path(state_path))

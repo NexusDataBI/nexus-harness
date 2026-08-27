@@ -28,6 +28,8 @@
       "items": { "type": "string" }
     },
     "limitation": { "type": ["string", "null"] },
-    "base_commit": { "type": ["string", "null"] }
+    "base_commit": { "type": ["string", "null"] },
+    "attempt_ok": { "type": "boolean" },
+    "captured_at": { "type": ["string", "null"] }
   }
 }

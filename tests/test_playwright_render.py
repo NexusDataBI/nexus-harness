@@ -441,7 +441,11 @@ class PlaywrightCaptureTests(unittest.TestCase):
             task_state=state,
         )
         self.assertFalse(result.ok)
-        self.assertEqual(result.visual_evidence, ())
+        self.assertTrue(result.visual_evidence)
+        self.assertTrue(
+            all(item.attempt_ok is False for item in result.visual_evidence)
+        )
+        self.assertTrue(all(item.screenshot is None for item in result.visual_evidence))
         self.assertFalse(
             any(
                 as_visual_evidence(item) is not None
@@ -493,6 +497,100 @@ class PlaywrightCaptureTests(unittest.TestCase):
         self.assertTrue(
             any(
                 "visual" in reason or "desktop" in reason or "mobile" in reason
+                for reason in completion.reasons
+            )
+        )
+
+    def test_failed_recapture_invalidates_older_pass_on_same_diff(self):
+        state = TaskState.new("task-4", "demo")
+        state.current_diff_hash = "abc"
+        state.visual_required = True
+        state.visual_evidence = [
+            {
+                "route": "/",
+                "viewport": "desktop",
+                "diff_hash": "abc",
+                "screenshot": "desktop-after.png",
+                "baseline": "desktop-before.png",
+                "trace": "desktop.zip",
+                "console_error_count": 0,
+                "failed_request_count": 0,
+                "reviewer_status": "PASS",
+                "base_commit": "cafebabe",
+                "attempt_ok": True,
+                "captured_at": "2026-08-27T10:00:00+00:00",
+            },
+            {
+                "route": "/",
+                "viewport": "mobile",
+                "diff_hash": "abc",
+                "screenshot": "mobile-after.png",
+                "baseline": "mobile-before.png",
+                "trace": "mobile.zip",
+                "console_error_count": 0,
+                "failed_request_count": 0,
+                "reviewer_status": "PASS",
+                "base_commit": "cafebabe",
+                "attempt_ok": True,
+                "captured_at": "2026-08-27T10:00:00+00:00",
+            },
+        ]
+        self.assertEqual(visual_completion_reasons(state, "abc"), [])
+
+        def runner(argv, *, cwd=None):
+            return 1, "", "failed"
+
+        result = capture_route(
+            "/",
+            config=_config(),
+            artifact_root=self.root,
+            runner=runner,
+            base_commit="cafebabe",
+            task_state=state,
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(result.visual_evidence)
+        self.assertTrue(
+            all(item.attempt_ok is False for item in result.visual_evidence)
+        )
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(reasons)
+        completion = evaluate_completion(
+            {
+                "tracking_required": True,
+                "issue": 123,
+                "acceptance": [{"id": "AC-1", "status": "PASS", "evidence": "ev-1"}],
+                "quality_gate": {
+                    "gate": "PASS",
+                    "diff_hash": "abc",
+                    "report": "structured",
+                },
+                "security_gate": {
+                    "gate": "PASS",
+                    "diff_hash": "abc",
+                    "report": "structured",
+                },
+                "review_gate": "PASS",
+                "current_diff_hash": "abc",
+                "verified_diff_hash": "abc",
+                "reviewed_diff_hash": "abc",
+                "evidence": [
+                    {
+                        "id": "ev-1",
+                        "exit_code": 0,
+                        "diff_hash": "abc",
+                        "base_commit": "base",
+                    }
+                ],
+                "findings": [],
+                "visual_required": True,
+                "visual_evidence": list(state.visual_evidence),
+            }
+        )
+        self.assertEqual(completion.status, "FAIL")
+        self.assertTrue(
+            any(
+                "visual" in reason or "failed" in reason
                 for reason in completion.reasons
             )
         )
