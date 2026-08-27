@@ -3,6 +3,7 @@
 Worktree: /Users/USER1/Projects/nexus-harness/.worktrees/feat-v4-release-evals-doctor
 Branch: feat/v4-release-evals-doctor
 PLAN_8_BASELINE: 0f806473ea0a250ba9463f075aac4ed869364435
+ENGINEERING_HEAD: d8fd36091792a585d741eddb264ca4d61382c94c
 
 ## Plan 7 integration
 
@@ -13,14 +14,15 @@ fresh post-FF tests: 760/760 PASS; scripts/validate PASS
 
 ## Tasks
 
-- Debt hardening gate: pending
-- Task 1: DONE (CLI argparse surface; local commit; 799 tests OK)
-- Task 2: DONE (nexus doctor; local commit; 817 tests OK)
-- Task 3: DONE (deterministic evals; local commit; 827 tests OK)
-- Task 4: DONE (final migration report; local commit; 835 tests OK)
-- Task 5: DONE (reproducible release builder; local commit; see task-5-report.md)
-- Task 6: DONE (acceptance matrix + disposable smoke; local commit; 867 tests OK)
-- Task 7: DONE (cutover/activation docs; local commit; 872 tests OK)
+- Debt hardening gate: DONE (all Plan-8-target items resolved; 0 deferred)
+- Task 1: DONE (CLI argparse surface)
+- Task 2: DONE (nexus doctor)
+- Task 3: DONE (deterministic evals)
+- Task 4: DONE (final migration report)
+- Task 5: DONE (reproducible release builder; scripts/build E2E PASS)
+- Task 6: DONE (acceptance matrix + disposable smoke)
+- Task 7: DONE (cutover/activation docs)
+- Security residual repair: DONE (secret scan fixtures + CLI incident dedup)
 
 ## Constraints
 

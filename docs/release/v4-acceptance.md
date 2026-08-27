@@ -4,13 +4,13 @@ Recorded from command output and hashes on 2026-08-27. Criteria are spec §22 of
 
 Worktree: `feat/v4-release-evals-doctor`
 Python: 3.14.2
-Git HEAD at verification: `21cff4615246adb530286aa3674e73c78fcb0f0e`
-Lock identity (SHA-256 of `harness.lock`): `6d14d7caf3f84d70d464de4d017a6f9b2cf1095c9eab529ad980d66bea3a6950`
+Git HEAD at verification: `d8fd36091792a585d741eddb264ca4d61382c94c`
+Lock identity (SHA-256 of `harness.lock`): `08d8ff2bee0902a00cb8620abf588d866cf199cfb7ce70c9389d78df23b68112`
 Generated hashes: 47 · engine hashes: 71 · adapter versions: claude=1, cursor=1, codex=1
 
 No SSH. No live GitHub Project / PostHog / VPS activation. Real `~/.claude`, `~/.cursor`, and `~/.codex` were not used as install targets.
 
-Local release gate: **PASS** (20 criteria, 0 FAIL, 3 ACTIVATION_REQUIRED).
+Local release gate: **PASS** (17 PASS, 0 FAIL, 3 ACTIVATION_REQUIRED of 20 criteria).
 
 ## Commands
 
@@ -18,7 +18,7 @@ Local release gate: **PASS** (20 criteria, 0 FAIL, 3 ACTIVATION_REQUIRED).
 
 ```text
 PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py'
-Ran 867 tests in 10.229s
+Ran 874 tests in 4.074s
 OK
 ```
 
@@ -75,36 +75,30 @@ exit 0
 
 ### Doctor
 
-After compile:
+After compile and `scripts/build` (release artifacts present locally, not committed):
 
 ```text
-scripts/nexus doctor --profile local
-nexus doctor [local]  gate=PASS
-PASS python git gh canonical-core generated-drift claude cursor codex task-state memory project-registry
-SKIP quality-tooling frontend-tooling trivy ci-profile posthog
-ACTIVATION_REQUIRED github release
+scripts/nexus --json doctor --profile local
+gate=PASS
+ACTIVATION_REQUIRED github
 exit 0
 ```
 
 ```text
-scripts/nexus doctor --profile release
-nexus doctor [release]  gate=PASS
-PASS python git gh canonical-core generated-drift claude cursor codex task-state memory project-registry
-SKIP quality-tooling frontend-tooling trivy ci-profile
-ACTIVATION_REQUIRED github posthog release
+scripts/nexus --json doctor --profile release
+gate=PASS
+ACTIVATION_REQUIRED github posthog
 exit 0
 ```
 
 ```text
-scripts/nexus doctor --profile ci-host
-nexus doctor [ci-host]  gate=PASS
-PASS python git gh canonical-core generated-drift claude cursor codex task-state memory project-registry
-SKIP quality-tooling frontend-tooling trivy posthog
-ACTIVATION_REQUIRED ci-profile github release
+scripts/nexus --json doctor --profile ci-host
+gate=PASS
+ACTIVATION_REQUIRED ci-profile github
 exit 0
 ```
 
-`ci-profile` on ci-host is ACTIVATION_REQUIRED because facts were not supplied and doctor refuses to SSH. Missing runner token is activation, not FAIL.
+`--json` is a global CLI flag (`scripts/nexus --json doctor --profile local`). `ci-profile` on ci-host is ACTIVATION_REQUIRED because facts were not supplied and doctor refuses to SSH. Missing runner token is activation, not FAIL. Before `scripts/build`, `release` is also ACTIVATION_REQUIRED; that is not a local-release FAIL.
 
 ### Disposable install / rollback smoke
 
@@ -129,7 +123,7 @@ Observed:
 | `dist/codex/config.toml`    | `b162b288d654a2a2bb5974b32c0166d534babdbf12f8c5caecb99cddad5190ba` |   199 |
 | `dist/AGENTS.md`            | `94825ed42ff3f3eee7ce3ebd6911fa97559675d101f1aa87a3904a26ce5f023f` |   963 |
 | `dist/USER_RULES.md`        | `7d14af02f0c0bbf3511055825cb5ae8fe3f6863379df1367ac552a32747014a8` |   926 |
-| `harness.lock`              | `6d14d7caf3f84d70d464de4d017a6f9b2cf1095c9eab529ad980d66bea3a6950` | 19261 |
+| `harness.lock`              | `08d8ff2bee0902a00cb8620abf588d866cf199cfb7ce70c9389d78df23b68112` | 19261 |
 
 `dist/` remains gitignored except `.gitkeep`. Hashes above are of the compiled tree used for doctor/diff/smoke.
 
@@ -160,13 +154,24 @@ Evaluated by `nexus_harness.acceptance.evaluate_matrix`. Matrix test fails if an
 | 19  | PostHog runtime problems can be triaged into deduplicated Issues                      | ACTIVATION_REQUIRED | unit_test:tests/test_incidents.py#test_same_error_location_has_stable_fingerprint; eval_case:evals/cases/runtime-incident-dedup.json#runtime-incident-dedup; doctor_check:src/nexus_harness/doctor.py#posthog                                                                                                                                                                        |
 | 20  | nexus doctor and smoke/eval suites pass for Claude, Cursor and Codex                  | PASS                | unit_test:tests/test_doctor.py#test_local_fixture_covers_required_checks_without_false_fail; unit_test:tests/test_evals.py#test_deterministic_suite_passes_without_model_calls; unit_test:tests/test_install.py#test_disposable_home_install_parses_adapters_and_never_touches_real_homes; golden_test:tests/golden/claude/settings.json; golden_test:tests/golden/codex/config.toml |
 
-Local release gate: **PASS** (PASS: 20 criteria, 0 FAIL, 3 ACTIVATION_REQUIRED)
+Local release gate: **PASS** (17 PASS, 0 FAIL, 3 ACTIVATION_REQUIRED of 20 criteria)
 
 ## Live rows (not PASS)
 
 - **15** — local CI-VPS files exist (`tests/test_ci_vps_files.py`). Live runner on the personal VPS was not activated. Doctor ci-host `ci-profile=ACTIVATION_REQUIRED`.
 - **18** — local Issue/PR/project-field tests and `github-bounded-bug-governance` eval PASS the capability. Live GitHub Project node IDs were not set. Doctor `github=ACTIVATION_REQUIRED`.
 - **19** — local incident fingerprint/dedup tests and `runtime-incident-dedup` eval PASS the capability. PostHog Cloud was not enabled. Doctor local `posthog=SKIP`; release `posthog=ACTIVATION_REQUIRED`.
+
+## Release candidate (local, not committed)
+
+`scripts/build` assembled `4.0.0-rc1` (`LOCAL_RELEASE_CANDIDATE`) at engineering HEAD `d8fd36091792a585d741eddb264ca4d61382c94c`.
+
+- schema: `nexus-harness-release/v1`
+- files in logical manifest: 794
+- extracted content hashes: match `release/MANIFEST.json` (0 mismatches)
+- archive path: `release/nexus-harness-v4.tar.gz` (gitignored)
+
+Absence of live VPS / GitHub Project / PostHog does not refuse the builder.
 
 ## Security note
 

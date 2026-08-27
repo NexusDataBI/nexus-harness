@@ -15,3 +15,4 @@ legacy/v3-export/
 .DS_Store
 .coverage
 htmlcov/
+/release/
