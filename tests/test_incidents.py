@@ -17,10 +17,32 @@ def _load_fixture() -> list[dict]:
 
 class IncidentTests(unittest.TestCase):
     def test_same_error_location_has_stable_fingerprint(self):
-        payload = json.loads(Path("tests/fixtures/posthog-errors.json").read_text())
+        payload = _load_fixture()
         a = normalize_posthog_problem(payload[0])
         b = normalize_posthog_problem(payload[1])
         self.assertEqual(a.fingerprint, b.fingerprint)
+
+    def test_stack_noise_does_not_change_fingerprint(self):
+        base = {
+            "project": "sdr-platform",
+            "environment": "production",
+            "error_type": "TypeError",
+            "stack_location": "src/leads.ts:fetchLead",
+            "route": "/api/leads",
+        }
+        noisy = {
+            **base,
+            "stack_location": (
+                "src/leads.ts:fetchLead 0x7fff1234abcd "
+                "550e8400-e29b-41d4-a716-446655440000"
+            ),
+        }
+        a = normalize_posthog_problem(base)
+        b = normalize_posthog_problem(noisy)
+        self.assertEqual(a.fingerprint, b.fingerprint)
+        self.assertEqual(a.stack_location, b.stack_location)
+        self.assertNotIn("0x", a.stack_location.casefold())
+        self.assertNotIn("550e8400", a.stack_location)
 
     def test_fingerprint_is_deterministic_hex(self):
         payload = _load_fixture()

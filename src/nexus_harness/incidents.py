@@ -10,10 +10,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
+import re
 from typing import Any, Mapping
 
 UNKNOWN = "UNKNOWN"
 KNOWN = "KNOWN"
+_UUID = re.compile(
+    r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
+)
+_HEX_ADDR = re.compile(r"\b0x[0-9a-fA-F]+\b")
 
 
 @dataclass(frozen=True)
@@ -120,7 +125,9 @@ def _fingerprint(
 
 def _normalize_stack_location(raw: Any) -> str:
     text = " ".join(str(raw or "").split())
-    return text
+    text = _UUID.sub(" ", text)
+    text = _HEX_ADDR.sub(" ", text)
+    return " ".join(text.split())
 
 
 def _text(value: Any) -> str:
