@@ -192,7 +192,7 @@ def generate_cleanup_report(
     extract_root: Path,
     destination: Path,
     *,
-    apply_tempfile: bool = True,
+    apply_tempfile: bool = False,
 ) -> dict:
     v4_root = Path(v4_root)
     extract_root = Path(extract_root)
@@ -236,7 +236,9 @@ def generate_cleanup_report(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Plan and report v3 artifact cleanup")
+    parser = argparse.ArgumentParser(
+        description="Preview v3 artifact cleanup (never destructive by default)"
+    )
     parser.add_argument("--root", type=Path, default=Path("."))
     parser.add_argument("--extract", type=Path, default=Path("legacy/v3-export"))
     parser.add_argument(
@@ -244,11 +246,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=Path("docs/migration/cleanup-report.json"),
     )
-    parser.add_argument("--dry-run", action="store_true", default=True)
     parser.add_argument(
         "--apply-tempfile",
-        action=argparse.BooleanOptionalAction,
-        default=True,
+        action="store_true",
+        default=False,
+        help="Apply cleanup only to a tempfile copy of the extract",
     )
     args = parser.parse_args(argv)
     generate_cleanup_report(

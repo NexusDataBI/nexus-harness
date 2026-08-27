@@ -102,5 +102,40 @@ class MigrationTests(unittest.TestCase):
             self.assertTrue((root / "skills/foo/SKILL.md").exists())
 
 
+class MigrateCliTests(unittest.TestCase):
+    def test_help_does_not_advertise_dry_run_flag(self):
+        from nexus_harness.migrate import main
+        import io
+        from contextlib import redirect_stdout
+
+        buf = io.StringIO()
+        with self.assertRaises(SystemExit) as raised, redirect_stdout(buf):
+            main(["--help"])
+        self.assertEqual(raised.exception.code, 0)
+        self.assertNotIn("--dry-run", buf.getvalue())
+
+    def test_dry_run_flag_is_rejected(self):
+        from nexus_harness.migrate import main
+
+        with self.assertRaises(SystemExit) as raised:
+            main(["--dry-run"])
+        self.assertNotEqual(raised.exception.code, 0)
+
+    def test_preview_report_never_applies_to_source_trees(self):
+        from nexus_harness.migrate import generate_cleanup_report
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "v4"
+            extract = Path(tmp) / "extract"
+            root.mkdir()
+            extract.mkdir()
+            (extract / "._junk").write_text("x", encoding="utf-8")
+            report_path = Path(tmp) / "cleanup-report.json"
+            payload = generate_cleanup_report(root, extract, report_path)
+            self.assertTrue(payload["dry_run"])
+            self.assertTrue((extract / "._junk").exists())
+            self.assertIsNone(payload["applied_to"])
+
+
 if __name__ == "__main__":
     unittest.main()
