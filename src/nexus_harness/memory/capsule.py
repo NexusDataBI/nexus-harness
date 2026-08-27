@@ -28,6 +28,7 @@ class CapsulePolicy:
     max_items: int
     max_item_chars: int
     include_stale_warnings: bool = True
+    stale_warnings_max_chars: int = 2000
 
 
 @dataclass(frozen=True)
@@ -68,6 +69,7 @@ def load_capsule_policy(path: Path | None = None) -> CapsulePolicy:
         max_items=int(section["max_items"]),
         max_item_chars=int(section["max_item_chars"]),
         include_stale_warnings=bool(section.get("include_stale_warnings", True)),
+        stale_warnings_max_chars=int(section.get("stale_warnings_max_chars", 2000)),
     )
 
 
@@ -129,7 +131,7 @@ def build_context_capsule(
         diff_hash=diff_hash,
         hot="\n".join(hot_blocks),
         warm="\n".join(warm_blocks),
-        warnings="\n".join(warning_blocks),
+        warnings=_bounded_warnings(warning_blocks, policy.stale_warnings_max_chars),
         item_count=len(used),
         findings=tuple(findings),
     )
@@ -202,3 +204,28 @@ def _append_block(blocks: list[str], block: str, limit: int) -> bool:
         return False
     blocks.append(block)
     return True
+
+
+def _bounded_warnings(blocks: list[str], limit: int) -> str:
+    if not blocks or limit <= 0:
+        return ""
+    kept: list[str] = []
+    for index, block in enumerate(blocks):
+        omitted = len(blocks) - (len(kept) + 1)
+        suffix = f"\n… and {omitted} more" if omitted > 0 else ""
+        proposed = "\n".join([*kept, block]) + suffix
+        if len(proposed) <= limit:
+            kept.append(block)
+            continue
+        omitted = len(blocks) - len(kept)
+        summary = f"… and {omitted} more"
+        if not kept:
+            return summary if len(summary) <= limit else summary[:limit]
+        combined = "\n".join(kept) + "\n" + summary
+        while kept and len(combined) > limit:
+            kept.pop()
+            omitted = len(blocks) - len(kept)
+            summary = f"… and {omitted} more"
+            combined = ("\n".join(kept) + "\n" + summary) if kept else summary
+        return combined[:limit] if len(combined) > limit else combined
+    return "\n".join(kept)

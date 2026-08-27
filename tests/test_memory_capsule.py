@@ -343,6 +343,36 @@ class MemoryCapsuleSelectionTests(unittest.TestCase):
         self.assertNotIn("STALE/CONFLICT WARNINGS", capsule.text)
         self.assertNotIn("mem-silent", capsule.text)
 
+    def test_stale_warnings_respect_dedicated_char_budget(self):
+        hits = [
+            _hit(
+                f"Stale {index}",
+                score=50 - index,
+                memory_id=f"mem-stale-{index:02d}",
+                freshness=FreshnessStatus.STALE,
+            )
+            for index in range(20)
+        ]
+        capsule = build_context_capsule(
+            project_id="repo-1",
+            diff_hash="abc",
+            hits=hits,
+            hot_memory_ids=(),
+            policy=_policy(stale_warnings_max_chars=180),
+        )
+        self.assertLessEqual(len(capsule.warnings), 180)
+        self.assertIn("and ", capsule.warnings)
+        self.assertIn("more", capsule.warnings)
+        self.assertTrue(capsule.warnings.startswith("- mem-stale-00"))
+        self.assertNotIn("mem-stale-19", capsule.warnings)
+        self.assertLessEqual(len(capsule.hot), 500)
+        self.assertLessEqual(len(capsule.warm), 800)
+
+    def test_load_capsule_policy_reads_stale_warning_budget(self):
+        policy = load_capsule_policy()
+        self.assertGreater(policy.stale_warnings_max_chars, 0)
+        self.assertNotEqual(policy.stale_warnings_max_chars, policy.hot_max_chars)
+
 
 class MemoryCapsuleDeterminismTests(unittest.TestCase):
     def test_shuffled_hits_produce_byte_identical_capsule(self):

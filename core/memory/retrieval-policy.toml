@@ -21,3 +21,4 @@ warm_max_chars = 10000
 max_items = 16
 max_item_chars = 1800
 include_stale_warnings = true
+stale_warnings_max_chars = 2000
