@@ -11,3 +11,4 @@ sbom = true
 [blocking]
 critical_vulnerability_blocks = true
 high_vulnerability_with_available_fix_blocks = true
+high_secret_blocks = true

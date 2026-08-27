@@ -84,7 +84,8 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(finding.target, "config/app.env")
         self.assertEqual(finding.kind, "secret")
         self.assertEqual(finding.severity, "HIGH")
-        self.assertEqual(report.gate, "PASS")
+        self.assertEqual(report.gate, "FAIL")
+        self.assertTrue(finding.blocked)
 
     def test_high_misconfiguration_with_remediation_blocks(self):
         report = normalize_trivy(
@@ -129,3 +130,57 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(finding["id"], "CVE-2099-0001")
         self.assertEqual(finding["target"], "package-lock.json")
         self.assertTrue(finding["blocked"])
+
+    def test_unknown_severity_is_counted_and_fails_the_report(self):
+        report = normalize_trivy(
+            {
+                "Results": [
+                    {
+                        "Target": "pkg",
+                        "Vulnerabilities": [
+                            {
+                                "VulnerabilityID": "CVE-2099-0004",
+                                "Severity": "WEIRD",
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+        self.assertEqual(report.counts.get("unknown"), 1)
+        self.assertEqual(report.gate, "FAIL")
+        self.assertNotEqual(report.gate, "PASS")
+
+    def test_high_secret_without_resolution_blocks(self):
+        report = normalize_trivy(
+            {
+                "Results": [
+                    {
+                        "Target": "config/app.env",
+                        "Secrets": [
+                            {
+                                "RuleID": "generic-fake-token",
+                                "Severity": "HIGH",
+                                "Title": "Fake token for tests",
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+        self.assertEqual(report.gate, "FAIL")
+        self.assertTrue(report.findings[0].blocked)
+        self.assertEqual(report.findings[0].kind, "secret")
+
+    def test_non_dict_payload_fails_closed_without_crash(self):
+        report = normalize_trivy("not-an-object")
+        self.assertEqual(report.gate, "FAIL")
+        self.assertEqual(report.findings, [])
+
+    def test_malformed_result_entry_fails_closed(self):
+        report = normalize_trivy({"Results": ["bogus", 3, None]})
+        self.assertEqual(report.gate, "FAIL")
+
+
+if __name__ == "__main__":
+    unittest.main()

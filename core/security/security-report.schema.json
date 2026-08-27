@@ -34,7 +34,7 @@
         "target": { "type": "string" },
         "severity": {
           "type": "string",
-          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "UNKNOWN"]
         },
         "kind": {
           "type": "string",
