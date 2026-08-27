@@ -338,6 +338,95 @@ class VisualBundleTests(unittest.TestCase):
                 confine_visual_artifacts(ev, root)
 
 
+class VisualReviewRequiredTests(unittest.TestCase):
+    def test_fresh_desktop_and_mobile_with_reviewer_pass_are_ready(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [_bundle("desktop"), _bundle("mobile")],
+        }
+        self.assertEqual(visual_completion_reasons(state, "abc"), [])
+
+    def test_missing_reviewer_status_fails_visual_completion(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [
+                _bundle("desktop", reviewer_status=None),
+                _bundle("mobile", reviewer_status=""),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in reasons)
+        )
+
+    def test_reviewer_status_fail_fails_visual_completion(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [
+                _bundle("desktop", reviewer_status="FAIL"),
+                _bundle("mobile", reviewer_status="FAIL"),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in reasons)
+        )
+
+    def test_unknown_reviewer_status_fails_visual_completion(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [
+                _bundle("desktop", reviewer_status="PENDING"),
+                _bundle("mobile", reviewer_status="ok"),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in reasons)
+        )
+
+    def test_desktop_pass_mobile_missing_reviewer_fails(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [
+                _bundle("desktop", reviewer_status="PASS"),
+                _bundle("mobile", reviewer_status=None),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(any("mobile" in reason for reason in reasons))
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in reasons)
+        )
+
+    def test_reviewer_pass_does_not_rescue_stale_diff(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [
+                _bundle("desktop", reviewer_status="PASS"),
+                _bundle("mobile", reviewer_status="PASS"),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "def")
+        self.assertTrue(
+            any("visual evidence is not fresh" in reason for reason in reasons)
+        )
+
+    def test_generic_review_gate_does_not_substitute_visual_review(self):
+        state = {
+            "visual_required": True,
+            "review_gate": "PASS",
+            "visual_evidence": [
+                _bundle("desktop", reviewer_status=None),
+                _bundle("mobile", reviewer_status=None),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in reasons)
+        )
+
+
 class VisualContractTests(unittest.TestCase):
     def test_schema_requires_route_viewport_diff_hash(self):
         self.assertTrue(SCHEMA.is_file())
@@ -368,6 +457,7 @@ class VisualContractTests(unittest.TestCase):
         with COMPLETION_TOML.open("rb") as handle:
             policy = tomllib.load(handle)
         self.assertTrue(policy["require"]["visual_evidence_fresh_when_required"])
+        self.assertTrue(policy["require"]["visual_review_pass_when_required"])
 
 
 if __name__ == "__main__":

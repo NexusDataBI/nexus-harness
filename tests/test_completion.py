@@ -491,6 +491,78 @@ class CompletionTests(unittest.TestCase):
             any("desktop" in reason or "mobile" in reason for reason in result.reasons)
         )
 
+    def test_visual_required_missing_reviewer_status_fails(self):
+        result = evaluate_completion(
+            _ready_state(
+                visual_required=True,
+                visual_evidence=[
+                    _visual_ev("desktop", reviewer_status=None),
+                    _visual_ev("mobile", reviewer_status=None),
+                ],
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in result.reasons)
+        )
+
+    def test_visual_required_reviewer_fail_fails_even_with_fresh_screenshots(self):
+        result = evaluate_completion(
+            _ready_state(
+                visual_required=True,
+                visual_evidence=[
+                    _visual_ev("desktop", reviewer_status="FAIL"),
+                    _visual_ev("mobile", reviewer_status="FAIL"),
+                ],
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in result.reasons)
+        )
+
+    def test_visual_required_desktop_pass_mobile_unreviewed_fails(self):
+        result = evaluate_completion(
+            _ready_state(
+                visual_required=True,
+                visual_evidence=[
+                    _visual_ev("desktop", reviewer_status="PASS"),
+                    _visual_ev("mobile", reviewer_status=None),
+                ],
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(any("mobile" in reason for reason in result.reasons))
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in result.reasons)
+        )
+
+    def test_visual_skip_still_allows_ready_without_reviewer(self):
+        result = evaluate_completion(
+            _ready_state(
+                changed_paths=["apps/web/page.tsx"],
+                visual_paths=["apps/web/**"],
+                visual_skip={
+                    "kind": "type_only",
+                    "reason": "type-only change with no rendered effect",
+                },
+            )
+        )
+        self.assertEqual(result.status, "READY_TO_SHIP")
+
+    def test_confirmed_high_finding_still_fails_with_visual_review_pass(self):
+        result = evaluate_completion(
+            _ready_state(
+                visual_required=True,
+                visual_evidence=[_visual_ev("desktop"), _visual_ev("mobile")],
+                findings=[{"severity": "high", "confirmed": True}],
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("finding" in reason or "high" in reason for reason in result.reasons)
+        )
+
     def test_ready_without_frontend_or_visual_paths_stays_ready(self):
         payload = _ready_state()
         self.assertNotIn("visual_paths", payload)

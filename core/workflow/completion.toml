@@ -12,6 +12,7 @@ zero_confirmed_blocker_or_high_findings = true
 verified_reviewed_diff_hash_equals_current_diff = true
 required_approvals_recorded = true
 visual_evidence_fresh_when_required = true
+visual_review_pass_when_required = true
 
 [result]
 ready = "READY_TO_SHIP"

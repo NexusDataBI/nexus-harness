@@ -10,7 +10,7 @@ from nexus_harness.frontend_review import (
     normalize_finding,
     normalize_reviewer_response,
 )
-from nexus_harness.visual import VisualEvidence
+from nexus_harness.visual import VisualEvidence, visual_completion_reasons
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -173,6 +173,30 @@ class VisualGateTests(unittest.TestCase):
         updated = apply_reviewer_status(evidence, evaluate_visual_gate(findings))
         self.assertEqual(updated.reviewer_status, "FAIL")
         self.assertEqual(updated.diff_hash, "abc")
+
+    def test_visual_gate_fail_does_not_satisfy_visual_completion(self):
+        findings = normalize_reviewer_response({"findings": [_reviewer_finding()]})
+        status = evaluate_visual_gate(findings)
+        evidence = [
+            apply_reviewer_status(
+                VisualEvidence(
+                    route="/inbox",
+                    viewport=viewport,
+                    diff_hash="abc",
+                    screenshot=f"{viewport}.png",
+                    baseline=f"{viewport}-before.png",
+                ),
+                status,
+            )
+            for viewport in ("desktop", "mobile")
+        ]
+        reasons = visual_completion_reasons(
+            {"visual_required": True, "visual_evidence": evidence},
+            "abc",
+        )
+        self.assertTrue(
+            any("visual review is not PASS" in reason for reason in reasons)
+        )
 
 
 class ReviewerAgentTests(unittest.TestCase):

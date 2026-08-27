@@ -241,6 +241,7 @@ def visual_completion_reasons(state, current_diff_hash=None) -> list[str]:
     stale = False
     runtime_fail = False
     baseline_fail = False
+    review_fail = False
     for evidence in items:
         if not evidence.is_fresh(current or ""):
             stale = True
@@ -252,6 +253,9 @@ def visual_completion_reasons(state, current_diff_hash=None) -> list[str]:
             continue
         if not runtime_policy_ok(evidence, policy):
             runtime_fail = True
+            continue
+        if not visual_review_is_pass(evidence):
+            review_fail = True
             continue
         ready_viewports.add(evidence.viewport)
 
@@ -269,7 +273,14 @@ def visual_completion_reasons(state, current_diff_hash=None) -> list[str]:
         reasons.append("visual console/network policy failed")
     if baseline_fail:
         reasons.append("visual baseline missing without reason")
+    if review_fail:
+        reasons.append("visual review is not PASS")
     return reasons
+
+
+def visual_review_is_pass(evidence: VisualEvidence) -> bool:
+    """Material visual evidence counts only with an explicit reviewer PASS."""
+    return _opt_str(evidence.reviewer_status) == "PASS"
 
 
 def _baseline_ok(evidence: VisualEvidence) -> bool:
