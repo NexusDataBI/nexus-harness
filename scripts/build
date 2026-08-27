@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Release assembler. Not `nexus build` (that compiles adapters).
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHONPATH="$ROOT/src" exec python3 -m nexus_harness.release "$ROOT" "$@"

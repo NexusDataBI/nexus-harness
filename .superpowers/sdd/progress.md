@@ -18,7 +18,7 @@ fresh post-FF tests: 760/760 PASS; scripts/validate PASS
 - Task 2: DONE (nexus doctor; local commit; 817 tests OK)
 - Task 3: DONE (deterministic evals; local commit; 827 tests OK)
 - Task 4: DONE (final migration report; local commit; 835 tests OK)
-- Task 5: pending
+- Task 5: DONE (reproducible release builder; local commit; see task-5-report.md)
 - Task 6: pending
 - Task 7: pending
 

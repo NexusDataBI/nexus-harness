@@ -117,6 +117,7 @@
     "dist/src/nexus_harness/project_sync.py": "15021d373c5776d98c14f898cc2c0b294095bb5c97b9a409df69d542d45a09f4",
     "dist/src/nexus_harness/pull_request.py": "dd4d738e5e7a2f756281d325cd998966aadeddbe3349591794d1ecbc3ab24ac4",
     "dist/src/nexus_harness/quality.py": "1b44eb0c4ee623f9534d5bf1bfc25669c0d27168084b172b79b8d0694eebe5b5",
+    "dist/src/nexus_harness/release.py": "37d9bc7d5f29bf715cee776f14fe157faa4db31b650206bc25b4669a209b0aef",
     "dist/src/nexus_harness/runtime_claude.py": "1f827e4da687f311d686d0bb91cf3f5d6a888f892dd6ffdc4eab797a1711dc1c",
     "dist/src/nexus_harness/runtime_codex.py": "41c28c1814d820f6a34100130fc1ea717f3d07dbb2a1fbfbe61e11f7bb070779",
     "dist/src/nexus_harness/runtime_common.py": "ab1fb420c7d2ee09832133d0bab0b5cef590a77901dac863045145ef238492bb",
