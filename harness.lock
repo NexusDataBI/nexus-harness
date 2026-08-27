@@ -153,7 +153,7 @@
     "dist/src/nexus_harness/observability.py": "3656ca5ec5ee6d641919582dcc0aa11bec0a95d10b603b6462b14f3f62ba7de6",
     "dist/src/nexus_harness/playwright.py": "77fed42274ac7981a0d19343a2bb428b7f4dd310386e505aa86cdb4767d03468",
     "dist/src/nexus_harness/postdeploy.py": "1d5e29b82a886edda82172df3d09d0c0f43f21fbba70d988b4a70a8048d955b7",
-    "dist/src/nexus_harness/posthog.py": "fa296ed5240b7e14a5e1a963e48d3ed7b3f567bdd16a29a9e868d0b1ff009f24",
+    "dist/src/nexus_harness/posthog.py": "2ddacae71583d7671f5dacd64f106cc86e8385f562e2930c69e4670acf983976",
     "dist/src/nexus_harness/pretool.py": "04e6b4070106fd5e23e5fb61bc1f97b2bbbe2da83f6dbc4671ffbf60b8aac29a",
     "dist/src/nexus_harness/project.py": "29aec9bc01517827720b359caf89167f6eae4b59bef8cd216f8abfb9f6d3711a",
     "dist/src/nexus_harness/project_doc.py": "3118e4a4743907866a4188ee09863cadbb8c46d3518519e18b01116b78c7d596",
