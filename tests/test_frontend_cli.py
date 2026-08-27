@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,7 +17,38 @@ from nexus_harness.visual import as_visual_evidence
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+def _init_git(root: Path) -> None:
+    subprocess.run(
+        ["git", "init", "-b", "main"], cwd=root, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Nexus Test"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "nexus-test@example.com"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "commit.gpgsign", "false"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", "init"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+
 def _write_frontend_profile(root: Path) -> Path:
+    _init_git(root)
     profiles = root / "profiles" / "projects"
     profiles.mkdir(parents=True)
     path = profiles / "demo.toml"

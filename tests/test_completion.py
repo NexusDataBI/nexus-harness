@@ -23,6 +23,7 @@ def _visual_ev(viewport, diff_hash="abc", **overrides):
         "console_error_count": 0,
         "failed_request_count": 0,
         "reviewer_status": "PASS",
+        "base_commit": "base",
     }
     payload.update(overrides)
     return payload
@@ -39,7 +40,9 @@ def _ready_state(**overrides):
         "current_diff_hash": "abc",
         "verified_diff_hash": "abc",
         "reviewed_diff_hash": "abc",
-        "evidence": [{"id": "ev-1", "exit_code": 0, "diff_hash": "abc"}],
+        "evidence": [
+            {"id": "ev-1", "exit_code": 0, "diff_hash": "abc", "base_commit": "base"}
+        ],
         "findings": [],
     }
     state.update(overrides)
@@ -570,3 +573,39 @@ class CompletionTests(unittest.TestCase):
         result = evaluate_completion(payload)
         self.assertEqual(result.status, "READY_TO_SHIP")
         self.assertEqual(result.reasons, [])
+
+    def test_empty_base_commit_blocks_mutable_evidence(self):
+        result = evaluate_completion(
+            _ready_state(
+                evidence=[
+                    {
+                        "id": "ev-1",
+                        "exit_code": 0,
+                        "diff_hash": "abc",
+                        "base_commit": "",
+                    }
+                ]
+            )
+        )
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("base_commit" in reason for reason in result.reasons),
+            msg=result.reasons,
+        )
+
+    def test_commit_independent_static_policy_may_omit_base_commit(self):
+        result = evaluate_completion(
+            _ready_state(
+                evidence=[
+                    {
+                        "id": "ev-1",
+                        "exit_code": 0,
+                        "diff_hash": "abc",
+                        "base_commit": "",
+                        "command": "static-policy",
+                        "commit_independent": True,
+                    }
+                ]
+            )
+        )
+        self.assertEqual(result.status, "READY_TO_SHIP")

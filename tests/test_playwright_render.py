@@ -228,6 +228,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
             config=_config(),
             artifact_root=self.root,
             runner=runner,
+            base_commit="cafebabe",
             task_id="task-4",
         )
         self.assertTrue(result.ok)
@@ -245,6 +246,21 @@ class PlaywrightCaptureTests(unittest.TestCase):
         self.assertFalse(any(part in {"-c", "-lc"} for part in argv))
         self.assertNotIn("playwright install", " ".join(argv))
 
+    def test_capture_without_base_commit_fails_closed(self):
+        def runner(argv, *, cwd=None):
+            return 0, "", ""
+
+        result = capture_route(
+            "/",
+            config=_config(),
+            artifact_root=self.root,
+            runner=runner,
+            task_id="task-4",
+        )
+        self.assertFalse(result.ok)
+        self.assertIsNotNone(result.failure)
+        self.assertIn("base_commit", (result.failure or "").lower())
+
     def test_capture_registers_evidence_with_exit_and_diff_hash(self):
         state = TaskState.new("task-4", "demo")
         state.current_diff_hash = "abc123def"
@@ -257,6 +273,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
             config=_config(),
             artifact_root=self.root,
             runner=runner,
+            base_commit="cafebabe",
             task_id="task-4",
             task_state=state,
         )
@@ -281,6 +298,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
             config=_config(),
             artifact_root=self.root,
             runner=runner,
+            base_commit="cafebabe",
             task_id="task-4",
         )
         self.assertFalse(result.ok)
@@ -296,6 +314,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
                 config=_config(),
                 artifact_root=self.root,
                 runner=runner,
+                base_commit="cafebabe",
             )
         runner.assert_not_called()
 
@@ -307,6 +326,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
                 config=_config(),
                 artifact_root=self.root,
                 runner=runner,
+                base_commit="cafebabe",
             )
         runner.assert_not_called()
 
@@ -332,6 +352,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
             config=_config(),
             artifact_root=self.root,
             runner=runner,
+            base_commit="cafebabe",
         )
         self.assertIsNotNone(result.spec_path)
         text = result.spec_path.read_text(encoding="utf-8")
@@ -350,6 +371,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
             config=_config(),
             artifact_root=self.root,
             runner=runner,
+            base_commit="cafebabe",
             task_id="task-4",
             task_state=state,
         )
@@ -391,6 +413,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
             config=_config(),
             artifact_root=self.root,
             runner=runner,
+            base_commit="cafebabe",
             task_state=state,
         )
         by_viewport = {
@@ -414,6 +437,7 @@ class PlaywrightCaptureTests(unittest.TestCase):
             config=_config(),
             artifact_root=self.root,
             runner=runner,
+            base_commit="cafebabe",
             task_state=state,
         )
         self.assertFalse(result.ok)
@@ -452,7 +476,14 @@ class PlaywrightCaptureTests(unittest.TestCase):
                 "current_diff_hash": "abc",
                 "verified_diff_hash": "abc",
                 "reviewed_diff_hash": "abc",
-                "evidence": [{"id": "ev-1", "exit_code": 0, "diff_hash": "abc"}],
+                "evidence": [
+                    {
+                        "id": "ev-1",
+                        "exit_code": 0,
+                        "diff_hash": "abc",
+                        "base_commit": "base",
+                    }
+                ],
                 "findings": [],
                 "visual_required": True,
                 "visual_evidence": list(state.visual_evidence),

@@ -140,9 +140,21 @@ def capture_route(
     evidence_path: Path | None = None,
     project_root: Path | None = None,
     state_path: Path | None = None,
+    base_commit: str | None = None,
 ) -> CaptureResult:
     safe_route = validate_route(route)
     root = Path(artifact_root)
+    commit = (base_commit or "").strip()
+    if not commit:
+        commit = _read_head_commit(
+            Path(project_root) if project_root is not None else root
+        )
+    if not commit:
+        return CaptureResult(
+            ok=False,
+            exit_code=2,
+            failure="base_commit required for visual evidence",
+        )
     config_path = render_playwright_config(config, artifact_root=root)
     output_dir = _confine_rel(root, "playwright/output")
     spec_path = _write_capture_spec(root, safe_route, output_dir)
@@ -170,7 +182,7 @@ def capture_route(
             command="playwright",
             exit_code=int(exit_code),
             diff_hash=diff_hash,
-            base_commit="",
+            base_commit=commit,
             summary=json.dumps({"argv": list(argv), "route": safe_route}),
             artifact=str(output_dir),
         ),
@@ -182,6 +194,7 @@ def capture_route(
             output_dir=output_dir,
             route=safe_route,
             diff_hash=diff_hash,
+            base_commit=commit,
         )
         if task_state is not None:
             _attach_visual_evidence(task_state, records, state_path)
@@ -345,6 +358,7 @@ def _record_visual_evidence(
     output_dir: Path,
     route: str,
     diff_hash: str,
+    base_commit: str = "",
 ) -> list[VisualEvidence]:
     output_dir.mkdir(parents=True, exist_ok=True)
     records: list[VisualEvidence] = []
@@ -367,6 +381,7 @@ def _record_visual_evidence(
             failed_request_count=sidecar["failed_request_count"],
             console_messages=sidecar["console_messages"],
             failed_request_urls=sidecar["failed_request_urls"],
+            base_commit=base_commit,
         )
         records.append(confine_visual_artifacts(evidence, artifact_root))
     return records
@@ -387,6 +402,7 @@ def _visual_payload(evidence: VisualEvidence) -> dict:
         "console_messages": list(evidence.console_messages),
         "failed_request_urls": list(evidence.failed_request_urls),
         "limitation": evidence.limitation,
+        "base_commit": evidence.base_commit,
     }
 
 
@@ -414,6 +430,15 @@ def _evidence_id(task_id: str | None, route: str) -> str:
     slug = route.strip("/").replace("/", "-") or "root"
     prefix = (task_id or "adhoc").strip() or "adhoc"
     return f"frontend-capture-{prefix}-{slug}"
+
+
+def _read_head_commit(repo: Path) -> str:
+    try:
+        from nexus_harness.safe import verify_git_oid
+
+        return verify_git_oid(repo, "HEAD")
+    except (ValueError, OSError):
+        return ""
 
 
 def _default_runner(

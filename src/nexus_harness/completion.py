@@ -5,6 +5,11 @@ import tomllib
 from nexus_harness.evidence import Evidence
 from nexus_harness.visual import visual_completion_reasons
 
+# Mutable completion evidence is commit-bound: a non-empty base_commit is required
+# unless the record is explicitly commit-independent (static policy-file checks).
+# Visual screenshots bound to diff_hash are always commit-bound.
+
+
 _BLOCKING_FINDINGS = frozenset({"blocker", "high"})
 _COMPLETION_POLICY = (
     Path(__file__).resolve().parents[2] / "core" / "workflow" / "completion.toml"
@@ -60,6 +65,9 @@ def evaluate_completion(state) -> CompletionResult:
 
     reasons.extend(visual_completion_reasons(state, current))
 
+    if _mutable_evidence_missing_base_commit(state):
+        reasons.append("mutable evidence is missing base_commit")
+
     if reasons:
         return CompletionResult(status="FAIL", reasons=reasons)
     return CompletionResult(status="READY_TO_SHIP", reasons=[])
@@ -105,6 +113,10 @@ def promote_acceptance(state, evidence, ledger=None):
     current = _get(state, "current_diff_hash")
     if record.diff_hash != current:
         raise ValueError("evidence diff_hash does not match current_diff_hash")
+    if not _is_commit_independent(record) and not _valid_base_commit(
+        record.base_commit
+    ):
+        raise ValueError("mutable evidence is missing base_commit")
 
     target = _target_criterion(state, record)
     if target is None:
@@ -230,6 +242,7 @@ def _as_evidence(value) -> Evidence | None:
             diff_hash=str(value.get("diff_hash") or ""),
             base_commit=str(value.get("base_commit") or ""),
             summary=str(value.get("summary") or ""),
+            commit_independent=bool(value.get("commit_independent")),
         )
     return None
 
@@ -279,6 +292,10 @@ def _acceptance_evidence_fresh(state, current_diff_hash) -> bool:
             return False
         if record.diff_hash != current_diff_hash:
             return False
+        if not _is_commit_independent(record) and not _valid_base_commit(
+            record.base_commit
+        ):
+            return False
     return True
 
 
@@ -320,3 +337,26 @@ def _target_criterion(state, record: Evidence):
         if _item_status(item) != "PASS":
             return item
     return None
+
+
+COMMIT_INDEPENDENT_COMMANDS = frozenset({"static-policy", "policy-file"})
+
+
+def _valid_base_commit(value) -> bool:
+    return bool(str(value or "").strip())
+
+
+def _is_commit_independent(record: Evidence) -> bool:
+    if bool(getattr(record, "commit_independent", False)):
+        return True
+    command = str(getattr(record, "command", "") or "").strip().lower()
+    return command in COMMIT_INDEPENDENT_COMMANDS
+
+
+def _mutable_evidence_missing_base_commit(state) -> bool:
+    for record in _ledger(state):
+        if _is_commit_independent(record):
+            continue
+        if not _valid_base_commit(record.base_commit):
+            return True
+    return False

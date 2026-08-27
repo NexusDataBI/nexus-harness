@@ -48,7 +48,9 @@ def _ready_state(**overrides):
         "current_diff_hash": "abc",
         "verified_diff_hash": "abc",
         "reviewed_diff_hash": "abc",
-        "evidence": [{"id": "ev-1", "exit_code": 0, "diff_hash": "abc"}],
+        "evidence": [
+            {"id": "ev-1", "exit_code": 0, "diff_hash": "abc", "base_commit": "base"}
+        ],
         "findings": [],
         "changed_paths": ["apps/web/page.tsx"],
         "visual_paths": ["apps/web/**"],
@@ -133,6 +135,7 @@ def _record_viewports(root: Path, diff_hash: str, reviewer_status: str):
             trace=names["trace"],
             console_error_count=0,
             failed_request_count=0,
+            base_commit="base",
         )
         confined = confine_visual_artifacts(evidence, root)
         recorded.append(apply_reviewer_status(confined, reviewer_status))
@@ -164,6 +167,7 @@ class FrontendIntegrationTests(unittest.TestCase):
             config=self.profile.frontend,
             artifact_root=self.root,
             runner=runner,
+            base_commit="cafebabe",
             task_id="task-7",
             task_state=task,
         )

@@ -53,7 +53,9 @@ def _ready_state(**overrides):
         "current_diff_hash": "abc",
         "verified_diff_hash": "abc",
         "reviewed_diff_hash": "abc",
-        "evidence": [{"id": "ev-1", "exit_code": 0, "diff_hash": "abc"}],
+        "evidence": [
+            {"id": "ev-1", "exit_code": 0, "diff_hash": "abc", "base_commit": "base"}
+        ],
         "findings": [],
     }
     state.update(overrides)
@@ -185,6 +187,7 @@ class VisualGateTests(unittest.TestCase):
                     diff_hash="abc",
                     screenshot=f"{viewport}.png",
                     baseline=f"{viewport}-before.png",
+                    base_commit="base",
                 ),
                 status,
             )

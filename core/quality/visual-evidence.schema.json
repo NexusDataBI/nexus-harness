@@ -27,6 +27,7 @@
       "type": "array",
       "items": { "type": "string" }
     },
-    "limitation": { "type": ["string", "null"] }
+    "limitation": { "type": ["string", "null"] },
+    "base_commit": { "type": ["string", "null"] }
   }
 }

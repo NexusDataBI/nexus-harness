@@ -52,6 +52,7 @@ class VisualEvidence:
     console_messages: tuple[str, ...] = ()
     failed_request_urls: tuple[str, ...] = ()
     limitation: str | None = DEFAULT_LIMITATION
+    base_commit: str = ""
 
     def is_fresh(self, current_diff_hash: str) -> bool:
         return self.diff_hash == current_diff_hash
@@ -177,6 +178,7 @@ def as_visual_evidence(value) -> VisualEvidence | None:
         console_messages=_str_tuple(value.get("console_messages")),
         failed_request_urls=_str_tuple(value.get("failed_request_urls")),
         limitation=limitation,
+        base_commit=str(value.get("base_commit") or ""),
     )
 
 
@@ -219,6 +221,7 @@ def confine_visual_artifacts(evidence: VisualEvidence, root: Path) -> VisualEvid
         console_messages=evidence.console_messages,
         failed_request_urls=evidence.failed_request_urls,
         limitation=evidence.limitation,
+        base_commit=evidence.base_commit,
     )
 
 
@@ -242,11 +245,15 @@ def visual_completion_reasons(state, current_diff_hash=None) -> list[str]:
     runtime_fail = False
     baseline_fail = False
     review_fail = False
+    missing_commit = False
     for evidence in items:
         if not evidence.is_fresh(current or ""):
             stale = True
             continue
         if not _opt_str(evidence.screenshot):
+            continue
+        if not _opt_str(evidence.base_commit):
+            missing_commit = True
             continue
         if not _baseline_ok(evidence):
             baseline_fail = True
@@ -275,6 +282,8 @@ def visual_completion_reasons(state, current_diff_hash=None) -> list[str]:
         reasons.append("visual baseline missing without reason")
     if review_fail:
         reasons.append("visual review is not PASS")
+    if missing_commit:
+        reasons.append("visual evidence is missing base_commit")
     return reasons
 
 

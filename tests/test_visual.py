@@ -40,6 +40,7 @@ def _bundle(
         "console_error_count": 0,
         "failed_request_count": 0,
         "reviewer_status": "PASS",
+        "base_commit": "base",
     }
     payload.update(overrides)
     return payload
