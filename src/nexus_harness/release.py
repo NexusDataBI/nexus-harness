@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -24,7 +24,7 @@ from pathlib import Path
 from nexus_harness.compile import compile_harness
 
 RELEASE_SCHEMA = "nexus-harness-release/v1"
-RELEASE_VERSION = "4.0.0-rc1"
+RELEASE_VERSION = "4.0.0-rc2"
 RELEASE_CHANNEL = "LOCAL_RELEASE_CANDIDATE"
 BUNDLE_NAME = "nexus-harness-v4"
 ARCHIVE_NAME = "nexus-harness-v4.tar.gz"
@@ -147,6 +147,65 @@ class ReleaseChecks:
     migration: Callable[[Path], CheckResult] | None = None
     upstream: Callable[[Path], CheckResult] | None = None
     secrets: Callable[[Path], CheckResult] | None = None
+
+
+def render_rc_identity(manifest: Mapping[str, object]) -> str:
+    """Sidecar generated from MANIFEST.json. Never hand-copied into git docs."""
+    files = manifest.get("files") or []
+    count = len(files) if isinstance(files, list) else 0
+    return (
+        "# Nexus Harness packaged release identity\n\n"
+        "Generated from `release/MANIFEST.json`. Do not edit by hand.\n\n"
+        f"- schema: `{manifest.get('schema')}`\n"
+        f"- version: `{manifest.get('version')}`\n"
+        f"- channel: `{manifest.get('channel')}`\n"
+        f"- Final RC source commit: `{manifest.get('commit')}`\n"
+        f"- Final RC lock identity: `{manifest.get('lock_identity')}`\n"
+        f"- Final RC logical manifest count: {count}\n"
+    )
+
+
+_STALE_RC_TOKENS = (
+    "d8fd36091792a585d741eddb264ca4d61382c94c",
+    "08d8ff2bee0902a00cb8620abf588d866cf199cfb7ce70c9389d78df23b68112",
+    "files in logical manifest: 794",
+)
+_CLAIM_COMMIT = re.compile(r"Final RC source commit:\s*`([0-9a-f]{40})`", re.IGNORECASE)
+_CLAIM_LOCK = re.compile(r"Final RC lock identity:\s*`([0-9a-f]{64})`", re.IGNORECASE)
+_CLAIM_FILES = re.compile(
+    r"Final RC logical manifest count:\s*`?(\d+)`?", re.IGNORECASE
+)
+
+
+def acceptance_manifest_drift(
+    text: str, manifest: Mapping[str, object] | None = None
+) -> tuple[str, ...]:
+    """Detect stale or contradictory packaged-release claims in acceptance docs."""
+    errors: list[str] = []
+    for token in _STALE_RC_TOKENS:
+        if token in text:
+            errors.append(f"stale packaged identity: {token}")
+    if "Engineering verification HEAD" not in text:
+        errors.append("missing Engineering verification HEAD label")
+    if "release/MANIFEST.json" not in text:
+        errors.append("acceptance doc does not reference MANIFEST.json")
+    if manifest is not None:
+        commit = str(manifest.get("commit") or "")
+        lock = str(manifest.get("lock_identity") or "")
+        files = manifest.get("files") or []
+        count = len(files) if isinstance(files, list) else 0
+        found_commit = _CLAIM_COMMIT.search(text)
+        if found_commit and found_commit.group(1) != commit:
+            errors.append("Final RC source commit disagrees with MANIFEST.json")
+        found_lock = _CLAIM_LOCK.search(text)
+        if found_lock and found_lock.group(1) != lock:
+            errors.append("Final RC lock identity disagrees with MANIFEST.json")
+        found_files = _CLAIM_FILES.search(text)
+        if found_files and int(found_files.group(1)) != count:
+            errors.append(
+                "Final RC logical manifest count disagrees with MANIFEST.json"
+            )
+    return tuple(errors)
 
 
 def logical_manifest(manifest: dict) -> dict:
@@ -649,6 +708,10 @@ def build_release(
     release_root.mkdir(parents=True, exist_ok=True)
     (release_root / "MANIFEST.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (release_root / "RC-IDENTITY.md").write_text(
+        render_rc_identity(manifest),
         encoding="utf-8",
     )
     _write_archive(bundle, release_root / ARCHIVE_NAME)

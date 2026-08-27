@@ -127,6 +127,43 @@ class AcceptanceMatrixTests(unittest.TestCase):
         self.assertNotEqual(by_name["github"].status, "PASS")
         self.assertNotEqual(by_name["posthog"].status, "PASS")
 
+    def test_acceptance_doc_separates_verification_from_packaged_identity(self):
+        from nexus_harness.release import acceptance_manifest_drift
+
+        text = (REPO_ROOT / "docs" / "release" / "v4-acceptance.md").read_text(
+            encoding="utf-8"
+        )
+        drift = acceptance_manifest_drift(text, manifest=None)
+        self.assertEqual(drift, (), drift)
+        self.assertIn("Engineering verification HEAD", text)
+        self.assertIn("release/MANIFEST.json", text)
+        self.assertNotIn("d8fd36091792a585d741eddb264ca4d61382c94c", text)
+        self.assertNotIn(
+            "08d8ff2bee0902a00cb8620abf588d866cf199cfb7ce70c9389d78df23b68112",
+            text,
+        )
+        self.assertNotIn("files in logical manifest: 794", text)
+
+    def test_acceptance_packaged_identity_matches_manifest_when_present(self):
+        from nexus_harness.release import (
+            acceptance_manifest_drift,
+            render_rc_identity,
+        )
+
+        manifest_path = REPO_ROOT / "release" / "MANIFEST.json"
+        if not manifest_path.is_file():
+            return
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        text = (REPO_ROOT / "docs" / "release" / "v4-acceptance.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual(acceptance_manifest_drift(text, manifest), ())
+        sidecar = REPO_ROOT / "release" / "RC-IDENTITY.md"
+        self.assertTrue(sidecar.is_file())
+        self.assertEqual(
+            sidecar.read_text(encoding="utf-8"), render_rc_identity(manifest)
+        )
+
     def test_generated_adapter_configs_parse(self):
         from nexus_harness.adapters import render_all
 

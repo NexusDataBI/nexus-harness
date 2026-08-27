@@ -169,7 +169,7 @@ class ReleaseManifestTests(unittest.TestCase):
             self.assertEqual(first["schema"], RELEASE_SCHEMA)
             self.assertEqual(first["schema"], "nexus-harness-release/v1")
             self.assertEqual(first["version"], RELEASE_VERSION)
-            self.assertEqual(first["version"], "4.0.0-rc1")
+            self.assertEqual(first["version"], "4.0.0-rc2")
             self.assertEqual(first["channel"], RELEASE_CHANNEL)
             self.assertEqual(first["commit"], "deadbeef")
             self.assertTrue(first["lock_identity"])
@@ -180,6 +180,35 @@ class ReleaseManifestTests(unittest.TestCase):
                 self.assertIn("sha256", item)
                 self.assertIn("size", item)
                 self.assertEqual(len(item["sha256"]), 64)
+
+    def test_acceptance_manifest_drift_detects_stale_and_mismatch(self):
+        from nexus_harness.release import acceptance_manifest_drift
+
+        missing = "no labels here\n"
+        self.assertIn(
+            "missing Engineering verification HEAD label",
+            acceptance_manifest_drift(missing),
+        )
+        stale = (
+            "Engineering verification HEAD\n"
+            "release/MANIFEST.json\n"
+            "d8fd36091792a585d741eddb264ca4d61382c94c\n"
+        )
+        self.assertTrue(
+            any("stale" in item for item in acceptance_manifest_drift(stale))
+        )
+        base = "Engineering verification HEAD\nrelease/MANIFEST.json\n"
+        self.assertEqual(acceptance_manifest_drift(base), ())
+        manifest = {
+            "commit": "b" * 40,
+            "lock_identity": "c" * 64,
+            "files": [{}, {}],
+        }
+        clash = base + "Final RC source commit: `" + ("a" * 40) + "`\n"
+        self.assertIn(
+            "Final RC source commit disagrees with MANIFEST.json",
+            acceptance_manifest_drift(clash, manifest),
+        )
 
 
 class ReleaseAssemblyTests(unittest.TestCase):
@@ -206,7 +235,11 @@ class ReleaseAssemblyTests(unittest.TestCase):
             self.assertTrue((bundle / "harness.lock").is_file())
             self.assertTrue((bundle / "INSTALL.md").is_file())
             install = (bundle / "INSTALL.md").read_text(encoding="utf-8")
-            self.assertIn("4.0.0-rc1", install)
+            self.assertIn(RELEASE_VERSION, install)
+            identity = (root / "release" / "RC-IDENTITY.md").read_text(encoding="utf-8")
+            self.assertIn(str(len(manifest["files"])), identity)
+            self.assertIn(manifest["commit"], identity)
+            self.assertIn(manifest["lock_identity"], identity)
             self.assertIn("LOCAL RELEASE CANDIDATE", install)
             paths = {item["path"] for item in manifest["files"]}
             blob = "\n".join(sorted(paths))
@@ -331,7 +364,7 @@ class ReleasePreconditionTests(unittest.TestCase):
                 source_commit="1",
                 compile_adapters=False,
             )
-            self.assertEqual(manifest["version"], "4.0.0-rc1")
+            self.assertEqual(manifest["version"], RELEASE_VERSION)
 
     def test_injected_preconditions_do_not_recurse_unittest(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -5,7 +5,6 @@ from __future__ import annotations
 import io
 import json
 import os
-import stat
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -392,17 +391,24 @@ class DoctorRunTests(unittest.TestCase):
     def test_unwritable_task_state_fails_with_path_and_chmod(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = _minimal_root(Path(tmp))
-            runtime = root / "runtime-home"
+            runtime = (root / "runtime-home").resolve()
             runtime.mkdir(parents=True, exist_ok=True)
-            runtime.chmod(stat.S_IRUSR | stat.S_IXUSR)
-            try:
+            real_access = os.access
+
+            def access(path, mode, *args, **kwargs):
+                target = Path(path).resolve()
+                if target == runtime and mode == os.W_OK:
+                    return False
+                return real_access(path, mode, *args, **kwargs)
+
+            with patch("nexus_harness.doctor.os.access", side_effect=access):
                 report = _run(root, runtime_home=runtime)
-            finally:
-                runtime.chmod(stat.S_IRWXU)
             check = _by_name(report)["task-state"]
             self.assertEqual(check.status, "FAIL")
-            self.assertIn(str(runtime), check.message + check.repair)
+            combined = check.message + check.repair
+            self.assertIn(str(runtime), combined)
             self.assertIn("chmod", check.repair)
+            self.assertIn("NEXUS_RUNTIME_HOME", check.repair)
 
     def test_failure_output_is_actionable_not_generic(self):
         result = summarize(

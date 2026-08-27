@@ -2,11 +2,16 @@
 
 Recorded from command output and hashes on 2026-08-27. Criteria are spec §22 of `docs/superpowers/specs/2026-08-25-nexus-harness-v4-final-design.md`. Status is never PASS from narrative alone.
 
-Worktree: `feat/v4-release-evals-doctor`
-Python: 3.14.2
-Git HEAD at verification: `d8fd36091792a585d741eddb264ca4d61382c94c`
-Lock identity (SHA-256 of `harness.lock`): `08d8ff2bee0902a00cb8620abf588d866cf199cfb7ce70c9389d78df23b68112`
-Generated hashes: 47 · engine hashes: 71 · adapter versions: claude=1, cursor=1, codex=1
+## Engineering verification snapshot
+
+This snapshot is the Plan 8 independent audit. It is **not** the packaged release identity and does **not** update when later polish commits land.
+
+- Worktree: `feat/v4-release-evals-doctor`
+- Engineering verification HEAD: `42b7537a017d75609439aac9ea2583e1891f47b5`
+- Python: 3.14.2
+- Unit tests recorded: 874 PASS
+- Snapshot lock identity: `11b8e1efd4de5c8c07c56b2bdb9b0fce9e39d7d937783e64798c65fcd7e20184`
+- Generated hashes: 47 · engine hashes: 71 · adapter versions: claude=1, cursor=1, codex=1
 
 No SSH. No live GitHub Project / PostHog / VPS activation. Real `~/.claude`, `~/.cursor`, and `~/.codex` were not used as install targets.
 
@@ -123,7 +128,7 @@ Observed:
 | `dist/codex/config.toml`    | `b162b288d654a2a2bb5974b32c0166d534babdbf12f8c5caecb99cddad5190ba` |   199 |
 | `dist/AGENTS.md`            | `94825ed42ff3f3eee7ce3ebd6911fa97559675d101f1aa87a3904a26ce5f023f` |   963 |
 | `dist/USER_RULES.md`        | `7d14af02f0c0bbf3511055825cb5ae8fe3f6863379df1367ac552a32747014a8` |   926 |
-| `harness.lock`              | `08d8ff2bee0902a00cb8620abf588d866cf199cfb7ce70c9389d78df23b68112` | 19261 |
+| `harness.lock`              | `11b8e1efd4de5c8c07c56b2bdb9b0fce9e39d7d937783e64798c65fcd7e20184` | 19261 |
 
 `dist/` remains gitignored except `.gitkeep`. Hashes above are of the compiled tree used for doctor/diff/smoke.
 
@@ -162,16 +167,13 @@ Local release gate: **PASS** (17 PASS, 0 FAIL, 3 ACTIVATION_REQUIRED of 20 crite
 - **18** — local Issue/PR/project-field tests and `github-bounded-bug-governance` eval PASS the capability. Live GitHub Project node IDs were not set. Doctor `github=ACTIVATION_REQUIRED`.
 - **19** — local incident fingerprint/dedup tests and `runtime-incident-dedup` eval PASS the capability. PostHog Cloud was not enabled. Doctor local `posthog=SKIP`; release `posthog=ACTIVATION_REQUIRED`.
 
-## Release candidate (local, not committed)
+## Final packaged release identity
 
-`scripts/build` assembled `4.0.0-rc1` (`LOCAL_RELEASE_CANDIDATE`) at engineering HEAD `d8fd36091792a585d741eddb264ca4d61382c94c`.
+Do not copy commit, lock identity, or file counts into this file by hand. After `scripts/build` they come from `release/MANIFEST.json` and are also written to `release/RC-IDENTITY.md`.
 
-- schema: `nexus-harness-release/v1`
-- files in logical manifest: 794
-- extracted content hashes: match `release/MANIFEST.json` (0 mismatches)
-- archive path: `release/nexus-harness-v4.tar.gz` (gitignored)
+Tests fail if this document still contains a stale packaged identity, or if a `Final RC source commit` / `Final RC lock identity` / `Final RC logical manifest count` claim disagrees with `release/MANIFEST.json` when that file is present.
 
-Absence of live VPS / GitHub Project / PostHog does not refuse the builder.
+Absence of live VPS / GitHub Project / PostHog does not refuse the builder. Archive path: `release/nexus-harness-v4.tar.gz` (gitignored).
 
 ## Security note
 
