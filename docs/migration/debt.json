@@ -203,6 +203,26 @@
       "target_plan": "plan-8",
       "resolution_condition": "Either persist hierarchy references in TaskState or explicitly prove and document GitHub as the sole recoverable hierarchy authority across restart.",
       "defer_reason": "Does not affect Plan 6 frontend visual quality or bounded Issue tracking."
+    },
+    {
+      "id": "P6-D01",
+      "origin": "plan-6-whole-branch-review",
+      "severity": "low",
+      "description": "A failed recapture does not invalidate prior VisualEvidence still fresh for the same diff_hash; leftover desktop/mobile bundles can keep completion READY.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "Failed capture for a route/viewport must drop or mark stale the previous VisualEvidence for that pair on the current diff_hash, with a focused test.",
+      "defer_reason": "Failed capture no longer promotes new evidence; leftover prior PASS on the same hash is restart/retry hygiene, not the abc→def freshness proof."
+    },
+    {
+      "id": "P6-D02",
+      "origin": "plan-6-whole-branch-review",
+      "severity": "low",
+      "description": "Visual reviewer_status is optional glue; evaluate_completion does not require a fresh visual-review PASS if screenshots are fresh and no confirmed high findings were attached.",
+      "status": "deferred",
+      "target_plan": "plan-8",
+      "resolution_condition": "Material visual tasks require recorded visual-review PASS bound to current_diff_hash, or an explicit structured skip, with a test that omitted review fails completion.",
+      "defer_reason": "Confirmed blocker/high already fail via Plan 2 findings; forcing review presence is workflow Stage 6 policy, not the visual freshness kernel."
     }
   ]
 }
