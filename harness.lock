@@ -143,7 +143,7 @@
     "dist/src/nexus_harness/memory/session.py": "145d9ed693015f5cdbefaae0a94f790bc118ad6be7c2544b21e18532cbf05452",
     "dist/src/nexus_harness/memory/store.py": "f726246562f2544af11a16d25c10f130142ed495a509e011f15648c51fb5e196",
     "dist/src/nexus_harness/migrate.py": "5f411624cb91fec827c1c1c7fc4feff99185e8e60b44c9e65674ddf5e9d923f8",
-    "dist/src/nexus_harness/playwright.py": "a80c786013691d519300f316953f0cc4d2286c928e21afe0e0839966bf5f42d3",
+    "dist/src/nexus_harness/playwright.py": "77fed42274ac7981a0d19343a2bb428b7f4dd310386e505aa86cdb4767d03468",
     "dist/src/nexus_harness/pretool.py": "04e6b4070106fd5e23e5fb61bc1f97b2bbbe2da83f6dbc4671ffbf60b8aac29a",
     "dist/src/nexus_harness/project.py": "29aec9bc01517827720b359caf89167f6eae4b59bef8cd216f8abfb9f6d3711a",
     "dist/src/nexus_harness/project_doc.py": "3118e4a4743907866a4188ee09863cadbb8c46d3518519e18b01116b78c7d596",

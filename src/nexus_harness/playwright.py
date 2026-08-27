@@ -175,14 +175,16 @@ def capture_route(
             artifact=str(output_dir),
         ),
     )
-    records = _record_visual_evidence(
-        artifact_root=root,
-        output_dir=output_dir,
-        route=safe_route,
-        diff_hash=diff_hash,
-    )
-    if task_state is not None:
-        _attach_visual_evidence(task_state, records, state_path)
+    records: list[VisualEvidence] = []
+    if int(exit_code) == 0:
+        records = _record_visual_evidence(
+            artifact_root=root,
+            output_dir=output_dir,
+            route=safe_route,
+            diff_hash=diff_hash,
+        )
+        if task_state is not None:
+            _attach_visual_evidence(task_state, records, state_path)
     return CaptureResult(
         ok=int(exit_code) == 0,
         exit_code=int(exit_code),

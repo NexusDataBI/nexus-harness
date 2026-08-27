@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+from nexus_harness.completion import evaluate_completion
 from nexus_harness.devserver import parse_frontend_section
 from nexus_harness.evidence import read_evidence
 from nexus_harness.playwright import (
@@ -20,7 +21,7 @@ from nexus_harness.playwright import (
 )
 from nexus_harness.safe import PathSafetyError
 from nexus_harness.state import TaskState
-from nexus_harness.visual import as_visual_evidence
+from nexus_harness.visual import as_visual_evidence, visual_completion_reasons
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -400,9 +401,10 @@ class PlaywrightCaptureTests(unittest.TestCase):
         self.assertEqual(by_viewport["desktop"].failed_request_count, 1)
         self.assertEqual(by_viewport["mobile"].console_error_count, 0)
 
-    def test_failed_capture_still_writes_visual_evidence(self):
+    def test_failed_capture_does_not_promote_visual_evidence(self):
         state = TaskState.new("task-4", "demo")
-        state.current_diff_hash = "abc123def"
+        state.current_diff_hash = "abc"
+        state.visual_required = True
 
         def runner(argv, *, cwd=None):
             return 1, "", "failed"
@@ -415,7 +417,54 @@ class PlaywrightCaptureTests(unittest.TestCase):
             task_state=state,
         )
         self.assertFalse(result.ok)
-        self.assertEqual(len(state.visual_evidence), 2)
+        self.assertEqual(result.visual_evidence, ())
+        self.assertFalse(
+            any(
+                as_visual_evidence(item) is not None
+                and as_visual_evidence(item).screenshot
+                for item in state.visual_evidence
+            )
+        )
+        output = self.root / "playwright" / "output"
+        self.assertFalse((output / "desktop-after.png").is_file())
+        self.assertFalse((output / "mobile-after.png").is_file())
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(reasons)
+        self.assertTrue(
+            any("desktop" in reason or "mobile" in reason for reason in reasons)
+        )
+        completion = evaluate_completion(
+            {
+                "tracking_required": True,
+                "issue": 123,
+                "acceptance": [{"id": "AC-1", "status": "PASS", "evidence": "ev-1"}],
+                "quality_gate": {
+                    "gate": "PASS",
+                    "diff_hash": "abc",
+                    "report": "structured",
+                },
+                "security_gate": {
+                    "gate": "PASS",
+                    "diff_hash": "abc",
+                    "report": "structured",
+                },
+                "review_gate": "PASS",
+                "current_diff_hash": "abc",
+                "verified_diff_hash": "abc",
+                "reviewed_diff_hash": "abc",
+                "evidence": [{"id": "ev-1", "exit_code": 0, "diff_hash": "abc"}],
+                "findings": [],
+                "visual_required": True,
+                "visual_evidence": list(state.visual_evidence),
+            }
+        )
+        self.assertEqual(completion.status, "FAIL")
+        self.assertTrue(
+            any(
+                "visual" in reason or "desktop" in reason or "mobile" in reason
+                for reason in completion.reasons
+            )
+        )
 
 
 class PlaywrightBaselineTests(unittest.TestCase):
