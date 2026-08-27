@@ -87,6 +87,28 @@
           "items": { "$ref": "#/$defs/frontendViewport" }
         }
       }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional PostHog Cloud identifiers. Never include tokens.",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Observability provider id (e.g. posthog)."
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Project/observability identifier — never a secret."
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "description": "https PostHog Cloud host/region base URL."
+        }
+      }
     }
   },
   "$defs": {

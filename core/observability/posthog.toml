@@ -1,0 +1,43 @@
+# Safe PostHog Cloud defaults for Nexus Harness.
+# Secrets (personal API key) NEVER belong here — only env / injected config.
+#
+# Host/region are project-configurable. This file does not pin a single
+# regional hostname; callers must supply a validated https host.
+
+enabled = false
+runtime_automation_enabled = false
+free_tier_preferred = true
+project_id = ""
+host = ""
+region = ""
+timeout_seconds = 10
+max_response_bytes = 1048576
+
+[privacy]
+mask_sensitive_inputs = true
+session_replay_enabled_by_default = false
+session_replay_mask_all_inputs = true
+prefer_pseudonymous_ids = true
+allow_email_phone_name = false
+never_capture = [
+  "password",
+  "passwd",
+  "pwd",
+  "token",
+  "access_token",
+  "refresh_token",
+  "id_token",
+  "authorization",
+  "cookie",
+  "cookies",
+  "payment",
+  "card_number",
+  "cvv",
+  "cvc",
+  "secret",
+  "client_secret",
+  "client_credentials",
+  "api_key",
+  "apikey",
+  "personal_api_key",
+]

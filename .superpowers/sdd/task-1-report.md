@@ -1,4 +1,4 @@
-# Task 1 Report — Frontend router consolidation
+# Task 1 Report — PostHog configuration / privacy boundary
 
 ## Status
 
@@ -6,24 +6,19 @@ DONE
 
 ## Implemented
 
-- Extended `tests/test_frontend_skill.py` (existing mode/legacy assertions kept).
-- Added `skills/nexus-frontend/references/router.md` (authority order, load budget, retained specialists, no multi-generic load).
-- Extended `skills/nexus-frontend/SKILL.md` to point at the router and collapse precedence to six levels.
-- P1-D05 frontend slice only: evaluated `ui-styling`, `ui-ux-pro-max`, and `better-accessibility` refs.
-- PRESERVE: six `better-accessibility` reference files under `skills/accessibility/references/` (hashes match the v3 export). Did not copy `agents/openai.yaml`.
-- Refreshed `harness.lock` canonical hashes for the changed/added skill files (skills/ is in `canonical_hashes`; engine Python unchanged).
+- `core/observability/posthog.toml` — safe defaults: `enabled=false`, `runtime_automation_enabled=false`, `free_tier_preferred=true`, conservative privacy/replay, never-capture field list. No secrets.
+- `src/nexus_harness/posthog.py` — sole PostHog HTTP/config boundary:
+  - `PostHogConfig` + `safe_dict()` redaction
+  - secret only from `POSTHOG_PERSONAL_API_KEY` env or injected arg (toml secret keys ignored)
+  - https-only host validation (reject file/javascript/localhost/credentials/path/query tricks)
+  - configurable host/region (no single hardcoded DEFAULT_HOST)
+  - injectable urllib transport, timeout, bounded response size, explicit JSON
+  - `list_problems()` / `get_quota()` → provider `UNKNOWN` on auth/rate-limit/network/invalid/server failures (never empty list / never zero quota)
+- `tests/test_posthog_config.py` — network-free coverage of the above
+- `core/ci/profile.schema.json` — optional `[observability]` with `provider` / `id` / `host` only (no token fields)
+- `harness.lock` refreshed via `write_lock` after engine/core changes
 
-## P1-D05 slice — PRESERVE / COVERED / DISCARD
-
-| Source                      | Decision        | Outcome                                                                                                                                                                                      |
-| --------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ui-styling`                | ALREADY COVERED | Stack-honor / do-not-impose-shadcn is in `nexus-frontend` implement + router. Encyclopedia, CLI recipes, and scripts DISCARD (generic shadcn/Tailwind docs; remain in the immutable export). |
-| `ui-ux-pro-max` (3 hashes)  | PRESERVE        | Search/explore contract and “recommendations never outrank brand/Figma/brief” in `references/router.md`. Catalogs, scripts, and the three divergent entrypoints DISCARD (export only).       |
-| `better-accessibility` refs | PRESERVE        | Copied to `skills/accessibility/references/`. Same `accessibility` skill; no second a11y product.                                                                                            |
-
-P1-D05 is **not** marked resolved. Remaining pending: implement Claude vs Codex, code-review, tdd-workflow, root-cause-tracing, napkin, Superpowers host-runtime.
-
-`docs/migration/debt.json` status for P1-D05 left `deferred`.
+Did **not** configure `profiles/projects/sdr-platform.toml` with PostHog ids. Did **not** start Tasks 2–7. No real PostHog, no push, no GitHub Issues.
 
 ## TDD evidence
 
@@ -32,64 +27,65 @@ P1-D05 is **not** marked resolved. Remaining pending: implement Claude vs Codex,
 Command:
 
 ```text
-python3 -m unittest tests.test_frontend_skill -v
+PYTHONPATH=src python3 -m unittest tests.test_posthog_config -v
 ```
 
-Observed (abridged):
+Observed:
 
 ```text
-test_uses_canonical_routing_names ... ok
-test_router_documents_authority_order ... FAIL
-  AssertionError: missing skills/nexus-frontend/references/router.md
-test_router_names_retained_specialists ... ERROR
-  FileNotFoundError: .../skills/nexus-frontend/references/router.md
-test_router_forbids_multi_generic_load ... ERROR
-  FileNotFoundError: .../skills/nexus-frontend/references/router.md
-test_accessibility_optional_references_exist ... FAIL
-  missing skills/accessibility/references/semantics-and-aria.md
-test_frontend_heuristic_slice_is_evaluated ... FAIL
-  ui-styling row must record PRESERVE, ALREADY COVERED, or DISCARD
-Ran 6 tests in 0.002s
-FAILED (failures=3, errors=2)
+ImportError: Failed to import test module: test_posthog_config
+ModuleNotFoundError: No module named 'nexus_harness.posthog'
+FAILED (errors=1)
 ```
-
-Existing `test_uses_canonical_routing_names` stayed green. New tests failed for the expected missing files / pending rows.
 
 ### GREEN
 
 Command:
 
 ```text
-python3 -m unittest tests.test_frontend_skill -v
+PYTHONPATH=src python3 -m unittest tests.test_posthog_config -v
 ```
 
 Observed:
 
 ```text
-test_accessibility_optional_references_exist ... ok
-test_frontend_heuristic_slice_is_evaluated ... ok
-test_router_documents_authority_order ... ok
-test_router_forbids_multi_generic_load ... ok
-test_router_names_retained_specialists ... ok
-test_uses_canonical_routing_names ... ok
-Ran 6 tests in 0.002s
+Ran 13 tests in 0.003s
 OK
 ```
 
-Also: `PYTHONPATH=src python3 -m unittest tests.test_validate.ValidateTests.test_repository_has_no_appledouble_or_generated_drift tests.test_skill_contracts -v` and `scripts/validate` — PASS.
+Related (schema / PROJECT.md token exclusion / CI profile):
+
+```text
+PYTHONPATH=src python3 -m unittest tests.test_posthog_config tests.test_project_doc tests.test_devserver.DevServerProfileTests -v
+Ran 27 tests in 0.006s
+OK
+```
+
+Lock refresh:
+
+```text
+PYTHONPATH=src python3 -c "from pathlib import Path; from nexus_harness.lockfile import write_lock; write_lock(Path('.'))"
+```
 
 ## Files changed
 
-- `tests/test_frontend_skill.py`
-- `skills/nexus-frontend/SKILL.md`
-- `skills/nexus-frontend/references/router.md`
-- `skills/accessibility/SKILL.md`
-- `skills/accessibility/references/{semantics-and-aria,focus-and-keyboard,forms,hit-areas,motion-and-zoom,screen-readers}.md`
-- `docs/migration/unique-heuristics.md`
-- `harness.lock`
+| Path | Action |
+| --- | --- |
+| `tests/test_posthog_config.py` | created |
+| `src/nexus_harness/posthog.py` | created |
+| `core/observability/posthog.toml` | created |
+| `core/ci/profile.schema.json` | updated (optional observability) |
+| `harness.lock` | updated |
+
+## Self-review
+
+- Secrets never written to toml, schema, sdr-platform profile, or `safe_dict()` values.
+- Exception/log paths redact `phx_`/`phc_` keys and Authorization assignments.
+- Provider failure returns `problems=None` with `status=UNKNOWN` — not `[]`.
+- Quota failure returns `QuotaAvailability.UNKNOWN` with `used`/`limit` as `None` — not `0`.
+- Stdlib urllib only; transport injectable for network-free tests.
+- Scope limited to Task 1.
 
 ## Concerns
 
-- `write_lock` was required even though no engine Python changed: `skills/` is part of `canonical_hashes`. Only skill hash lines moved.
-- Inputs tarball was read-only (`tar` extract to `/tmp`). Not mutated.
-- Task 2 not started.
+None material. `load_ci_profile` still does not parse `[observability]` into `CiProfile` (schema allows it; `config_from_profile` / PROJECT.md consume the mapping). Enough for Task 1; wiring into `CiProfile` can wait until a later task needs it.
