@@ -96,7 +96,8 @@
         "provider": {
           "type": "string",
           "minLength": 1,
-          "description": "Observability provider id (e.g. posthog)."
+          "enum": ["posthog"],
+          "description": "Observability provider id. PostHog is the only baseline."
         },
         "id": {
           "type": "string",

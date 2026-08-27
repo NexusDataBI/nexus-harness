@@ -119,6 +119,10 @@ class IncidentTests(unittest.TestCase):
         for attr in ("root_cause", "escape_cause"):
             self.assertEqual(getattr(candidate, attr), "UNKNOWN")
 
+    def test_incomplete_identity_is_rejected(self):
+        with self.assertRaises(ValueError):
+            normalize_posthog_problem({"id": "err-1", "name": "TypeError"})
+
 
 if __name__ == "__main__":
     unittest.main()

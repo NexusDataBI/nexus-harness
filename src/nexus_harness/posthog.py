@@ -8,6 +8,7 @@ exception strings.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import os
@@ -19,7 +20,7 @@ from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from nexus_harness.config import load_toml
 
@@ -218,6 +219,14 @@ def validate_host(host: str) -> str:
         raise ValueError("posthog host is missing hostname")
     if hostname in _LOOPBACK_HOSTS or hostname.endswith(".localhost"):
         raise ValueError("localhost is not a PostHog Cloud endpoint")
+    try:
+        ipaddress.ip_address(hostname)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("posthog host must not be an IP address")
+    if hostname != "posthog.com" and not hostname.endswith(".posthog.com"):
+        raise ValueError("posthog host must be a PostHog Cloud hostname")
 
     path = parsed.path or ""
     if path not in ("", "/"):
@@ -309,6 +318,9 @@ def config_from_profile(
     obs = profile.get("observability")
     if not isinstance(obs, dict):
         return base_cfg
+    provider = str(obs.get("provider") or "posthog").strip().casefold()
+    if provider and provider != "posthog":
+        raise ValueError("observability provider must be posthog")
     safe_obs = {
         key: value
         for key, value in obs.items()
@@ -394,7 +406,10 @@ class PostHogClient:
                 error_kind="network",
             )
 
-        problems = _problems_from_payload(payload)
+        problems = _problems_from_payload(
+            payload,
+            project=self._config.project_id,
+        )
         if problems is None:
             return ProviderResult(
                 status=ProviderResultStatus.UNKNOWN,
@@ -469,10 +484,17 @@ class PostHogClient:
 
 
 def _make_default_transport(timeout: float) -> Transport:
+    opener = build_opener(_RefuseRedirect())
+
     def _transport(request: Request):
-        return urlopen(request, timeout=timeout)  # noqa: S310
+        return opener.open(request, timeout=timeout)
 
     return _transport
+
+
+class _RefuseRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise PostHogError("redirect refused", kind="network")
 
 
 def _read_bounded(response: Any, max_bytes: int) -> bytes:
@@ -532,7 +554,81 @@ def _parse_retry_after(headers: Any) -> float | None:
         return None
 
 
-def _problems_from_payload(payload: Any) -> tuple[dict[str, Any], ...] | None:
+def canonicalize_problem(
+    raw: Mapping[str, Any],
+    *,
+    project: str = "",
+    environment: str = "",
+) -> dict[str, Any] | None:
+    """Map a raw PostHog problem object to the stable harness shape.
+
+    Incomplete identity (no error type / stack location) is dropped rather
+    than hashed as an empty fingerprint.
+    """
+    if not isinstance(raw, Mapping):
+        return None
+    error_type = str(
+        raw.get("error_type") or raw.get("exception_type") or raw.get("type") or ""
+    ).strip()
+    stack = str(raw.get("stack_location") or raw.get("location") or "").strip()
+    if not error_type or not stack:
+        return None
+    project_id = str(raw.get("project") or project or "").strip()
+    env = str(raw.get("environment") or environment or "").strip()
+    if not project_id or not env:
+        return None
+    return {
+        "project": project_id,
+        "environment": env,
+        "error_type": error_type,
+        "exception_message": raw.get("exception_message") or raw.get("message"),
+        "stack_location": stack,
+        "route": raw.get("route") or raw.get("feature"),
+        "release": raw.get("release"),
+        "occurrences": raw.get("occurrences") or raw.get("count") or 1,
+        "affected_users": raw.get("affected_users") or raw.get("users") or 0,
+        "first_seen": raw.get("first_seen"),
+        "last_seen": raw.get("last_seen"),
+        "problem_id": raw.get("problem_id") or raw.get("id"),
+        "session_id": raw.get("session_id"),
+        "session_ids": raw.get("session_ids"),
+        "session_url": raw.get("session_url") or raw.get("session_link"),
+        "session_links": raw.get("session_links") or raw.get("session_urls"),
+    }
+
+
+def sanitize_public_text(value: Any) -> str:
+    """Strip secrets and obvious PII before GitHub Issue / log publication."""
+    text = _redact(str(value or ""))
+    text = re.sub(
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+        "[redacted-email]",
+        text,
+    )
+    text = re.sub(r"(?i)\bcookie\s*[:=]\s*\S+", "cookie=[REDACTED]", text)
+    return text
+
+
+def safe_session_link(url: Any) -> str | None:
+    text = str(url or "").strip()
+    if not text:
+        return None
+    parsed = urlparse(text)
+    host = (parsed.hostname or "").casefold()
+    if parsed.scheme.casefold() != "https":
+        return None
+    if host != "posthog.com" and not host.endswith(".posthog.com"):
+        return None
+    path = parsed.path or "/"
+    return f"https://{host}{path}"
+
+
+def _problems_from_payload(
+    payload: Any,
+    *,
+    project: str = "",
+    environment: str = "",
+) -> tuple[dict[str, Any], ...] | None:
     if isinstance(payload, list):
         items = payload
     elif isinstance(payload, dict):
@@ -545,13 +641,17 @@ def _problems_from_payload(payload: Any) -> tuple[dict[str, Any], ...] | None:
         return None
     if not isinstance(items, list):
         return None
-    problems: list[dict[str, Any]] = []
+    mapped: list[dict[str, Any] | None] = []
     for item in items:
-        if isinstance(item, dict):
-            problems.append(dict(item))
-        else:
+        if not isinstance(item, dict):
             return None
-    return tuple(problems)
+        mapped.append(
+            canonicalize_problem(item, project=project, environment=environment)
+        )
+    canonical = [item for item in mapped if item is not None]
+    if mapped and not canonical:
+        return None
+    return tuple(canonical)
 
 
 def _never_capture_from(raw: Any) -> frozenset[str]:

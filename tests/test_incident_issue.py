@@ -98,7 +98,19 @@ class IncidentIssueTests(unittest.TestCase):
         self.assertNotIn("Authorization", body)
         self.assertNotRegex(body, r"(?i)phx_")
 
-    def test_maps_to_bug_work_type(self):
+    def test_body_redacts_exception_secrets_and_strips_replay_query(self):
+        candidate = _candidate(
+            symptom="boom cookie=session=raw token=secret alice@example.com",
+            session_links=(
+                "https://us.posthog.com/project/1/replay/sess_aaa111?personal_api_key=nope",
+            ),
+        )
+        # Candidate links may still be raw; renderer/normalizer must not publish query.
+        body = render_incident_issue(candidate, digest=DIGEST)
+        self.assertNotIn("alice@example.com", body)
+        self.assertNotIn("token=secret", body)
+        self.assertNotIn("session=raw", body)
+        self.assertNotIn("personal_api_key=nope", body)
         self.assertEqual(ISSUE_WORK_TYPE, "bug")
         self.assertEqual(ISSUE_SOURCE, "runtime_incident/posthog")
 

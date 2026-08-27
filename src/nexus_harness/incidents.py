@@ -13,6 +13,8 @@ from hashlib import sha256
 import re
 from typing import Any, Mapping
 
+from nexus_harness.posthog import safe_session_link, sanitize_public_text
+
 UNKNOWN = "UNKNOWN"
 KNOWN = "KNOWN"
 _UUID = re.compile(
@@ -57,7 +59,9 @@ def normalize_posthog_problem(problem: Mapping[str, Any]) -> IncidentCandidate:
     stack_location = _normalize_stack_location(
         data.get("stack_location") or data.get("location") or ""
     )
-    route = _optional_text(data.get("route") or data.get("feature"))
+    if not project or not environment or not error_type or not stack_location:
+        raise ValueError("incident identity is incomplete")
+    route = _normalize_route(data.get("route") or data.get("feature"))
     release = _optional_text(data.get("release"))
     occurrences = _int(data.get("occurrences"), default=1)
     affected_users = _int(data.get("affected_users") or data.get("users"), default=0)
@@ -65,9 +69,11 @@ def normalize_posthog_problem(problem: Mapping[str, Any]) -> IncidentCandidate:
     last_seen = _optional_text(data.get("last_seen"))
     problem_id = _optional_text(data.get("problem_id") or data.get("id"))
     session_ids = _session_ids(data)
-    session_links = _session_links(data)
+    session_links = tuple(
+        link for link in (_safe_link(item) for item in _session_links(data)) if link
+    )
     exception_message = _optional_text(
-        data.get("exception_message") or data.get("message")
+        sanitize_public_text(data.get("exception_message") or data.get("message") or "")
     )
 
     fingerprint = _fingerprint(
@@ -121,6 +127,18 @@ def _fingerprint(
     )
     payload = "\0".join(parts).encode("utf-8")
     return sha256(payload).hexdigest()
+
+
+def _normalize_route(raw: Any) -> str | None:
+    text = _optional_text(raw)
+    if text is None:
+        return None
+    text = text.split("?", 1)[0]
+    return sanitize_public_text(text) or None
+
+
+def _safe_link(value: str) -> str | None:
+    return safe_session_link(value)
 
 
 def _normalize_stack_location(raw: Any) -> str:

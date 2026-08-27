@@ -16,6 +16,7 @@ from nexus_harness.incident_policy import (
     incident_marker,
 )
 from nexus_harness.incidents import IncidentCandidate, UNKNOWN
+from nexus_harness.posthog import safe_session_link, sanitize_public_text
 from nexus_harness.tracking import issue_body
 
 ISSUE_WORK_TYPE = "bug"
@@ -52,13 +53,20 @@ def render_incident_issue(
         f"posthog_problem_id: {candidate.provider_problem_id or UNKNOWN}",
     ]
     if candidate.session_ids:
-        evidence.append("session_ids: " + ", ".join(candidate.session_ids))
+        evidence.append(
+            "session_ids: "
+            + ", ".join(sanitize_public_text(item) for item in candidate.session_ids)
+        )
     if candidate.session_links:
-        evidence.append("session_links: " + ", ".join(candidate.session_links))
+        links = [safe_session_link(item) for item in candidate.session_links]
+        links = [item for item in links if item]
+        if links:
+            evidence.append("session_links: " + ", ".join(links))
     evidence.append(marker)
 
+    symptom = sanitize_public_text(candidate.symptom or candidate.error_type or "")
     fields = {
-        "Summary": (
+        "Summary": sanitize_public_text(
             f"{candidate.error_type} at {candidate.stack_location}"
             if candidate.error_type or candidate.stack_location
             else "Runtime incident"
@@ -66,19 +74,17 @@ def render_incident_issue(
         "Type": ISSUE_WORK_TYPE,
         "Priority": _priority(candidate),
         "Project/Area": candidate.project,
-        "Problem or desired outcome": candidate.symptom
-        or candidate.error_type
-        or "Runtime error observed in PostHog",
+        "Problem or desired outcome": symptom or "Runtime error observed in PostHog",
         "Acceptance Criteria": (
             "Error no longer reproduces on the current release; "
             "root and escape causes recorded after diagnosis."
         ),
-        "Risk/Environment": (
+        "Risk/Environment": sanitize_public_text(
             f"{candidate.environment} / route {candidate.route or UNKNOWN}"
         ),
         "Evidence links when bug/incident": "\n".join(evidence),
         "Dependencies": "",
-        "Reproduction": candidate.symptom or candidate.error_type or UNKNOWN,
+        "Reproduction": symptom or UNKNOWN,
         "Proximate Cause": candidate.proximate_symptom or UNKNOWN,
         "Root Cause": UNKNOWN,
         "Escape Cause": UNKNOWN,

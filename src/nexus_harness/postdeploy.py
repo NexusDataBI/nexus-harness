@@ -39,6 +39,7 @@ def evaluate_postdeploy(
     minimum_sample: int = _DEFAULT_MINIMUM_SAMPLE,
     window_start: datetime | None = None,
     window_end: datetime | None = None,
+    runtime_status: str | None = None,
 ) -> PostDeployResult:
     """Evaluate post-deploy runtime confidence.
 
@@ -71,6 +72,19 @@ def evaluate_postdeploy(
             gate=GATE_FAIL,
             reason="confirmed high-severity release regression",
             rollback_handoff="signal",
+            window_start=window_start,
+            window_end=window_end,
+            minimum_sample=sample,
+            observations_available=observations_available,
+        )
+
+    status = str(runtime_status or "").strip().upper()
+    if status in {"UNKNOWN", "UNAVAILABLE"}:
+        return PostDeployResult(
+            gate=GATE_INSUFFICIENT,
+            reason="runtime telemetry unavailable",
+            rollback_handoff=None,
+            issue_close_eligible=False,
             window_start=window_start,
             window_end=window_end,
             minimum_sample=sample,

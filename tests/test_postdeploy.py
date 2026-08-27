@@ -71,7 +71,17 @@ class PostDeployTests(unittest.TestCase):
         self.assertEqual(result.gate, GATE_PASS)
         self.assertIsNone(result.rollback_handoff)
 
-    def test_insufficient_does_not_close_issue(self):
+    def test_unknown_runtime_status_is_insufficient_even_with_sample(self):
+        result = evaluate_postdeploy(
+            health=True,
+            smoke=True,
+            new_error_regression=False,
+            observations_available=99,
+            minimum_sample=5,
+            runtime_status="UNKNOWN",
+        )
+        self.assertEqual(result.gate, GATE_INSUFFICIENT)
+        self.assertFalse(result.issue_close_eligible)
         result = evaluate_postdeploy(
             health=True,
             smoke=True,

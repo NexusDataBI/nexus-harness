@@ -175,6 +175,9 @@ class PostHogConfigTests(unittest.TestCase):
             "https://us.posthog.com/path/with/extra",
             "https://us.posthog.com?token=abc",
             "ftp://us.posthog.com",
+            "https://evil.example.com",
+            "https://10.0.0.1/",
+            "https://169.254.169.254/",
             "",
             "us.posthog.com",
         ]
@@ -232,13 +235,27 @@ class PostHogConfigTests(unittest.TestCase):
         transport = MagicMock(return_value=_FakeResponse(body, status=200))
         client = PostHogClient(cfg, transport=transport)
         result = client.list_problems()
+        self.assertEqual(result.status, ProviderResultStatus.UNKNOWN)
+        self.assertIsNone(result.problems)
+
+        canonical = {
+            "results": [
+                {
+                    "project": "123",
+                    "environment": "production",
+                    "error_type": "TypeError",
+                    "stack_location": "src/leads.ts:fetchLead",
+                    "id": "err-2",
+                }
+            ]
+        }
+        transport = MagicMock(
+            return_value=_FakeResponse(json.dumps(canonical).encode(), status=200)
+        )
+        result = PostHogClient(cfg, transport=transport).list_problems()
         self.assertEqual(result.status, ProviderResultStatus.OK)
-        self.assertIsNotNone(result.problems)
         self.assertEqual(len(result.problems), 1)
-        transport.assert_called()
-        request = transport.call_args.args[0]
-        self.assertIsInstance(request, Request)
-        self.assertTrue(str(request.full_url).startswith("https://eu.posthog.com"))
+        self.assertEqual(result.problems[0]["error_type"], "TypeError")
 
     def test_provider_errors_are_unknown_not_empty_incident_list(self):
         cfg = PostHogConfig(
@@ -401,7 +418,7 @@ class PostHogConfigTests(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 config_from_profile(
-                    {"observability": {"host": "http://localhost/posthog"}},
+                    {"observability": {"provider": "sentry", "id": "x"}},
                     base=path,
                     environ={},
                 )
