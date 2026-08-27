@@ -1,0 +1,11 @@
+# Conservative actionable-incident policy.
+# Invalid/missing values must fail closed (never auto-create Issues).
+
+[thresholds]
+min_occurrences_create = 3
+min_affected_users_create = 2
+
+[priority]
+release_regression = true
+fatal = true
+security_adjacent = true
