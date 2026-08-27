@@ -254,7 +254,9 @@ def _confine_optional(value: str | None, root: Path) -> str | None:
     text = _opt_str(value)
     if text is None:
         return None
-    return str(confine(text, root))
+    raw = Path(text)
+    candidate = raw if raw.is_absolute() else Path(root) / raw
+    return str(confine(candidate, root))
 
 
 def _get(state, key, default=None):

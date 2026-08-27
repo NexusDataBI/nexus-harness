@@ -274,6 +274,39 @@ class VisualBundleTests(unittest.TestCase):
             with self.assertRaises(PathSafetyError):
                 confine_visual_artifacts(ev, root)
 
+    def test_relative_screenshot_under_evidence_root_is_confined(self):
+        ev = VisualEvidence(
+            route="/",
+            viewport="desktop",
+            diff_hash="abc",
+            screenshot="after.png",
+            baseline="before.png",
+            trace="trace.zip",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "evidence"
+            root.mkdir()
+            confined = confine_visual_artifacts(ev, root)
+            expected_root = root.resolve()
+            for field in (confined.screenshot, confined.baseline, confined.trace):
+                resolved = Path(field)
+                self.assertTrue(resolved.is_absolute())
+                self.assertTrue(resolved.is_relative_to(expected_root))
+            self.assertEqual(Path(confined.screenshot), expected_root / "after.png")
+
+    def test_relative_escape_screenshot_is_rejected(self):
+        ev = VisualEvidence(
+            route="/",
+            viewport="desktop",
+            diff_hash="abc",
+            screenshot="../escape.png",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "evidence"
+            root.mkdir()
+            with self.assertRaises(PathSafetyError):
+                confine_visual_artifacts(ev, root)
+
 
 class VisualContractTests(unittest.TestCase):
     def test_schema_requires_route_viewport_diff_hash(self):
