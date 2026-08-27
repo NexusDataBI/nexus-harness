@@ -207,3 +207,73 @@ class QualityTests(unittest.TestCase):
         self.assertTrue(standard["coverage"])
         self.assertTrue(light["format_lint"])
         self.assertTrue(standard["security_scan"])
+
+    def test_required_ratchet_without_baseline_is_bootstrap_required(self):
+        metric = Metric(
+            "coverage",
+            current=81.0,
+            baseline=None,
+            mode="ratchet",
+            direction="higher",
+            required=True,
+        )
+        result = evaluate_metric(metric)
+        self.assertEqual(result.status, "BOOTSTRAP_REQUIRED")
+        self.assertNotEqual(result.status, "PASS")
+
+    def test_required_budget_without_baseline_is_bootstrap_required(self):
+        metric = Metric(
+            "performance",
+            current=100.0,
+            baseline=None,
+            mode="budget",
+            direction="lower",
+            required=True,
+        )
+        result = evaluate_metric(metric)
+        self.assertEqual(result.status, "BOOTSTRAP_REQUIRED")
+
+    def test_optional_ratchet_without_baseline_is_not_applicable(self):
+        metric = Metric(
+            "duplication",
+            current=8,
+            baseline=None,
+            mode="ratchet",
+            direction="lower",
+            required=False,
+        )
+        result = evaluate_metric(metric)
+        self.assertEqual(result.status, "NOT_APPLICABLE")
+
+    def test_budget_uses_policy_default_tolerance_when_unset(self):
+        metric = Metric(
+            "performance",
+            current=105.0,
+            baseline=100.0,
+            mode="budget",
+            direction="lower",
+        )
+        policy = {"budget": {"default_tolerance": 10.0}}
+        self.assertEqual(evaluate_metric(metric, policy=policy).status, "PASS")
+        tight = {"budget": {"default_tolerance": 0.0}}
+        self.assertEqual(evaluate_metric(metric, policy=tight).status, "FAIL")
+
+    def test_required_bootstrap_metric_does_not_pass_the_gate(self):
+        report = evaluate_report(
+            [
+                Metric(
+                    "coverage",
+                    current=99.0,
+                    baseline=None,
+                    mode="ratchet",
+                    direction="higher",
+                    required=True,
+                )
+            ]
+        )
+        self.assertEqual(report.metrics[0].status, "BOOTSTRAP_REQUIRED")
+        self.assertNotEqual(report.gate, "PASS")
+
+
+if __name__ == "__main__":
+    unittest.main()

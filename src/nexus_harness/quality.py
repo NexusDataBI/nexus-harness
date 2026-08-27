@@ -25,7 +25,7 @@ class Metric:
     direction: str = "higher"
     required: bool = True
     threshold: float | int | bool | None = None
-    tolerance: float = 0.0
+    tolerance: float | None = None
 
 
 @dataclass
@@ -99,23 +99,33 @@ def _weakened(proposed, base, direction: str, precision: float) -> bool:
     return proposed_n > base_n + precision
 
 
-def evaluate_metric(metric: Metric) -> MetricResult:
+def evaluate_metric(metric: Metric, policy: dict | None = None) -> MetricResult:
+    policy = policy if policy is not None else load_ratchet_policy()
     if metric.mode == "absolute":
         floor = 0 if metric.threshold is None else metric.threshold
         passed = _passes(metric.current, floor, metric.direction)
-    elif metric.mode == "ratchet":
-        passed = metric.baseline is None or _passes(
-            metric.current, metric.baseline, metric.direction
-        )
-    elif metric.mode == "budget":
-        passed = metric.baseline is None or _passes(
-            metric.current, metric.baseline, metric.direction, metric.tolerance
-        )
+        status = "PASS" if passed else "FAIL"
+    elif metric.mode in {"ratchet", "budget"}:
+        if metric.baseline is None:
+            status = "BOOTSTRAP_REQUIRED" if metric.required else "NOT_APPLICABLE"
+        else:
+            tolerance = 0.0
+            if metric.mode == "budget":
+                if metric.tolerance is not None:
+                    tolerance = metric.tolerance
+                else:
+                    tolerance = float(
+                        policy.get("budget", {}).get("default_tolerance", 0.0)
+                    )
+            passed = _passes(
+                metric.current, metric.baseline, metric.direction, tolerance
+            )
+            status = "PASS" if passed else "FAIL"
     else:
         raise ValueError(f"unknown mode: {metric.mode}")
     return MetricResult(
         name=metric.name,
-        status="PASS" if passed else "FAIL",
+        status=status,
         current=metric.current,
         baseline=metric.baseline,
         mode=metric.mode,
@@ -133,8 +143,17 @@ def evaluate_report(
 ) -> QualityReport:
     results = [evaluate_metric(metric) for metric in metrics]
     required_failed = any(item.required and item.status == "FAIL" for item in results)
+    required_bootstrap = any(
+        item.required and item.status == "BOOTSTRAP_REQUIRED" for item in results
+    )
+    if required_failed:
+        gate = "FAIL"
+    elif required_bootstrap:
+        gate = "BOOTSTRAP_REQUIRED"
+    else:
+        gate = "PASS"
     return QualityReport(
-        gate="FAIL" if required_failed else "PASS",
+        gate=gate,
         metrics=results,
         profile=profile,
         diff_hash=diff_hash,

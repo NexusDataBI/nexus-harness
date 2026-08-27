@@ -6,7 +6,10 @@
   "additionalProperties": false,
   "required": ["gate", "metrics"],
   "properties": {
-    "gate": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "gate": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "BOOTSTRAP_REQUIRED"]
+    },
     "profile": {
       "type": "string",
       "enum": ["light", "standard", "strict", "critical"]
