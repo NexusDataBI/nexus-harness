@@ -372,7 +372,7 @@ class FrontendCaptureCliTests(unittest.TestCase):
 
 class FrontendCaptureCliJsonSmokeTests(unittest.TestCase):
     def test_help_surface_mentions_frontend_capture(self):
-        parser_source = (REPO_ROOT / "src" / "nexus_harness" / "__main__.py").read_text(
+        parser_source = (REPO_ROOT / "src" / "nexus_harness" / "cli.py").read_text(
             encoding="utf-8"
         )
         self.assertIn('"frontend"', parser_source)

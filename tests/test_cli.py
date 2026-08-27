@@ -2,15 +2,41 @@
 
 from __future__ import annotations
 
+import io
 import json
+import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import Mock
 
 from nexus_harness.__main__ import main
+from nexus_harness.state import TaskState, save_task_state
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SDR_PROFILE = REPO_ROOT / "profiles" / "projects" / "sdr-platform.toml"
+
+CORE_COMMANDS = (
+    "validate",
+    "build",
+    "install",
+    "doctor",
+    "workflow",
+    "quality",
+    "project",
+    "frontend",
+    "incidents",
+    "evals",
+)
+
+
+def _run_main(argv, **kwargs):
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with redirect_stdout(stdout), redirect_stderr(stderr):
+        code = main(argv, **kwargs)
+    return code, stdout.getvalue(), stderr.getvalue()
 
 
 class CliAffectedTests(unittest.TestCase):
@@ -121,6 +147,183 @@ class ScriptsNexusWrapperTests(unittest.TestCase):
         text = wrapper.read_text(encoding="utf-8")
         self.assertIn("python3 -m nexus_harness", text)
         self.assertIn("PYTHONPATH", text)
+        self.assertIn("python3 -m nexus_harness.cli", text)
+
+
+class CliHelpTests(unittest.TestCase):
+    def test_help_lists_core_commands(self):
+        result = subprocess.run(
+            ["bash", str(REPO_ROOT / "scripts" / "nexus"), "--help"],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in CORE_COMMANDS:
+            self.assertIn(name, result.stdout)
+
+
+class CliUnavailableCommandTests(unittest.TestCase):
+    def test_doctor_exits_unavailable_without_fake_pass(self):
+        code, stdout, stderr = _run_main(["doctor"])
+        self.assertEqual(code, 2)
+        combined = stdout + stderr
+        self.assertRegex(combined, r"not (yet )?available|not implemented")
+        self.assertNotRegex(combined, r"\bPASS\b")
+
+    def test_evals_exits_unavailable_without_fake_pass(self):
+        code, stdout, stderr = _run_main(["evals"])
+        self.assertEqual(code, 2)
+        combined = stdout + stderr
+        self.assertRegex(combined, r"not (yet )?available|not implemented")
+        self.assertNotRegex(combined, r"\bPASS\b")
+
+    def test_doctor_json_is_unavailable_not_pass(self):
+        code, stdout, stderr = _run_main(["--json", "doctor"])
+        self.assertEqual(code, 2)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["status"], "unavailable")
+        self.assertEqual(payload["command"], "doctor")
+        self.assertNotEqual(payload["status"], "PASS")
+        self.assertEqual(stderr.strip(), "")
+
+
+class CliValidateJsonTests(unittest.TestCase):
+    def test_validate_json_writes_report_on_stdout_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, stdout, stderr = _run_main(
+                ["--json", "--project-root", tmp, "validate"]
+            )
+        self.assertNotEqual(code, 0)
+        payload = json.loads(stdout)
+        self.assertIn("errors", payload)
+        self.assertTrue(payload["errors"])
+        self.assertFalse(payload["ok"])
+        self.assertEqual(stderr.strip(), "")
+        self.assertNotIn("phx_", stdout)
+        self.assertNotIn("ghp_", stdout)
+        self.assertNotIn("github_pat_", stdout)
+
+
+class CliWorkflowTests(unittest.TestCase):
+    def test_workflow_advance_writes_next_stage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            save_task_state(TaskState.new("task-1", "repo-1"), path)
+            code, stdout, stderr = _run_main(
+                [
+                    "--json",
+                    "workflow",
+                    "advance",
+                    "--state",
+                    str(path),
+                    "--to",
+                    "1",
+                ]
+            )
+            self.assertEqual(code, 0, stderr)
+            payload = json.loads(stdout)
+            self.assertEqual(payload["stage"], 1)
+            self.assertEqual(payload["task_id"], "task-1")
+            self.assertEqual(stderr.strip(), "")
+
+
+class CliProjectTests(unittest.TestCase):
+    def test_project_show_by_id_json(self):
+        code, stdout, stderr = _run_main(
+            [
+                "--json",
+                "--project-root",
+                str(REPO_ROOT),
+                "project",
+                "show",
+                "--id",
+                "sdr-platform",
+            ]
+        )
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["id"], "sdr-platform")
+        self.assertEqual(payload["repository"], "Rubens-Marques/SDR-Plataform")
+        self.assertNotIn("token", json.dumps(payload).casefold())
+        self.assertEqual(stderr.strip(), "")
+
+
+class CliIncidentsTests(unittest.TestCase):
+    def test_incidents_render_is_local_and_does_not_mutate(self):
+        github = Mock()
+        problem = {
+            "project": "sdr-platform",
+            "environment": "production",
+            "error_type": "TypeError",
+            "stack_location": "src/leads.ts:fetchLead",
+            "route": "/api/leads",
+            "occurrences": 4,
+            "affected_users": 3,
+            "token": "ghp_should_never_appear",
+            "personal_api_key": "phx_should_never_appear",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "problem.json"
+            path.write_text(json.dumps(problem), encoding="utf-8")
+            code, stdout, stderr = _run_main(
+                ["--json", "incidents", "render", "--input", str(path)],
+                github=github,
+            )
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertFalse(payload["mutated"])
+        body = payload["request_body"]
+        self.assertIn("TypeError", body)
+        self.assertNotIn("ghp_should_never_appear", stdout)
+        self.assertNotIn("phx_should_never_appear", stdout)
+        github.create_issue.assert_not_called()
+        github.edit_issue.assert_not_called()
+        github.api.assert_not_called()
+        self.assertEqual(stderr.strip(), "")
+
+    def test_incidents_classify_stays_policy_local(self):
+        github = Mock()
+        problem = {
+            "project": "sdr-platform",
+            "environment": "production",
+            "error_type": "TypeError",
+            "stack_location": "src/leads.ts:fetchLead",
+            "occurrences": 1,
+            "affected_users": 0,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "problem.json"
+            path.write_text(json.dumps(problem), encoding="utf-8")
+            code, stdout, stderr = _run_main(
+                ["--json", "incidents", "classify", "--input", str(path)],
+                github=github,
+            )
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["action"], "IGNORE")
+        github.create_issue.assert_not_called()
+        github.edit_issue.assert_not_called()
+
+
+class CliInstallTests(unittest.TestCase):
+    def test_install_copies_source_to_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "dist"
+            target = root / "installed"
+            source.mkdir()
+            (source / "generated.txt").write_text("ok", encoding="utf-8")
+            code, stdout, stderr = _run_main(
+                ["--json", "install", str(source), str(target)]
+            )
+            self.assertEqual(code, 0, stderr)
+            payload = json.loads(stdout)
+            self.assertEqual(
+                (target / "generated.txt").read_text(encoding="utf-8"), "ok"
+            )
+            self.assertIn("backup", payload)
+            self.assertEqual(stderr.strip(), "")
 
 
 if __name__ == "__main__":

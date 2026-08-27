@@ -64,11 +64,12 @@
   },
   "engine_hashes": {
     "dist/src/nexus_harness/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
-    "dist/src/nexus_harness/__main__.py": "36e4b1ac1031dd69d2f2287bed2ba682ba2bdf790ee4f25e13ef234ae810202b",
+    "dist/src/nexus_harness/__main__.py": "8f0536c1e1677ccd9cf388d252eed9556025d0d84e21ea0776671dfa25ed9c2a",
     "dist/src/nexus_harness/adapters.py": "72e4929fe04d1afca2a4b680a29c9713b490d78cd4296e1fb26b7cd7edceeaf8",
     "dist/src/nexus_harness/affected.py": "267b735b605cf6cedcc4a14f1b18ef671bd85512fb160b4f3e8052931870caea",
     "dist/src/nexus_harness/build.py": "a2318f4b121d892a2b9db501f5e3f14ee5fe59b46b798f2b16ed012b35b75179",
     "dist/src/nexus_harness/ci.py": "5f1fce9ea0053155cec2440a0f81731b62e58bdfdbd747e64854da11dc47ecc7",
+    "dist/src/nexus_harness/cli.py": "001f7ffb421e76579b57b065c21eb6288b117428466288e80bce1d02282f3cb6",
     "dist/src/nexus_harness/command.py": "23f5a20b830406daa90fb0cb6dff8c9fd99c35b76fd5a0d984702f55287aae7e",
     "dist/src/nexus_harness/compile.py": "480cd2239e41dd20e52d08f7efb96a87e100ccfe7b7d0be241284eb052f44d74",
     "dist/src/nexus_harness/completion.py": "97c702c9bf11d4c98407ed5eb42b98f1c8f3212113fc586752357d6d24b1a15e",
