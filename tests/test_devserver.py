@@ -148,6 +148,43 @@ class DevServerTests(unittest.TestCase):
         self.assertIs(kwargs.get("shell"), False)
         self.assertTrue(kwargs.get("start_new_session"))
 
+    def test_starts_owned_server_with_confined_cwd(self):
+        captured = []
+
+        def popen(argv, **kwargs):
+            captured.append((list(argv), dict(kwargs)))
+            return FakeProcess(pid=4242)
+
+        probes = iter([False, True])
+        result = ensure_dev_server(
+            _config(),
+            artifact_root=self.root,
+            cwd=self.root,
+            project_root=self.root,
+            probe=lambda url: next(probes, True),
+            popen=popen,
+            sleeper=self.clock.sleep,
+            monotonic=self.clock.monotonic,
+        )
+        self.assertTrue(result.ok, msg=result.failure)
+        self.assertEqual(len(captured), 1)
+        _argv, kwargs = captured[0]
+        self.assertEqual(kwargs.get("cwd"), str(self.root.resolve()))
+
+    def test_rejects_relative_cwd_escape(self):
+        popen = Mock(side_effect=AssertionError("Popen must not run"))
+        result = ensure_dev_server(
+            _config(),
+            artifact_root=self.root,
+            cwd=Path(".."),
+            project_root=self.root,
+            probe=lambda url: False,
+            popen=popen,
+        )
+        self.assertFalse(result.ok)
+        self.assertEqual(result.failure.code, "unsafe_cwd")
+        popen.assert_not_called()
+
     def test_successful_readiness_after_start(self):
         seen = []
 

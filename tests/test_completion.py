@@ -478,3 +478,23 @@ class CompletionTests(unittest.TestCase):
         self.assertTrue(
             any("desktop" in reason or "mobile" in reason for reason in result.reasons)
         )
+
+    def test_frontend_visual_paths_require_evidence_without_state_key(self):
+        payload = _ready_state(
+            changed_paths=["apps/web/page.tsx"],
+            frontend={"visual_paths": ["apps/web/**"]},
+        )
+        self.assertNotIn("visual_paths", payload)
+        result = evaluate_completion(payload)
+        self.assertEqual(result.status, "FAIL")
+        self.assertTrue(
+            any("desktop" in reason or "mobile" in reason for reason in result.reasons)
+        )
+
+    def test_ready_without_frontend_or_visual_paths_stays_ready(self):
+        payload = _ready_state()
+        self.assertNotIn("visual_paths", payload)
+        self.assertNotIn("frontend", payload)
+        result = evaluate_completion(payload)
+        self.assertEqual(result.status, "READY_TO_SHIP")
+        self.assertEqual(result.reasons, [])

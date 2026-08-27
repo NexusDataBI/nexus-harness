@@ -108,6 +108,21 @@ def matches_visual_paths(
     )
 
 
+def _frontend_visual_paths(frontend) -> tuple[str, ...]:
+    if frontend is None:
+        return ()
+    if isinstance(frontend, dict):
+        return _str_tuple(frontend.get("visual_paths"))
+    return _str_tuple(getattr(frontend, "visual_paths", None))
+
+
+def _state_visual_paths(state) -> tuple[str, ...]:
+    paths = _str_tuple(_get(state, "visual_paths"))
+    if paths:
+        return paths
+    return _frontend_visual_paths(_get(state, "frontend"))
+
+
 def is_visual_required(state) -> bool:
     if is_valid_visual_skip(_get(state, "visual_skip")):
         return False
@@ -115,8 +130,25 @@ def is_visual_required(state) -> bool:
         return True
     return matches_visual_paths(
         _get(state, "changed_paths"),
-        _get(state, "visual_paths"),
+        _state_visual_paths(state),
     )
+
+
+def bind_visual_requirement(state, profile, changed_paths):
+    frontend = None
+    if isinstance(profile, dict):
+        frontend = profile.get("frontend")
+    elif profile is not None:
+        frontend = getattr(profile, "frontend", None)
+    paths = list(_frontend_visual_paths(frontend))
+    changed = [str(item) for item in list(changed_paths or [])]
+    if isinstance(state, dict):
+        state["visual_paths"] = paths
+        state["changed_paths"] = changed
+    else:
+        state.visual_paths = paths
+        state.changed_paths = changed
+    return state
 
 
 def as_visual_evidence(value) -> VisualEvidence | None:

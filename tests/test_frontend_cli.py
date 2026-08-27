@@ -9,6 +9,8 @@ from unittest.mock import Mock
 
 from nexus_harness.__main__ import main
 from nexus_harness.evidence import read_evidence
+from nexus_harness.state import TaskState, load_task_state, save_task_state
+from nexus_harness.visual import as_visual_evidence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +33,7 @@ def _write_frontend_profile(root: Path) -> Path:
                 "[frontend]",
                 'base_url = "http://127.0.0.1:3000"',
                 'readiness_url = "http://127.0.0.1:3000"',
+                'visual_paths = ["apps/web/**"]',
                 "",
                 "[frontend.dev_server]",
                 'command = ["npm", "run", "dev"]',
@@ -77,6 +80,7 @@ class FrontendCaptureCliTests(unittest.TestCase):
                 runner=runner,
                 profile_path=profile,
                 artifact_root=artifacts,
+                probe=True,
             )
             self.assertEqual(code, 0)
             self.assertEqual(len(seen), 1)
@@ -109,6 +113,29 @@ class FrontendCaptureCliTests(unittest.TestCase):
                     "capture",
                     "--route",
                     "../escape",
+                    "--task-id",
+                    "qa-1",
+                ],
+                runner=runner,
+                profile_path=profile,
+                artifact_root=root / "artifacts",
+            )
+            self.assertEqual(code, 2)
+            runner.assert_not_called()
+
+    def test_frontend_capture_rejects_protocol_relative_route_without_runner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = _write_frontend_profile(root)
+            runner = Mock(side_effect=AssertionError("runner must not run"))
+            code = main(
+                [
+                    "--project-root",
+                    str(root),
+                    "frontend",
+                    "capture",
+                    "--route",
+                    "//evil.test",
                     "--task-id",
                     "qa-1",
                 ],
@@ -166,6 +193,118 @@ class FrontendCaptureCliTests(unittest.TestCase):
             self.assertEqual(code, 2)
             runner.assert_not_called()
 
+    def test_frontend_capture_refuses_when_localhost_not_ready(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = _write_frontend_profile(root)
+            runner = Mock(side_effect=AssertionError("runner must not run"))
+
+            class DeadProcess:
+                pid = 8
+                returncode = 1
+
+                def poll(self):
+                    return 1
+
+            code = main(
+                [
+                    "--project-root",
+                    str(root),
+                    "frontend",
+                    "capture",
+                    "--route",
+                    "/inbox",
+                    "--task-id",
+                    "qa-1",
+                ],
+                runner=runner,
+                profile_path=profile,
+                artifact_root=root / "artifacts",
+                probe=False,
+                popen=lambda *a, **k: DeadProcess(),
+            )
+            self.assertEqual(code, 1)
+            runner.assert_not_called()
+
+    def test_frontend_capture_passes_project_root_cwd_to_ensure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = _write_frontend_profile(root)
+            seen = []
+
+            class DeadProcess:
+                pid = 8
+                returncode = 1
+
+                def poll(self):
+                    return 1
+
+            def popen(argv, **kwargs):
+                seen.append(dict(kwargs))
+                return DeadProcess()
+
+            runner = Mock(side_effect=AssertionError("runner must not run"))
+            code = main(
+                [
+                    "--project-root",
+                    str(root),
+                    "frontend",
+                    "capture",
+                    "--route",
+                    "/inbox",
+                    "--task-id",
+                    "qa-1",
+                ],
+                runner=runner,
+                profile_path=profile,
+                artifact_root=root / "artifacts",
+                probe=False,
+                popen=popen,
+            )
+            self.assertEqual(code, 1)
+            self.assertEqual(len(seen), 1)
+            self.assertEqual(seen[0].get("cwd"), str(root.resolve()))
+            runner.assert_not_called()
+
+    def test_frontend_capture_binds_visual_paths_and_writes_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = _write_frontend_profile(root)
+            state_file = root / ".nexus" / "tasks" / "qa-1" / "state.json"
+            state = TaskState.new("qa-1", "demo")
+            state.current_diff_hash = "abc123"
+            state.changed_paths = ["apps/web/page.tsx"]
+            save_task_state(state, state_file)
+
+            def runner(argv, *, cwd=None):
+                return 0, "", ""
+
+            code = main(
+                [
+                    "--project-root",
+                    str(root),
+                    "frontend",
+                    "capture",
+                    "--route",
+                    "/inbox",
+                    "--task-id",
+                    "qa-1",
+                ],
+                runner=runner,
+                profile_path=profile,
+                artifact_root=root / "artifacts",
+                probe=True,
+            )
+            self.assertEqual(code, 0)
+            loaded = load_task_state(state_file)
+            self.assertEqual(list(loaded.visual_paths), ["apps/web/**"])
+            self.assertEqual(list(loaded.changed_paths), ["apps/web/page.tsx"])
+            self.assertEqual(len(loaded.visual_evidence), 2)
+            viewports = {
+                as_visual_evidence(item).viewport for item in loaded.visual_evidence
+            }
+            self.assertEqual(viewports, {"desktop", "mobile"})
+
     def test_frontend_capture_discovers_single_profile(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -187,6 +326,7 @@ class FrontendCaptureCliTests(unittest.TestCase):
                 ],
                 runner=runner,
                 artifact_root=root / "artifacts",
+                probe=True,
             )
             self.assertEqual(code, 0)
             self.assertEqual(len(seen), 1)

@@ -44,6 +44,9 @@ class FrontendRoute:
     name: str = ""
 
 
+ALLOWED_VIEWPORT_NAMES = frozenset({"desktop", "mobile"})
+
+
 @dataclass(frozen=True)
 class Viewport:
     name: str
@@ -253,6 +256,8 @@ def ensure_dev_server(
     *,
     artifact_root: Path,
     log_relpath: str = "devserver.log",
+    cwd: Path | None = None,
+    project_root: Path | None = None,
     probe: Callable[[str], bool] | None = None,
     popen: Callable[..., Any] | None = None,
     sleeper: Callable[[float], None] | None = None,
@@ -287,6 +292,10 @@ def ensure_dev_server(
             {"path": log_relpath, "reason": str(exc)},
         )
 
+    confined_cwd = _confine_cwd(cwd, project_root)
+    if isinstance(confined_cwd, DevServerFailure):
+        return DevServerResult(ok=False, failure=confined_cwd)
+
     probe_fn = probe or probe_readiness
     if probe_fn(config.readiness_url):
         return DevServerResult(
@@ -304,14 +313,16 @@ def ensure_dev_server(
     argv = [str(part) for part in config.dev_server.command]
     try:
         with log_path.open("ab") as handle:
-            proc = spawn(
-                argv,
-                shell=False,
-                start_new_session=True,
-                stdin=subprocess.DEVNULL,
-                stdout=handle,
-                stderr=subprocess.STDOUT,
-            )
+            spawn_kwargs = {
+                "shell": False,
+                "start_new_session": True,
+                "stdin": subprocess.DEVNULL,
+                "stdout": handle,
+                "stderr": subprocess.STDOUT,
+            }
+            if confined_cwd is not None:
+                spawn_kwargs["cwd"] = str(confined_cwd)
+            proc = spawn(argv, **spawn_kwargs)
     except OSError as exc:
         return _fail(
             "process_exited",
@@ -459,6 +470,13 @@ def _parse_viewports(raw: object) -> tuple[Viewport, ...] | DevServerFailure:
                 code="malformed_command",
                 message="frontend.viewports[].name is required",
             )
+        name = name.strip()
+        if name not in ALLOWED_VIEWPORT_NAMES:
+            return DevServerFailure(
+                code="malformed_command",
+                message="frontend.viewports[].name must be desktop or mobile",
+                evidence={"name": name},
+            )
         if isinstance(width, bool) or not isinstance(width, int) or width < 1:
             return DevServerFailure(
                 code="malformed_command",
@@ -471,7 +489,7 @@ def _parse_viewports(raw: object) -> tuple[Viewport, ...] | DevServerFailure:
                 message="frontend.viewports[].height must be a positive integer",
                 evidence={"height": height},
             )
-        viewports.append(Viewport(name=name.strip(), width=width, height=height))
+        viewports.append(Viewport(name=name, width=width, height=height))
     return tuple(viewports)
 
 
@@ -535,6 +553,34 @@ def _string_tuple(value: object) -> tuple[str, ...] | None:
             return None
         items.append(item)
     return tuple(items)
+
+
+def _confine_cwd(
+    cwd: Path | None, project_root: Path | None
+) -> Path | DevServerFailure | None:
+    if cwd is None:
+        return None
+    raw = Path(cwd)
+    if project_root is None:
+        if not raw.is_absolute():
+            return DevServerFailure(
+                code="unsafe_cwd",
+                message="relative cwd requires project_root",
+                evidence={"cwd": str(cwd)},
+            )
+        allowed = raw
+        candidate = raw
+    else:
+        allowed = Path(project_root)
+        candidate = raw if raw.is_absolute() else allowed / raw
+    try:
+        return confine(candidate, allowed)
+    except PathSafetyError as exc:
+        return DevServerFailure(
+            code="unsafe_cwd",
+            message="cwd escapes the project root",
+            evidence={"cwd": str(cwd), "reason": str(exc)},
+        )
 
 
 def _confine_log(artifact_root: Path, log_relpath: str) -> Path:

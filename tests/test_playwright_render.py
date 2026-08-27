@@ -12,6 +12,7 @@ from unittest.mock import Mock
 from nexus_harness.devserver import parse_frontend_section
 from nexus_harness.evidence import read_evidence
 from nexus_harness.playwright import (
+    PlaywrightError,
     build_capture_argv,
     capture_route,
     render_playwright_config,
@@ -19,6 +20,7 @@ from nexus_harness.playwright import (
 )
 from nexus_harness.safe import PathSafetyError
 from nexus_harness.state import TaskState
+from nexus_harness.visual import as_visual_evidence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -116,16 +118,30 @@ class PlaywrightRenderTests(unittest.TestCase):
     def test_custom_viewports_override_defaults(self):
         config = _config(
             viewports=[
-                {"name": "wide", "width": 1440, "height": 900},
-                {"name": "narrow", "width": 360, "height": 640},
+                {"name": "desktop", "width": 1440, "height": 900},
+                {"name": "mobile", "width": 360, "height": 640},
             ]
         )
         path = render_playwright_config(config, artifact_root=self.root)
         text = path.read_text(encoding="utf-8")
-        self.assertIn("wide", text)
-        self.assertIn("narrow", text)
+        self.assertIn("desktop", text)
+        self.assertIn("mobile", text)
         self.assertIn("1440", text)
         self.assertIn("360", text)
+        self.assertNotIn("wide", text)
+        self.assertNotIn("narrow", text)
+
+    def test_rejects_viewport_names_outside_closed_set(self):
+        result = parse_frontend_section(
+            _frontend(
+                viewports=[
+                    {"name": "wide", "width": 1440, "height": 900},
+                    {"name": "narrow", "width": 360, "height": 640},
+                ]
+            )
+        )
+        self.assertFalse(result.ok)
+        self.assertEqual(result.failure.code, "malformed_command")
 
     def test_output_dir_stays_inside_artifact_root(self):
         path = render_playwright_config(_config(), artifact_root=self.root)
@@ -172,6 +188,8 @@ class PlaywrightRouteTests(unittest.TestCase):
     def test_accepts_absolute_app_route(self):
         self.assertEqual(validate_route("/inbox"), "/inbox")
         self.assertEqual(validate_route("/"), "/")
+        self.assertEqual(validate_route("/dashboard"), "/dashboard")
+        self.assertEqual(validate_route("/foo/bar"), "/foo/bar")
 
     def test_rejects_relative_and_traversal_routes(self):
         for route in ("inbox", "../etc/passwd", "/ok/../secret"):
@@ -181,6 +199,11 @@ class PlaywrightRouteTests(unittest.TestCase):
     def test_rejects_scheme_and_backslash_routes(self):
         for route in ("https://evil.test/x", "/http://x", "/foo\\bar"):
             with self.assertRaises(ValueError):
+                validate_route(route)
+
+    def test_rejects_protocol_relative_routes(self):
+        for route in ("//evil.test", "///evil.test", "//evil.test/path"):
+            with self.assertRaises(PlaywrightError):
                 validate_route(route)
 
 
@@ -275,6 +298,17 @@ class PlaywrightCaptureTests(unittest.TestCase):
             )
         runner.assert_not_called()
 
+    def test_capture_rejects_protocol_relative_route_before_runner(self):
+        runner = Mock(side_effect=AssertionError("runner must not run"))
+        with self.assertRaises(PlaywrightError):
+            capture_route(
+                "//evil.test",
+                config=_config(),
+                artifact_root=self.root,
+                runner=runner,
+            )
+        runner.assert_not_called()
+
     def test_capture_escapes_route_for_playwright_grep(self):
         route = "/inbox(.*)"
         argv = build_capture_argv(
@@ -286,6 +320,102 @@ class PlaywrightCaptureTests(unittest.TestCase):
         grep_at = argv.index("--grep")
         self.assertEqual(argv[grep_at + 1], re.escape(route))
         self.assertNotEqual(argv[grep_at + 1], route)
+        self.assertIn("--update-snapshots", argv)
+
+    def test_generated_spec_listens_for_console_and_failed_requests(self):
+        def runner(argv, *, cwd=None):
+            return 0, "", ""
+
+        result = capture_route(
+            "/inbox",
+            config=_config(),
+            artifact_root=self.root,
+            runner=runner,
+        )
+        self.assertIsNotNone(result.spec_path)
+        text = result.spec_path.read_text(encoding="utf-8")
+        self.assertRegex(text, r"page\.on\(\s*['\"]console['\"]")
+        self.assertIn("requestfailed", text)
+
+    def test_capture_writes_visual_evidence_for_required_viewports(self):
+        state = TaskState.new("task-4", "demo")
+        state.current_diff_hash = "abc123def"
+
+        def runner(argv, *, cwd=None):
+            return 0, "", ""
+
+        result = capture_route(
+            "/inbox",
+            config=_config(),
+            artifact_root=self.root,
+            runner=runner,
+            task_id="task-4",
+            task_state=state,
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(len(state.visual_evidence), 2)
+        records = [as_visual_evidence(item) for item in state.visual_evidence]
+        self.assertTrue(all(record is not None for record in records))
+        viewports = {record.viewport for record in records}
+        self.assertEqual(viewports, {"desktop", "mobile"})
+        root = self.root.resolve()
+        for record in records:
+            self.assertEqual(record.diff_hash, "abc123def")
+            self.assertEqual(record.route, "/inbox")
+            self.assertEqual(record.console_error_count, 0)
+            self.assertEqual(record.failed_request_count, 0)
+            screenshot = Path(record.screenshot)
+            self.assertTrue(screenshot.is_file())
+            self.assertTrue(screenshot.resolve().is_relative_to(root))
+
+    def test_capture_reads_sidecar_console_and_network_counts(self):
+        state = TaskState.new("task-4", "demo")
+        state.current_diff_hash = "abc123def"
+
+        def runner(argv, *, cwd=None):
+            output = self.root / "playwright" / "output"
+            output.mkdir(parents=True, exist_ok=True)
+            (output / "desktop-runtime.json").write_text(
+                json.dumps({"console_error_count": 2, "failed_request_count": 1}),
+                encoding="utf-8",
+            )
+            (output / "mobile-runtime.json").write_text(
+                json.dumps({"console_error_count": 0, "failed_request_count": 0}),
+                encoding="utf-8",
+            )
+            return 0, "", ""
+
+        capture_route(
+            "/inbox",
+            config=_config(),
+            artifact_root=self.root,
+            runner=runner,
+            task_state=state,
+        )
+        by_viewport = {
+            as_visual_evidence(item).viewport: as_visual_evidence(item)
+            for item in state.visual_evidence
+        }
+        self.assertEqual(by_viewport["desktop"].console_error_count, 2)
+        self.assertEqual(by_viewport["desktop"].failed_request_count, 1)
+        self.assertEqual(by_viewport["mobile"].console_error_count, 0)
+
+    def test_failed_capture_still_writes_visual_evidence(self):
+        state = TaskState.new("task-4", "demo")
+        state.current_diff_hash = "abc123def"
+
+        def runner(argv, *, cwd=None):
+            return 1, "", "failed"
+
+        result = capture_route(
+            "/",
+            config=_config(),
+            artifact_root=self.root,
+            runner=runner,
+            task_state=state,
+        )
+        self.assertFalse(result.ok)
+        self.assertEqual(len(state.visual_evidence), 2)
 
 
 class PlaywrightBaselineTests(unittest.TestCase):

@@ -4,9 +4,12 @@ import tomllib
 import unittest
 from pathlib import Path
 
+from nexus_harness.devserver import parse_frontend_section
 from nexus_harness.safe import PathSafetyError
+from nexus_harness.state import TaskState
 from nexus_harness.visual import (
     VisualEvidence,
+    bind_visual_requirement,
     confine_visual_artifacts,
     is_valid_visual_skip,
     is_visual_required,
@@ -111,6 +114,33 @@ class VisualRequirementTests(unittest.TestCase):
         }
         reasons = visual_completion_reasons(state, "abc")
         self.assertTrue(any("mobile" in reason for reason in reasons))
+
+    def test_reads_visual_paths_from_frontend_when_state_list_empty(self):
+        state = {
+            "changed_paths": ["apps/web/page.tsx"],
+            "frontend": {"visual_paths": ["apps/web/**"]},
+        }
+        self.assertTrue(is_visual_required(state))
+        reasons = visual_completion_reasons(state, "abc")
+        self.assertTrue(
+            any("desktop" in reason or "mobile" in reason for reason in reasons)
+        )
+
+    def test_bind_visual_requirement_copies_profile_paths(self):
+        parsed = parse_frontend_section(
+            {
+                "base_url": "http://127.0.0.1:3000",
+                "readiness_url": "http://127.0.0.1:3000",
+                "visual_paths": ["apps/web/**"],
+                "dev_server": {"command": ["npm", "run", "dev"], "timeout_seconds": 2},
+            }
+        )
+        self.assertTrue(parsed.ok)
+        profile = type("Profile", (), {"frontend": parsed.config})()
+        state = TaskState.new("task-bind", "demo")
+        bind_visual_requirement(state, profile, ["apps/web/page.tsx"])
+        self.assertEqual(list(state.visual_paths), ["apps/web/**"])
+        self.assertEqual(list(state.changed_paths), ["apps/web/page.tsx"])
 
 
 class VisualSkipTests(unittest.TestCase):

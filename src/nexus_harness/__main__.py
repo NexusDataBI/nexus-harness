@@ -322,6 +322,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _coerce_probe(probe):
+    if probe is True:
+        return lambda url: True
+    if probe is False:
+        return lambda url: False
+    return probe
+
+
 def cmd_frontend_capture(
     *,
     route: str,
@@ -330,11 +338,19 @@ def cmd_frontend_capture(
     runner: Runner | None = None,
     profile_path: Path | None = None,
     artifact_root: Path | None = None,
+    probe=None,
+    popen=None,
 ) -> int:
-    from nexus_harness.devserver import FrontendConfig, FrontendConfigError
-    from nexus_harness.playwright import PlaywrightError, capture_route
+    from nexus_harness.devserver import (
+        FrontendConfig,
+        FrontendConfigError,
+        ensure_dev_server,
+        probe_readiness,
+    )
+    from nexus_harness.playwright import PlaywrightError, capture_route, validate_route
     from nexus_harness.safe import PathSafetyError, confine
-    from nexus_harness.state import load_task_state
+    from nexus_harness.state import TaskState, load_task_state, save_task_state
+    from nexus_harness.visual import bind_visual_requirement
 
     try:
         profile_file = profile_path or _discover_ci_profile(project_root)
@@ -353,19 +369,46 @@ def cmd_frontend_capture(
 
     try:
         tid = _validate_capture_task_id(task_id)
+        validate_route(route)
         tasks_root = project_root / ".nexus" / "tasks"
         out_root = (
             Path(artifact_root)
             if artifact_root is not None
             else confine(tasks_root / tid / "evidence", tasks_root)
         )
-        task_state = None
+        out_root.mkdir(parents=True, exist_ok=True)
         state_file = tasks_root / tid / "state.json"
+        loaded = False
+        task_state = None
         if state_file.is_file():
             try:
                 task_state = load_task_state(state_file)
+                loaded = True
             except (OSError, ValueError, TypeError, KeyError):
                 task_state = None
+        if task_state is None:
+            task_state = TaskState.new(tid, profile.project_id)
+        bind_visual_requirement(task_state, profile, list(task_state.changed_paths))
+        state_path = state_file if loaded else None
+        if state_path is not None:
+            save_task_state(task_state, state_path)
+        probe_fn = _coerce_probe(probe)
+        check = probe_fn or probe_readiness
+        if not check(frontend.readiness_url):
+            server = ensure_dev_server(
+                frontend,
+                artifact_root=out_root,
+                probe=probe_fn,
+                popen=popen,
+                cwd=project_root,
+                project_root=project_root,
+            )
+            if not server.ok:
+                failure = server.failure
+                print(
+                    failure.message if failure is not None else "localhost is not ready"
+                )
+                return 1
         result = capture_route(
             route,
             config=frontend,
@@ -374,6 +417,7 @@ def cmd_frontend_capture(
             task_id=tid,
             task_state=task_state,
             project_root=project_root,
+            state_path=state_path,
         )
     except (PlaywrightError, PathSafetyError) as exc:
         print(str(exc))
@@ -389,6 +433,8 @@ def main(
     runner: Runner | None = None,
     profile_path: Path | None = None,
     artifact_root: Path | None = None,
+    probe=None,
+    popen=None,
 ) -> int:
     parser = build_parser()
     try:
@@ -430,6 +476,8 @@ def main(
             runner=runner,
             profile_path=profile_path,
             artifact_root=artifact_root,
+            probe=probe,
+            popen=popen,
         )
     return 2
 

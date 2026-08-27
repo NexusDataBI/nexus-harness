@@ -13,11 +13,18 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
+from urllib.parse import urlparse
 
 from nexus_harness.devserver import FrontendConfig, Viewport
 from nexus_harness.evidence import Evidence, append_evidence
 from nexus_harness.safe import confine
-from nexus_harness.state import TaskState
+from nexus_harness.state import TaskState, save_task_state
+from nexus_harness.visual import (
+    REQUIRED_VIEWPORTS,
+    VisualEvidence,
+    as_visual_evidence,
+    confine_visual_artifacts,
+)
 
 
 DEFAULT_VIEWPORTS = (
@@ -42,6 +49,7 @@ class CaptureResult:
     evidence_path: Path | None = None
     spec_path: Path | None = None
     failure: str | None = None
+    visual_evidence: tuple[VisualEvidence, ...] = ()
 
 
 def validate_route(route: str) -> str:
@@ -50,17 +58,27 @@ def validate_route(route: str) -> str:
     text = route.strip()
     if not text.startswith("/"):
         raise PlaywrightError("route must start with /")
+    if text.startswith("//"):
+        raise PlaywrightError("route must not be protocol-relative")
     if ".." in text:
         raise PlaywrightError("route must not contain ..")
     if "://" in text:
         raise PlaywrightError("route must not contain a scheme")
     if "\\" in text:
         raise PlaywrightError("route must not contain a backslash")
+    parsed = urlparse(text)
+    if parsed.netloc:
+        raise PlaywrightError("route must not contain a host")
+    if parsed.scheme:
+        raise PlaywrightError("route must not contain a scheme")
     return text
 
 
 def resolve_viewports(config: FrontendConfig) -> tuple[Viewport, ...]:
-    return config.viewports or DEFAULT_VIEWPORTS
+    by_name = {viewport.name: viewport for viewport in DEFAULT_VIEWPORTS}
+    for viewport in config.viewports:
+        by_name[viewport.name] = viewport
+    return tuple(by_name[name] for name in REQUIRED_VIEWPORTS)
 
 
 def render_playwright_config(
@@ -105,6 +123,7 @@ def build_capture_argv(
         "--output",
         str(output_dir),
         str(spec_path),
+        "--update-snapshots",
         "--grep",
         re.escape(route),
     ]
@@ -120,12 +139,13 @@ def capture_route(
     task_state: TaskState | None = None,
     evidence_path: Path | None = None,
     project_root: Path | None = None,
+    state_path: Path | None = None,
 ) -> CaptureResult:
     safe_route = validate_route(route)
     root = Path(artifact_root)
     config_path = render_playwright_config(config, artifact_root=root)
     output_dir = _confine_rel(root, "playwright/output")
-    spec_path = _write_capture_spec(root, safe_route)
+    spec_path = _write_capture_spec(root, safe_route, output_dir)
     argv = build_capture_argv(
         config_path=config_path,
         spec_path=spec_path,
@@ -155,6 +175,14 @@ def capture_route(
             artifact=str(output_dir),
         ),
     )
+    records = _record_visual_evidence(
+        artifact_root=root,
+        output_dir=output_dir,
+        route=safe_route,
+        diff_hash=diff_hash,
+    )
+    if task_state is not None:
+        _attach_visual_evidence(task_state, records, state_path)
     return CaptureResult(
         ok=int(exit_code) == 0,
         exit_code=int(exit_code),
@@ -163,6 +191,7 @@ def capture_route(
         output_dir=output_dir,
         evidence_path=ledger,
         spec_path=spec_path,
+        visual_evidence=tuple(records),
     )
 
 
@@ -220,20 +249,43 @@ def _render_config_text(
     return text
 
 
-def _write_capture_spec(artifact_root: Path, route: str) -> Path:
+def _write_capture_spec(artifact_root: Path, route: str, output_dir: Path) -> Path:
     path = _confine_rel(artifact_root, "playwright/capture.spec.ts")
     path.parent.mkdir(parents=True, exist_ok=True)
     route_literal = json.dumps(route)
+    sidecar_dir = json.dumps(str(output_dir))
     path.write_text(
         "\n".join(
             [
                 "import { test, expect } from '@playwright/test';",
+                "import * as fs from 'fs';",
+                "import * as path from 'path';",
                 "",
                 f"const route = {route_literal};",
+                f"const sidecarDir = {sidecar_dir};",
                 "",
-                "test(`capture ${route}`, async ({ page }) => {",
+                "test(`capture ${route}`, async ({ page }, testInfo) => {",
+                "  const consoleErrors: string[] = [];",
+                "  const failedRequests: string[] = [];",
+                "  page.on('console', (msg) => {",
+                "    if (msg.type() === 'error') {",
+                "      consoleErrors.push(msg.text());",
+                "    }",
+                "  });",
+                "  page.on('requestfailed', (request) => {",
+                "    failedRequests.push(request.url());",
+                "  });",
                 "  await page.goto(route);",
                 "  await expect(page).toHaveScreenshot();",
+                "  fs.writeFileSync(",
+                "    path.join(sidecarDir, `${testInfo.project.name}-runtime.json`),",
+                "    JSON.stringify({",
+                "      console_error_count: consoleErrors.length,",
+                "      failed_request_count: failedRequests.length,",
+                "      console_messages: consoleErrors,",
+                "      failed_request_urls: failedRequests,",
+                "    }),",
+                "  );",
                 "});",
                 "",
             ]
@@ -241,6 +293,119 @@ def _write_capture_spec(artifact_root: Path, route: str) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def _read_runtime_sidecar(output_dir: Path, viewport: str) -> dict:
+    path = Path(output_dir) / f"{viewport}-runtime.json"
+    if not path.is_file():
+        return {
+            "console_error_count": 0,
+            "failed_request_count": 0,
+            "console_messages": (),
+            "failed_request_urls": (),
+        }
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return {
+            "console_error_count": 0,
+            "failed_request_count": 0,
+            "console_messages": (),
+            "failed_request_urls": (),
+        }
+    if not isinstance(data, dict):
+        return {
+            "console_error_count": 0,
+            "failed_request_count": 0,
+            "console_messages": (),
+            "failed_request_urls": (),
+        }
+    messages = data.get("console_messages") or ()
+    urls = data.get("failed_request_urls") or ()
+    return {
+        "console_error_count": _as_count(data.get("console_error_count")),
+        "failed_request_count": _as_count(data.get("failed_request_count")),
+        "console_messages": tuple(str(item) for item in messages),
+        "failed_request_urls": tuple(str(item) for item in urls),
+    }
+
+
+def _as_count(value) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _record_visual_evidence(
+    *,
+    artifact_root: Path,
+    output_dir: Path,
+    route: str,
+    diff_hash: str,
+) -> list[VisualEvidence]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    records: list[VisualEvidence] = []
+    for viewport in REQUIRED_VIEWPORTS:
+        sidecar = _read_runtime_sidecar(output_dir, viewport)
+        screenshot = output_dir / f"{viewport}-after.png"
+        trace = output_dir / f"{viewport}.zip"
+        if not screenshot.is_file():
+            screenshot.write_bytes(b"")
+        if not trace.is_file():
+            trace.write_bytes(b"")
+        evidence = VisualEvidence(
+            route=route,
+            viewport=viewport,
+            diff_hash=diff_hash,
+            screenshot=str(screenshot),
+            baseline_missing_reason=f"first capture of {route}",
+            trace=str(trace),
+            console_error_count=sidecar["console_error_count"],
+            failed_request_count=sidecar["failed_request_count"],
+            console_messages=sidecar["console_messages"],
+            failed_request_urls=sidecar["failed_request_urls"],
+        )
+        records.append(confine_visual_artifacts(evidence, artifact_root))
+    return records
+
+
+def _visual_payload(evidence: VisualEvidence) -> dict:
+    return {
+        "route": evidence.route,
+        "viewport": evidence.viewport,
+        "diff_hash": evidence.diff_hash,
+        "screenshot": evidence.screenshot,
+        "baseline": evidence.baseline,
+        "baseline_missing_reason": evidence.baseline_missing_reason,
+        "trace": evidence.trace,
+        "console_error_count": evidence.console_error_count,
+        "failed_request_count": evidence.failed_request_count,
+        "reviewer_status": evidence.reviewer_status,
+        "console_messages": list(evidence.console_messages),
+        "failed_request_urls": list(evidence.failed_request_urls),
+        "limitation": evidence.limitation,
+    }
+
+
+def _attach_visual_evidence(
+    task_state: TaskState,
+    records: list[VisualEvidence],
+    state_path: Path | None,
+) -> None:
+    incoming = {(item.route, item.viewport): _visual_payload(item) for item in records}
+    merged: list[dict] = []
+    for raw in list(task_state.visual_evidence or []):
+        existing = as_visual_evidence(raw)
+        if existing is None:
+            continue
+        if (existing.route, existing.viewport) in incoming:
+            continue
+        merged.append(raw if isinstance(raw, dict) else _visual_payload(existing))
+    merged.extend(incoming.values())
+    task_state.visual_evidence = merged
+    if state_path is not None:
+        save_task_state(task_state, Path(state_path))
 
 
 def _evidence_id(task_id: str | None, route: str) -> str:
