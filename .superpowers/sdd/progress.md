@@ -16,9 +16,9 @@ fresh post-FF tests: 553/553; scripts/validate PASS
 - Task 1: complete (commits df2e5fb..2941dc9, review clean; minors: substring authority tests)
 - Task 2: complete (commits 2941dc9..4e2fd8d, review clean; minors: weaker asserts on progress/optimistic/lazy)
 - Task 3: complete (commits 4e2fd8d..1b72ee6, review clean after loopback-redirect fix)
-- Task 4: complete
-- Task 5: complete
-- Task 6: pending
+- Task 4: complete (commits 1b72ee6..6d35beb, review clean after task-id confine + grep escape)
+- Task 5: complete (commits 6d35beb..38d2e24, review clean after relative-artifact confine)
+- Task 6: complete (review contract + visual gate; Task 7 pending)
 - Task 7: pending
 
 ## Constraints
