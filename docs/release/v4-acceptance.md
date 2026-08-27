@@ -2,10 +2,10 @@
 
 Recorded from command output and hashes on 2026-08-27. Criteria are spec §22 of `docs/superpowers/specs/2026-08-25-nexus-harness-v4-final-design.md`. Status is never PASS from narrative alone.
 
-Worktree: `feat/v4-release-evals-doctor`  
-Python: 3.14.2  
-Git HEAD at verification: `21cff4615246adb530286aa3674e73c78fcb0f0e`  
-Lock identity (SHA-256 of `harness.lock`): `6d14d7caf3f84d70d464de4d017a6f9b2cf1095c9eab529ad980d66bea3a6950`  
+Worktree: `feat/v4-release-evals-doctor`
+Python: 3.14.2
+Git HEAD at verification: `21cff4615246adb530286aa3674e73c78fcb0f0e`
+Lock identity (SHA-256 of `harness.lock`): `6d14d7caf3f84d70d464de4d017a6f9b2cf1095c9eab529ad980d66bea3a6950`
 Generated hashes: 47 · engine hashes: 71 · adapter versions: claude=1, cursor=1, codex=1
 
 No SSH. No live GitHub Project / PostHog / VPS activation. Real `~/.claude`, `~/.cursor`, and `~/.codex` were not used as install targets.

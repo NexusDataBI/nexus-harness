@@ -398,6 +398,34 @@ class ReleasePreconditionTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("P8-OPEN", result.message)
 
+    def test_default_check_secrets_skips_test_fixtures_and_placeholders(self):
+        from nexus_harness.release import default_check_secrets
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _fixture(Path(tmp) / "repo")
+            _write(
+                root / "tests" / "test_posthog_config.py",
+                'SECRET = "phx_supersecret_PERSONAL_KEY_do_not_leak"\n',
+            )
+            _write(
+                root / "docs" / "operations" / "activation.md",
+                "export POSTHOG_PERSONAL_API_KEY=$POSTHOG_PERSONAL_API_KEY\n",
+            )
+            result = default_check_secrets(root)
+            self.assertTrue(result.ok, result.message)
+            _write(root / "src" / "leaked.py", 'token = "phx_' + ("a" * 24) + '"\n')
+            result = default_check_secrets(root)
+            self.assertFalse(result.ok)
+            self.assertIn("src/leaked.py", result.message)
+            (root / "src" / "leaked.py").unlink()
+            _write(
+                root / "src" / "key.pem",
+                "-----BEGIN OPENSSH PRIVATE KEY-----\n" + ("AAAA" * 16) + "\n",
+            )
+            result = default_check_secrets(root)
+            self.assertFalse(result.ok)
+            self.assertIn("src/key.pem", result.message)
+
 
 class ReleaseScriptTests(unittest.TestCase):
     def test_scripts_build_invokes_release_module(self):

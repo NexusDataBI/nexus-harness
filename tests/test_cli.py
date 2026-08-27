@@ -291,6 +291,38 @@ class CliIncidentsTests(unittest.TestCase):
         github.create_issue.assert_not_called()
         github.edit_issue.assert_not_called()
 
+    def test_incidents_classify_updates_existing_open_issue(self):
+        from nexus_harness.incident_policy import incident_marker
+        from nexus_harness.incidents import normalize_posthog_problem
+
+        problem = {
+            "project": "sdr-platform",
+            "environment": "production",
+            "error_type": "TypeError",
+            "stack_location": "src/leads.ts:fetchLead",
+            "occurrences": 9,
+            "affected_users": 4,
+            "regression": True,
+        }
+        fingerprint = normalize_posthog_problem(problem).fingerprint
+        problem["open_issues"] = [
+            {
+                "number": 501,
+                "state": "open",
+                "body": f"body {incident_marker(fingerprint)}",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "problem.json"
+            path.write_text(json.dumps(problem), encoding="utf-8")
+            code, stdout, stderr = _run_main(
+                ["--json", "incidents", "classify", "--input", str(path)]
+            )
+        self.assertEqual(code, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["action"], "UPDATE_EXISTING")
+        self.assertEqual(payload["issue_number"], 501)
+
 
 class CliInstallTests(unittest.TestCase):
     def test_install_copies_source_to_target(self):

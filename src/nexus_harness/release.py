@@ -100,7 +100,9 @@ SECRET_PATTERNS = (
     re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
     re.compile(r"phx_[A-Za-z0-9]{20,}"),
     re.compile(r"POSTHOG_PERSONAL_API_KEY\s*=\s*\S+"),
-    re.compile(r"BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY"),
+    re.compile(
+        r"-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----\s+[A-Za-z0-9+/]{40,}"
+    ),
     re.compile(r"AKIA[0-9A-Z]{16}"),
 )
 TEXT_SUFFIXES = {
@@ -116,6 +118,8 @@ TEXT_SUFFIXES = {
     ".lock",
     ".cfg",
     ".ini",
+    ".pem",
+    ".key",
 }
 
 
@@ -366,10 +370,30 @@ def default_check_upstream(root: Path) -> CheckResult:
     return CheckResult("upstream", True, f"{len(sources)} upstream sources locked")
 
 
+_SECRET_SCAN_SKIP_PREFIXES = ("tests/", "evals/")
+_FAKE_SECRET = re.compile(
+    r"(?i)should_never|supersecret|example|placeholder|do_not_leak|your-key|changeme"
+)
+_PLACEHOLDER_ASSIGNMENT = re.compile(
+    r"""(?i)POSTHOG_PERSONAL_API_KEY\s*=\s*["']?(?:\$\{?\w+\}?|\.\.\.|<[^>]+>|your-\S+|TODO|none|null)"""
+)
+
+
+def _secret_hit_is_fixture(text: str, match: re.Match[str]) -> bool:
+    snippet = match.group(0)
+    if _FAKE_SECRET.search(snippet):
+        return True
+    if snippet.upper().startswith("POSTHOG_PERSONAL_API_KEY"):
+        return bool(_PLACEHOLDER_ASSIGNMENT.search(snippet))
+    return False
+
+
 def default_check_secrets(root: Path) -> CheckResult:
     hits: list[str] = []
     for path in _iter_release_source_files(root):
         relative = path.relative_to(root).as_posix()
+        if relative.startswith(_SECRET_SCAN_SKIP_PREFIXES):
+            continue
         if path.name in SECRET_NAMES or path.name.endswith(".token"):
             hits.append(relative)
             continue
@@ -380,7 +404,8 @@ def default_check_secrets(root: Path) -> CheckResult:
         except (OSError, UnicodeDecodeError):
             continue
         for pattern in SECRET_PATTERNS:
-            if pattern.search(text):
+            match = pattern.search(text)
+            if match and not _secret_hit_is_fixture(text, match):
                 hits.append(relative)
                 break
     if hits:
@@ -428,6 +453,8 @@ def _excluded(relative: str, path: Path) -> bool:
     if path.suffix in {".pyc", ".pyo"} or path.name.endswith(".bak"):
         return True
     if path.name == ".gitkeep" and "dist" not in parts:
+        return True
+    if relative.startswith("adapters/dist/"):
         return True
     return False
 

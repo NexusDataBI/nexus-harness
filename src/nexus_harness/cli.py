@@ -653,13 +653,22 @@ def _load_incident_problem(path: Path) -> dict:
     return payload
 
 
-def cmd_incidents_classify(*, input_path: Path, json_mode: bool) -> int:
-    candidate = normalize_posthog_problem(_load_incident_problem(input_path))
-    decision = classify_incident(
+def _incident_decision(problem: dict, candidate):
+    return classify_incident(
         occurrences=candidate.occurrences,
         affected_users=candidate.affected_users,
         fingerprint=candidate.fingerprint,
+        regression=bool(problem.get("regression")),
+        fatal=bool(problem.get("fatal")),
+        security_adjacent=bool(problem.get("security_adjacent")),
+        open_issues=problem.get("open_issues") or (),
     )
+
+
+def cmd_incidents_classify(*, input_path: Path, json_mode: bool) -> int:
+    problem = _load_incident_problem(input_path)
+    candidate = normalize_posthog_problem(problem)
+    decision = _incident_decision(problem, candidate)
     payload = {
         "action": decision.action,
         "reason": decision.reason,
@@ -680,12 +689,9 @@ def cmd_incidents_render(
     json_mode: bool,
     github=None,
 ) -> int:
-    candidate = normalize_posthog_problem(_load_incident_problem(input_path))
-    decision = classify_incident(
-        occurrences=candidate.occurrences,
-        affected_users=candidate.affected_users,
-        fingerprint=candidate.fingerprint,
-    )
+    problem = _load_incident_problem(input_path)
+    candidate = normalize_posthog_problem(problem)
+    decision = _incident_decision(problem, candidate)
     result = apply_incident_issue(
         candidate,
         github,
