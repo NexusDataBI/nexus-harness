@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from nexus_harness.deploy_manifest import is_deploy_digest
 from nexus_harness.posthog import NEVER_CAPTURE_FIELDS
 
 _ALLOWED_ENVIRONMENTS = frozenset({"production", "staging", "development"})
@@ -56,17 +57,24 @@ def release_context(
     env = str(environment or "").strip()
     if env not in _ALLOWED_ENVIRONMENTS:
         raise ValueError("environment must be one of: production, staging, development")
+    release_sha = str(release or "").strip()
+    project_id = str(project or "").strip()
+    if not release_sha or not project_id:
+        raise ValueError("release and project must be non-empty")
 
     deployment_digest: str | None
-    if digest is None or str(digest).strip() == "":
+    if digest is None or str(digest).strip() == "" or str(digest).strip() == _UNKNOWN:
         deployment_digest = None
     else:
-        deployment_digest = str(digest).strip()
+        candidate = str(digest).strip()
+        if not is_deploy_digest(candidate):
+            raise ValueError("deployment_digest must be a Plan 4 sha256 digest")
+        deployment_digest = candidate
 
     data: dict[str, Any] = {
-        "project": str(project).strip(),
+        "project": project_id,
         "environment": env,
-        "release": str(release).strip(),
+        "release": release_sha,
         "deployment_digest": deployment_digest,
     }
 

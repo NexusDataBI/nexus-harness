@@ -45,6 +45,11 @@ def _image_tag(image: str) -> str | None:
     return None
 
 
+def is_deploy_digest(value: str) -> bool:
+    """True when value is a Plan 4 production digest (``sha256:<64 hex>``)."""
+    return bool(_DIGEST_RE.match(str(value).strip()))
+
+
 def _validate_production_identity(image: str, digest: str) -> None:
     if not digest or not str(digest).strip():
         raise ValueError("deploy digest must be a non-empty sha256 digest")

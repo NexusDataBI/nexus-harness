@@ -35,6 +35,14 @@ class ObservabilityTests(unittest.TestCase):
         self.assertIn("deployment_digest", data)
         self.assertIn(data["deployment_digest"], (None, "UNKNOWN"))
 
+    def test_invalid_or_mutable_digest_is_rejected(self):
+        for digest in ("latest", "main", "sha256:dead", "not-a-digest"):
+            with self.assertRaises(ValueError):
+                release_context("abc123", "production", "sdr-platform", digest=digest)
+        data = release_context("abc123", "staging", "sdr-platform")
+        self.assertIn("deployment_digest", data)
+        self.assertIn(data["deployment_digest"], (None, "UNKNOWN"))
+
     def test_digest_route_session_tenant_optional_kwargs(self):
         digest = "sha256:" + ("a" * 64)
         data = release_context(
