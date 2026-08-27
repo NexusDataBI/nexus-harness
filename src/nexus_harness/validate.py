@@ -10,7 +10,9 @@ from pathlib import Path
 
 from nexus_harness.lockfile import (
     build_lock,
+    expected_engine_hashes,
     expected_generated_hashes,
+    on_disk_engine_hashes,
     on_disk_generated_hashes,
 )
 
@@ -272,11 +274,16 @@ def _check_generated_drift(root: Path, errors: list[str]) -> None:
     if recorded.get("generated_hashes") != expected:
         errors.append("generated hash drift vs harness.lock")
     else:
-        # Empty dist (fresh checkout, only .gitkeep) yields {}; skip on-disk
-        # compare. Drift vs lock is already checked against expected hashes.
         on_disk = on_disk_generated_hashes(root)
         if on_disk and on_disk != expected:
             errors.append("generated hash drift vs harness.lock")
+    expected_engine = expected_engine_hashes(root)
+    if recorded.get("engine_hashes") != expected_engine:
+        errors.append("engine hash drift vs harness.lock")
+    else:
+        on_disk_engine = on_disk_engine_hashes(root)
+        if on_disk_engine and on_disk_engine != expected_engine:
+            errors.append("engine hash drift vs harness.lock")
     if recorded.get("adapter_versions") != current["adapter_versions"]:
         errors.append("adapter version drift vs harness.lock")
 

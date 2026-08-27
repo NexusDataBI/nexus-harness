@@ -62,6 +62,45 @@ class CompileTests(unittest.TestCase):
                 (root / "dist" / "src" / "nexus_harness" / "hooks.py").is_file()
             )
 
+    def test_generated_hashes_exclude_engine_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "core").mkdir()
+            (root / "core" / "constitution.md").write_text(
+                "NEXUS WORKFLOW IS MANDATORY.\n", encoding="utf-8"
+            )
+            lock = build_lock(root)
+        generated = lock["generated_hashes"]
+        engine = lock["engine_hashes"]
+        self.assertTrue(generated)
+        self.assertTrue(engine)
+        self.assertTrue(any(path.startswith("dist/hooks/") for path in generated))
+        self.assertFalse(
+            any(path.startswith("dist/src/nexus_harness/") for path in generated)
+        )
+        self.assertTrue(
+            any(path.startswith("dist/src/nexus_harness/") for path in engine)
+        )
+
+    def test_engine_byte_change_does_not_churn_generated_hashes(self):
+        from nexus_harness.lockfile import (
+            expected_engine_hashes,
+            expected_generated_hashes,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "core").mkdir()
+            (root / "core" / "constitution.md").write_text("one\n", encoding="utf-8")
+            generated = expected_generated_hashes(root)
+            engine = expected_engine_hashes(root)
+            (root / "core" / "constitution.md").write_text("two\n", encoding="utf-8")
+            generated_after_core = expected_generated_hashes(root)
+            engine_after_core = expected_engine_hashes(root)
+        self.assertNotEqual(generated, generated_after_core)
+        self.assertEqual(engine, engine_after_core)
+        self.assertNotEqual(generated, engine)
+
 
 if __name__ == "__main__":
     unittest.main()

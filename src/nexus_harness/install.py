@@ -114,13 +114,16 @@ def atomic_install(source: Path, target: Path) -> Path:
 
 
 def _expected_hashes(lock: Mapping[str, object]) -> dict[str, str]:
-    raw = lock.get("generated_hashes", {})
-    if not isinstance(raw, Mapping):
-        raise ValueError("harness.lock generated_hashes must be an object")
     expected: dict[str, str] = {}
-    for relative, digest in raw.items():
-        relative = str(relative)
-        expected[relative.removeprefix("dist/")] = str(digest)
+    for key in ("generated_hashes", "engine_hashes"):
+        raw = lock.get(key, {})
+        if raw in (None, {}):
+            continue
+        if not isinstance(raw, Mapping):
+            raise ValueError(f"harness.lock {key} must be an object")
+        for relative, digest in raw.items():
+            relative = str(relative)
+            expected[relative.removeprefix("dist/")] = str(digest)
     return expected
 
 

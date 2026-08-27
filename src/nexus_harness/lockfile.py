@@ -40,10 +40,10 @@ def _tree_hashes(root: Path, directory: str) -> dict[str, str]:
 
 
 def expected_generated_hashes(root: Path) -> dict[str, str]:
-    """Hash generated artifacts from canonical sources — not from ignored dist/.
+    """Hash adapter render_all() outputs and dist/core snapshot.
 
-    Matches what ``compile_harness`` materializes: render_all() adapters, the
-    Python engine copy, and a snapshot of ``core/``.
+    Engine copies live in ``expected_engine_hashes`` so engine byte
+    changes do not masquerade as adapter drift.
     """
     from nexus_harness.adapters import render_all
 
@@ -51,13 +51,6 @@ def expected_generated_hashes(root: Path) -> dict[str, str]:
     hashes: dict[str, str] = {}
     for item in render_all(root):
         hashes[f"dist/{item.relative_path}"] = _digest_bytes(item.content)
-
-    package_src = Path(__file__).resolve().parent
-    for path in sorted(package_src.rglob("*")):
-        if not path.is_file() or _skip_generated_file(path):
-            continue
-        rel = path.relative_to(package_src).as_posix()
-        hashes[f"dist/src/nexus_harness/{rel}"] = _digest(path)
 
     core_src = root / "core"
     if core_src.is_dir():
@@ -70,12 +63,37 @@ def expected_generated_hashes(root: Path) -> dict[str, str]:
     return dict(sorted(hashes.items()))
 
 
+def expected_engine_hashes(root: Path) -> dict[str, str]:
+    """Hash the compiled engine copy under dist/src/nexus_harness."""
+    del root
+    hashes: dict[str, str] = {}
+    package_src = Path(__file__).resolve().parent
+    for path in sorted(package_src.rglob("*")):
+        if not path.is_file() or _skip_generated_file(path):
+            continue
+        rel = path.relative_to(package_src).as_posix()
+        hashes[f"dist/src/nexus_harness/{rel}"] = _digest(path)
+    return dict(sorted(hashes.items()))
+
+
 def on_disk_generated_hashes(root: Path) -> dict[str, str]:
-    """Hashes of materialized dist/ files, excluding .gitkeep."""
+    """Hashes of materialized adapter/core dist files, excluding engine and .gitkeep."""
+    hashes = {}
+    for path, digest in _tree_hashes(root, "dist").items():
+        if Path(path).name == ".gitkeep":
+            continue
+        if path.startswith("dist/src/nexus_harness/"):
+            continue
+        hashes[path] = digest
+    return hashes
+
+
+def on_disk_engine_hashes(root: Path) -> dict[str, str]:
+    """Hashes of materialized engine files under dist/src/nexus_harness."""
     return {
         path: digest
         for path, digest in _tree_hashes(root, "dist").items()
-        if Path(path).name != ".gitkeep"
+        if path.startswith("dist/src/nexus_harness/")
     }
 
 
@@ -95,6 +113,7 @@ def build_lock(root: Path) -> dict[str, object]:
         "schema_version": 1,
         "canonical_hashes": dict(sorted(canonical_hashes.items())),
         "generated_hashes": expected_generated_hashes(root),
+        "engine_hashes": expected_engine_hashes(root),
         "adapter_versions": dict(sorted(ADAPTER_VERSIONS.items())),
     }
 

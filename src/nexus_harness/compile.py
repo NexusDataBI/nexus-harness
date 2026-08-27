@@ -66,9 +66,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     lock = compile_harness(args.root)
     hashes = lock.get("generated_hashes") or {}
+    engine = lock.get("engine_hashes") or {}
     if not hashes:
         raise SystemExit("compile produced empty generated_hashes")
-    print(f"compiled {len(hashes)} generated files")
+    print(f"compiled {len(hashes)} generated files, {len(engine)} engine files")
     return 0
 
 
