@@ -349,7 +349,12 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("root", nargs="?", type=Path, default=None)
 
     build = sub.add_parser("build", help="compile generated runtime files")
-    build.add_argument("root", nargs="?", type=Path, default=None)
+    build.add_argument(
+        "target",
+        nargs="?",
+        default=None,
+        help="optional compile target; `adapters` compiles the project root",
+    )
 
     install = sub.add_parser("install", help="install generated harness files")
     install.add_argument("source", type=Path)
@@ -777,8 +782,13 @@ def main(
                 json_mode=json_mode,
             )
         if args.group == "build":
+            raw = getattr(args, "target", None)
+            if raw is None or str(raw).strip().lower() in {"adapters", "adapter"}:
+                compile_root = root
+            else:
+                compile_root = Path(raw)
             return cmd_build(
-                root=Path(args.root) if args.root else root,
+                root=compile_root,
                 json_mode=json_mode,
             )
         if args.group == "install":

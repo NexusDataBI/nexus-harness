@@ -139,6 +139,40 @@ def _is_generated_file(path: Path) -> bool:
         return False
 
 
+def tree_digests(root: Path) -> dict[str, str]:
+    """Relative path → SHA-256 for every file under *root*."""
+    root = Path(root)
+    return {relative: _digest(path) for relative, path in sorted(_files(root).items())}
+
+
+def rollback_install(backup: Path, target: Path) -> Path:
+    """Restore *backup* over *target*. Returns the displaced current tree."""
+    backup = Path(backup)
+    target = Path(target)
+    reject_symlinks(backup)
+    reject_tree_symlinks(backup)
+    if target.exists():
+        reject_symlinks(target)
+        reject_tree_symlinks(target)
+    if not backup.is_dir():
+        raise ValueError(f"rollback source is not a directory: {backup}")
+    displaced = _rollback_path(target)
+    if target.exists():
+        os.replace(target, displaced)
+    try:
+        os.replace(backup, target)
+    except Exception:
+        if displaced.exists() and not target.exists():
+            os.replace(displaced, target)
+        raise
+    fd = os.open(target.parent, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    return displaced
+
+
 def detect_drift(installed: Path, lock: Path | Mapping[str, object]) -> DriftReport:
     installed = Path(installed)
     payload = (

@@ -312,5 +312,26 @@ class CliInstallTests(unittest.TestCase):
             self.assertEqual(stderr.strip(), "")
 
 
+class CliBuildAdaptersTests(unittest.TestCase):
+    def test_build_adapters_compiles_project_root_not_adapters_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "core").mkdir()
+            (root / "core" / "constitution.md").write_text(
+                "NEXUS WORKFLOW IS MANDATORY.\n", encoding="utf-8"
+            )
+            (root / "adapters").mkdir()
+            (root / "adapters" / "trap.txt").write_text("not-a-compile-root")
+            code, stdout, stderr = _run_main(
+                ["--json", "--project-root", str(root), "build", "adapters"]
+            )
+            self.assertEqual(code, 0, stderr + stdout)
+            payload = json.loads(stdout)
+            self.assertTrue(payload["ok"])
+            self.assertGreater(payload["generated"], 0)
+            self.assertTrue((root / "dist" / "claude" / "CLAUDE.md").is_file())
+            self.assertFalse((root / "adapters" / "dist").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
