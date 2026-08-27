@@ -33,6 +33,7 @@ from nexus_harness.incident_policy import classify_incident
 from nexus_harness.incidents import normalize_posthog_problem
 from nexus_harness.install import atomic_install
 from nexus_harness.project import ProjectRegistry, ProjectRegistryError
+from nexus_harness.runtime_install import LiveInstallError
 from nexus_harness.serialize import dumps_report
 from nexus_harness.state import load_task_state, save_task_state
 from nexus_harness.tooling import run_quality
@@ -360,6 +361,38 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("source", type=Path)
     install.add_argument("target", type=Path)
 
+    runtime = sub.add_parser(
+        "runtime", help="live runtime mapping (plan/apply/rollback)"
+    )
+    runtime_sub = runtime.add_subparsers(dest="runtime_cmd", required=True)
+    rinspect = runtime_sub.add_parser("inspect", help="inspect live runtime layout")
+    rinspect.add_argument("runtime_name", choices=("codex", "cursor", "claude"))
+    rinspect.add_argument("--home", type=Path, default=None)
+    rinstall = runtime_sub.add_parser(
+        "install", help="plan or apply live runtime integration"
+    )
+    rinstall.add_argument("runtime_name", choices=("codex", "cursor", "claude"))
+    rinstall.add_argument(
+        "--plan",
+        action="store_true",
+        help="print mapping with zero mutation (default if --apply is omitted)",
+    )
+    rinstall.add_argument(
+        "--apply",
+        action="store_true",
+        help="apply a conflict-free plan; refused when blocked",
+    )
+    rinstall.add_argument("--home", type=Path, default=None)
+    rinstall.add_argument("--dist", type=Path, default=None)
+    rinstall.add_argument("--engine-root", type=Path, default=None)
+    rinstall.add_argument("--project", type=Path, default=None)
+    rinstall.add_argument("--backup-root", type=Path, default=None)
+    rrollback = runtime_sub.add_parser(
+        "rollback", help="restore live shared-file backup"
+    )
+    rrollback.add_argument("runtime_name", choices=("codex", "cursor", "claude"))
+    rrollback.add_argument("--backup", type=Path, required=True)
+
     doctor = sub.add_parser("doctor", help="environment doctor")
     doctor.add_argument(
         "--profile",
@@ -592,6 +625,108 @@ def cmd_install(*, source: Path, target: Path, json_mode: bool) -> int:
     return 0
 
 
+def cmd_runtime_inspect(
+    *, runtime_name: str, home: Path | None, json_mode: bool
+) -> int:
+    from nexus_harness.runtime_install import default_runtime_home, inspect_live_runtime
+
+    target = home if home is not None else default_runtime_home(runtime_name)
+    payload = inspect_live_runtime(runtime_name, target)
+    if json_mode:
+        print(dumps_report(payload))
+    else:
+        print(f"{payload['runtime']} home={payload['home']} exists={payload['exists']}")
+        for name, artifact in (payload.get("artifacts") or {}).items():
+            print(
+                f"  {name}: {artifact.get('scope')} "
+                f"{artifact.get('path')} exists={artifact.get('exists')}"
+            )
+    return 0
+
+
+def cmd_runtime_install(
+    *,
+    runtime_name: str,
+    plan_only: bool,
+    apply: bool,
+    home: Path | None,
+    dist: Path | None,
+    engine_root: Path | None,
+    project: Path | None,
+    backup_root: Path | None,
+    project_root: Path,
+    json_mode: bool,
+) -> int:
+    from nexus_harness.runtime_install import (
+        apply_live_install,
+        default_engine_root,
+        default_runtime_home,
+        plan_live_install,
+    )
+
+    if apply and plan_only:
+        raise LiveInstallError("use either --plan or --apply, not both")
+    target = home if home is not None else default_runtime_home(runtime_name)
+    dist_path = Path(dist) if dist is not None else Path(project_root) / "dist"
+    engine = Path(engine_root) if engine_root is not None else default_engine_root()
+    plan = plan_live_install(
+        runtime_name,
+        home=target,
+        dist=dist_path,
+        engine_root=engine,
+        project_root=project,
+        backup_root=backup_root,
+    )
+    if apply:
+        result = apply_live_install(plan)
+        payload = {
+            "ok": result.ok,
+            "runtime": result.runtime,
+            "backup_root": result.backup_root,
+            "files": list(result.files),
+            "plan": plan.to_dict(),
+        }
+        if json_mode:
+            print(dumps_report(payload))
+        else:
+            print(f"applied {result.runtime}; backup {result.backup_root}")
+        return 0
+    payload = plan.to_dict()
+    if json_mode:
+        print(dumps_report(payload))
+    else:
+        print(f"{plan.runtime} blocked={plan.blocked}")
+        for item in plan.mutations:
+            print(
+                f"  {item.operation} {item.artifact} -> {item.destination} "
+                f"[{item.scope}] {item.risk}"
+            )
+    return 2 if plan.blocked else 0
+
+
+def cmd_runtime_rollback(*, backup: Path, json_mode: bool) -> int:
+    from nexus_harness.runtime_install import LiveApplyResult, rollback_live_install
+
+    payload = json.loads(
+        Path(backup).joinpath("MANIFEST.json").read_text(encoding="utf-8")
+    )
+    result = LiveApplyResult(
+        ok=True,
+        runtime=str(payload.get("runtime") or "unknown"),
+        backup_root=str(backup),
+        engine_backup=payload.get("engine_backup"),
+        files=tuple(
+            str(item.get("destination")) for item in (payload.get("files") or ())
+        ),
+    )
+    rollback_live_install(result)
+    if json_mode:
+        print(dumps_report({"ok": True, "backup": str(backup)}))
+    else:
+        print(f"restored {backup}")
+    return 0
+
+
 def cmd_workflow_advance(
     *, state_path: Path, target_stage: int, json_mode: bool
 ) -> int:
@@ -803,6 +938,32 @@ def main(
                 target=Path(args.target),
                 json_mode=json_mode,
             )
+        if args.group == "runtime":
+            if args.runtime_cmd == "inspect":
+                return cmd_runtime_inspect(
+                    runtime_name=args.runtime_name,
+                    home=getattr(args, "home", None),
+                    json_mode=json_mode,
+                )
+            if args.runtime_cmd == "install":
+                return cmd_runtime_install(
+                    runtime_name=args.runtime_name,
+                    plan_only=bool(getattr(args, "plan", False)),
+                    apply=bool(getattr(args, "apply", False)),
+                    home=getattr(args, "home", None),
+                    dist=getattr(args, "dist", None),
+                    engine_root=getattr(args, "engine_root", None),
+                    project=getattr(args, "project", None),
+                    backup_root=getattr(args, "backup_root", None),
+                    project_root=root,
+                    json_mode=json_mode,
+                )
+            if args.runtime_cmd == "rollback":
+                return cmd_runtime_rollback(
+                    backup=Path(args.backup),
+                    json_mode=json_mode,
+                )
+            return cmd_unavailable("runtime", json_mode=json_mode)
         if args.group == "doctor":
             return cmd_doctor(
                 project_root=root,
@@ -892,7 +1053,14 @@ def main(
         elif not isinstance(message, int):
             print(message, file=sys.stderr)
         return code if code else 2
-    except (OSError, ValueError, TypeError, KeyError, ProjectRegistryError) as exc:
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        ProjectRegistryError,
+        LiveInstallError,
+    ) as exc:
         if json_mode:
             print(dumps_report({"ok": False, "error": str(exc)}))
         else:

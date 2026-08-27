@@ -144,6 +144,49 @@ Roll back the step that failed. Do not continue to the next runtime. See [rollba
 - Missing project access (`projects.toml` / `scripts/nexus project show --id <project-id>`)
 - Completion-gate false positives in smoke (`scripts/nexus evals run`, especially `evals/cases/ambiguous-task.json` and unit coverage in `tests/test_completion.py`)
 
-## 4. Live homes (approval only)
+## 4. Live homes (mapping, not tree replace)
 
-Only after test-profile smokes pass and the operator approves, install the same staged trees onto `$HOME/.codex`, `$HOME/.cursor`, and `$HOME/.claude` — Codex first, Cursor second, Claude last — with `scripts/nexus doctor` after each. `atomic_install` still writes a sibling rollback. Keep the v3 backup read-only. Do not treat doctor `ACTIVATION_REQUIRED` for GitHub / PostHog / CI-host as a cutover failure.
+Do **not** `atomic_install` a generated staging tree onto `$HOME/.codex`, `$HOME/.cursor`, or `$HOME/.claude`. Those homes are shared runtime config (user + Nexus). Copy-forward of a 600 MB home is forbidden.
+
+Two installation classes:
+
+- **NEXUS-OWNED TREE** — Nexus controls the destination subtree. `atomic_install` is allowed. Default engine: `$HOME/.nexus-harness/install/<version>/`.
+- **SHARED RUNTIME CONFIG** — structured merge only (`CREATE` / `MERGE` / `UPDATE_OWNED` / `PRESERVE` / `CONFLICT`). Fail closed on malformed JSON/TOML or duplicate owned blocks.
+
+Plan mode has zero mutation:
+
+```bash
+scripts/nexus --json runtime install codex --plan
+scripts/nexus --json runtime install cursor --plan --project /path/to/repo
+scripts/nexus --json runtime install claude --plan
+```
+
+Apply one runtime at a time (Codex → Cursor → Claude) only when the plan has no `CONFLICT`:
+
+```bash
+scripts/nexus --json runtime install codex --apply
+scripts/nexus doctor --profile local
+```
+
+Rollback shared files from the backup root printed by `--apply`:
+
+```bash
+scripts/nexus --json runtime rollback codex --backup "$BACKUP_ROOT"
+```
+
+Live mapping (this machine's discovery; do not assume other OS layouts):
+
+| Runtime | Generated                          | Live destination                      | Class                                                                                  |
+| ------- | ---------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------- |
+| Codex   | `codex/config.toml`                | `~/.codex/config.toml`                | SHARED merge of `sandbox_mode` / `approval_policy`; never weaken a stricter user value |
+| Codex   | `AGENTS.md`                        | `~/.codex/AGENTS.md`                  | SHARED owned block `NEXUS_HARNESS_BEGIN/END`                                           |
+| Cursor  | `USER_RULES.md`                    | not `~/.cursor/USER_RULES.md`         | `NOT_APPLICABLE` (Cursor 3.x user rules are app settings)                              |
+| Cursor  | `cursor/sandbox.json`              | not `~/.cursor/sandbox.json`          | `NEXUS_INTERNAL_ONLY`; Cursor CLI uses `cli-config.json` (`KEEP_EXTERNAL`)             |
+| Cursor  | `.cursor/rules/nexus-workflow.mdc` | **project** `.cursor/rules/`          | `PROJECT_SUPPORTED`                                                                    |
+| Claude  | `claude/CLAUDE.md`                 | `~/.claude/CLAUDE.md`                 | SHARED owned block                                                                     |
+| Claude  | `claude/settings.json`             | `~/.claude/settings.json`             | SHARED hook merge; coexist with unrelated matchers; idempotent                         |
+| Engine  | `hooks/*.py` + `src/` + `core/`    | `~/.nexus-harness/install/<version>/` | NEXUS-OWNED TREE                                                                       |
+
+Canonical templates stay portable (`python3 hooks/claude_event.py ...`). Live apply rewrites Claude hook commands to the installed engine path. Do not embed machine-absolute paths in Canonical Core.
+
+Keep the Phase A backup read-only. Do not treat doctor `ACTIVATION_REQUIRED` for GitHub / PostHog / CI-host as a cutover failure.
