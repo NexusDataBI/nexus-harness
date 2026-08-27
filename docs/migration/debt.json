@@ -219,10 +219,18 @@
       "origin": "plan-6-whole-branch-review",
       "severity": "low",
       "description": "Visual reviewer_status is optional glue; evaluate_completion does not require a fresh visual-review PASS if screenshots are fresh and no confirmed high findings were attached.",
-      "status": "deferred",
+      "status": "resolved",
       "target_plan": "plan-8",
       "resolution_condition": "Material visual tasks require recorded visual-review PASS bound to current_diff_hash, or an explicit structured skip, with a test that omitted review fails completion.",
-      "defer_reason": "Confirmed blocker/high already fail via Plan 2 findings; forcing review presence is workflow Stage 6 policy, not the visual freshness kernel."
+      "defer_reason": "Confirmed blocker/high already fail via Plan 2 findings; forcing review presence is workflow Stage 6 policy, not the visual freshness kernel.",
+      "resolution_commit": "ff80292c6d997b98dac3e3d4ab6aeb31528fd752",
+      "resolution_description": "visual_completion_reasons() now requires reviewer_status == PASS for every required viewport that counts toward Completion. None, empty, FAIL, PENDING, and unrecognized statuses fail with 'visual review is not PASS'. Generic review_gate cannot substitute. Structured is_valid_visual_skip() is unchanged. Stale evidence still fails. No second Done Gate.",
+      "tests": [
+        "tests/test_visual.py",
+        "tests/test_completion.py",
+        "tests/test_frontend_review.py",
+        "tests/test_frontend_integration.py"
+      ]
     }
   ]
 }
