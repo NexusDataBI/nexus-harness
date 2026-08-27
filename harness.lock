@@ -172,7 +172,7 @@
     "dist/src/nexus_harness/state.py": "fb5b3a961bcb07fec01989c12b3246122a7d6ffeafbf78107a46a7377ce1c42b",
     "dist/src/nexus_harness/tooling.py": "106b7f5c7c7181f38f1ab1c9b7ca10a0dd90699d82501fa6d2cdaddbaa074409",
     "dist/src/nexus_harness/tracking.py": "8c847d35199b3e2f061504fdb67b74676c7a70ff78020f575f73d74a32369940",
-    "dist/src/nexus_harness/validate.py": "2dc3994e1ec29977a4d79d6daf12d8050e367aafbe326aa0d948ab9a00da56ea",
+    "dist/src/nexus_harness/validate.py": "d1e75529177fb0de589bd57c77e8eb4fe73f74362ea0afaa7f96741da07b13a0",
     "dist/src/nexus_harness/visual.py": "06721d2de16edce287d7e833eb64ada184217f71b9c7f550166e9abb820a0f1c",
     "dist/src/nexus_harness/workflow.py": "7599763db916f99b45243bfe12cd6a3162c2315319bc6e4cdbd719d94ad442ba"
   },

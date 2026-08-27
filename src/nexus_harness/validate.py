@@ -27,6 +27,7 @@ CANONICAL_SKILL_NAMES = frozenset(
 )
 CANONICAL_TREES = ("core", "skills", "profiles", "src", "tests", "upstream")
 PARSE_TREES = ("core", "skills", "profiles", "src", "tests")
+UPSTREAM_PARSE_SKIP_PARTS = frozenset({"examples", "fixtures"})
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 IPV4 = re.compile(
     r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"
@@ -82,6 +83,15 @@ def _is_bak(path: Path) -> bool:
     return path.name.endswith(".bak") or path.suffix == ".bak"
 
 
+def _is_upstream_fixture(relative: str) -> bool:
+    parts = Path(relative).parts
+    return (
+        bool(parts)
+        and parts[0] == "upstream"
+        and bool(UPSTREAM_PARSE_SKIP_PARTS.intersection(parts))
+    )
+
+
 def _relative(root: Path, path: Path) -> str:
     return path.relative_to(root).as_posix()
 
@@ -105,14 +115,17 @@ def _check_parseable(root: Path, errors: list[str]) -> None:
     lock = root / "harness.lock"
     if lock.is_file():
         candidates.append(lock)
-    vendor = root / "upstream" / "vendor-lock.json"
-    if vendor.is_file():
-        candidates.append(vendor)
+    candidates.extend(_iter_tree_files(root, "upstream"))
 
     seen: set[str] = set()
     for path in candidates:
         relative = _relative(root, path)
-        if relative in seen or _is_frozen(relative) or _is_appledouble(path):
+        if (
+            relative in seen
+            or _is_frozen(relative)
+            or _is_appledouble(path)
+            or _is_upstream_fixture(relative)
+        ):
             continue
         seen.add(relative)
         if path.suffix == ".toml":

@@ -280,6 +280,57 @@ class ValidateTests(unittest.TestCase):
             result = validate_repository(root)
             self.assertEqual(result.errors, ())
 
+    def test_invalid_upstream_machine_json_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            machine = root / "upstream" / "impeccable" / "scripts"
+            machine.mkdir(parents=True)
+            (machine / "command-metadata.json").write_text(
+                "{not-json", encoding="utf-8"
+            )
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any(
+                    "unparseable" in error.lower()
+                    and "upstream/impeccable/scripts/command-metadata.json" in error
+                    for error in result.errors
+                ),
+                msg=result.errors,
+            )
+
+    def test_invalid_upstream_machine_toml_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            agent = root / "upstream" / "impeccable" / "agents"
+            agent.mkdir(parents=True)
+            (agent / "reviewer.toml").write_text("[[[broken", encoding="utf-8")
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertTrue(result.errors)
+            self.assertTrue(
+                any(
+                    "unparseable" in error.lower()
+                    and "upstream/impeccable/agents/reviewer.toml" in error
+                    for error in result.errors
+                ),
+                msg=result.errors,
+            )
+
+    def test_upstream_examples_and_fixtures_are_not_parse_validated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _minimal_repo(Path(tmp))
+            examples = root / "upstream" / "impeccable" / "examples"
+            fixtures = root / "upstream" / "design-system" / "fixtures"
+            examples.mkdir(parents=True)
+            fixtures.mkdir(parents=True)
+            (examples / "malformed.json").write_text("{nope", encoding="utf-8")
+            (fixtures / "broken.toml").write_text("[[[", encoding="utf-8")
+            write_lock(root)
+            result = validate_repository(root)
+            self.assertEqual(result.errors, ())
+
 
 if __name__ == "__main__":
     unittest.main()
