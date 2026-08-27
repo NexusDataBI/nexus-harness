@@ -227,7 +227,8 @@ class VisualBundleTests(unittest.TestCase):
             ],
         }
         reasons = visual_completion_reasons(state, "abc")
-        self.assertTrue(
+        self.assertTrue(any("desktop" in reason for reason in reasons))
+        self.assertFalse(
             any("visual evidence is not fresh" in reason for reason in reasons)
         )
 
@@ -486,8 +487,19 @@ class VisualAttemptHistoryTests(unittest.TestCase):
         reasons = visual_completion_reasons(state, "abc")
         self.assertTrue(reasons)
 
+    def test_prior_hash_history_does_not_stale_fresh_recapture(self):
+        state = {
+            "visual_required": True,
+            "visual_evidence": [
+                _bundle("desktop", diff_hash="abc"),
+                _bundle("mobile", diff_hash="abc"),
+                _bundle("desktop", diff_hash="def", screenshot="after-def.png"),
+                _bundle("mobile", diff_hash="def", screenshot="after-def.png"),
+            ],
+        }
+        reasons = visual_completion_reasons(state, "def")
+        self.assertEqual(reasons, [])
 
-class VisualContractTests(unittest.TestCase):
     def test_schema_requires_route_viewport_diff_hash(self):
         self.assertTrue(SCHEMA.is_file())
         schema = json.loads(SCHEMA.read_text(encoding="utf-8"))

@@ -248,7 +248,7 @@ def visual_completion_reasons(state, current_diff_hash=None) -> list[str]:
 
     newest = _newest_attempts(items, current or "")
     ready_viewports: set[str] = set()
-    stale = any(not evidence.is_fresh(current or "") for evidence in items)
+    stale = bool(items) and not newest
     runtime_fail = False
     baseline_fail = False
     review_fail = False

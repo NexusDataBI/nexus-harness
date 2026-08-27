@@ -441,9 +441,7 @@ class CompletionTests(unittest.TestCase):
             )
         )
         self.assertEqual(result.status, "FAIL")
-        self.assertTrue(
-            any("visual evidence is not fresh" in reason for reason in result.reasons)
-        )
+        self.assertTrue(any("desktop" in reason for reason in result.reasons))
 
     def test_visual_required_missing_mobile_fails(self):
         result = evaluate_completion(
