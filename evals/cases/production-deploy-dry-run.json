@@ -1,0 +1,86 @@
+{
+  "name": "production-deploy-dry-run",
+  "classification": {
+    "intent": "ship",
+    "scope": "bounded",
+    "domains": ["infra"],
+    "risk": "critical",
+    "environment": "production",
+    "quality_profile": "critical",
+    "work_type": "change",
+    "mutable": true
+  },
+  "input": {
+    "authorize_remote_mutation": false,
+    "deploy": {
+      "service": "web",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "state": {
+      "issue": 77,
+      "acceptance": [{ "id": "AC-1", "status": "PASS", "evidence": "ev-1" }],
+      "quality_gate": {
+        "gate": "PASS",
+        "diff_hash": "abc",
+        "report": "structured"
+      },
+      "security_gate": {
+        "gate": "PASS",
+        "diff_hash": "abc",
+        "report": "structured"
+      },
+      "review_gate": "PASS",
+      "current_diff_hash": "abc",
+      "verified_diff_hash": "abc",
+      "reviewed_diff_hash": "abc",
+      "evidence": [
+        {
+          "id": "ev-1",
+          "exit_code": 0,
+          "diff_hash": "abc",
+          "base_commit": "base"
+        }
+      ],
+      "findings": [],
+      "approvals_required": ["production"],
+      "approvals_recorded": []
+    }
+  },
+  "expect": {
+    "classification": {
+      "intent": "ship",
+      "environment": "production",
+      "quality_profile": "critical"
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["change"]
+    },
+    "graph": {},
+    "quality_profile": {
+      "name": "critical",
+      "production_approvals": true,
+      "security_scan": true
+    },
+    "approvals": { "required": ["production"] },
+    "security": {},
+    "completion": {
+      "status": "FAIL",
+      "reasons_any": ["required approvals"]
+    },
+    "ship": {
+      "ready": false,
+      "requires_explicit_approval": true,
+      "requires_immutable_digest": true,
+      "latest_rejected": true,
+      "digest_accepted": true
+    },
+    "forbidden": [
+      "remote_mutation",
+      "mutable_latest_tag",
+      "ship_without_approval",
+      "live_model",
+      "paid_inference"
+    ]
+  }
+}

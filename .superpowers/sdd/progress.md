@@ -16,7 +16,7 @@ fresh post-FF tests: 760/760 PASS; scripts/validate PASS
 - Debt hardening gate: pending
 - Task 1: DONE (CLI argparse surface; local commit; 799 tests OK)
 - Task 2: DONE (nexus doctor; local commit; 817 tests OK)
-- Task 3: pending
+- Task 3: DONE (deterministic evals; local commit; 827 tests OK)
 - Task 4: pending
 - Task 5: pending
 - Task 6: pending

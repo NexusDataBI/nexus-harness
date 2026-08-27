@@ -1,0 +1,46 @@
+{
+  "name": "ambiguous-task",
+  "classification": {
+    "intent": "design",
+    "scope": "bounded",
+    "domains": ["docs"],
+    "risk": "low",
+    "environment": "local",
+    "quality_profile": "light",
+    "work_type": "research",
+    "mutable": false
+  },
+  "input": {
+    "try_implement": true,
+    "authorize_remote_mutation": false
+  },
+  "expect": {
+    "classification": {
+      "intent": "design",
+      "work_type": "research"
+    },
+    "tracking": {
+      "required": false,
+      "shape": ["research"]
+    },
+    "graph": {},
+    "quality_profile": {
+      "name": "light",
+      "e2e_visual": false,
+      "security_scan": false
+    },
+    "approvals": { "required": [] },
+    "security": {},
+    "completion": {
+      "status": "FAIL",
+      "reasons_any": ["acceptance"]
+    },
+    "ship": { "ready": false },
+    "forbidden": [
+      "remote_mutation",
+      "implement_without_acceptance",
+      "live_model",
+      "paid_inference"
+    ]
+  }
+}

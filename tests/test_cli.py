@@ -163,13 +163,15 @@ class CliHelpTests(unittest.TestCase):
             self.assertIn(name, result.stdout)
 
 
-class CliUnavailableCommandTests(unittest.TestCase):
-    def test_evals_exits_unavailable_without_fake_pass(self):
-        code, stdout, stderr = _run_main(["evals"])
-        self.assertEqual(code, 2)
-        combined = stdout + stderr
-        self.assertRegex(combined, r"not (yet )?available|not implemented")
-        self.assertNotRegex(combined, r"\bPASS\b")
+class CliEvalsTests(unittest.TestCase):
+    def test_evals_run_exits_zero_on_pass(self):
+        code, stdout, stderr = _run_main(
+            ["--project-root", str(REPO_ROOT), "evals", "run"]
+        )
+        self.assertEqual(code, 0, stderr + stdout)
+        self.assertRegex(stdout + stderr, r"\bPASS\b")
+        self.assertRegex(stdout + stderr, r"model-quality")
+        self.assertRegex(stdout + stderr, r"\bSKIP\b")
 
 
 class CliValidateJsonTests(unittest.TestCase):

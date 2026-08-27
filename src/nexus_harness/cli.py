@@ -6,7 +6,7 @@ Command surface:
 - ``ci affected`` / ``quality run`` / ``images build``
 - ``workflow advance`` / ``project show`` / ``frontend capture``
 - ``incidents classify|render`` (local/policy/render only)
-- ``doctor --profile local|release|ci-host`` / ``evals`` (evals reserved until the module exists)
+- ``doctor --profile local|release|ci-host`` / ``evals run``
 """
 
 from __future__ import annotations
@@ -368,7 +368,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="optional managed project id for Biome/Vitest/Playwright/Trivy checks",
     )
-    sub.add_parser("evals", help="eval runner")
+    evals = sub.add_parser("evals", help="eval runner")
+    evals_sub = evals.add_subparsers(dest="evals_cmd", required=True)
+    erun = evals_sub.add_parser("run", help="run deterministic policy evals")
+    erun.add_argument(
+        "cases",
+        nargs="?",
+        type=Path,
+        default=None,
+        help="directory of JSON eval cases (default: evals/cases)",
+    )
 
     workflow = sub.add_parser("workflow", help="task lifecycle")
     workflow_sub = workflow.add_subparsers(dest="workflow_cmd", required=True)
@@ -714,6 +723,26 @@ def cmd_doctor(
     return 1 if report.gate == "FAIL" else 0
 
 
+def cmd_evals_run(
+    *,
+    project_root: Path,
+    cases: Path | None,
+    json_mode: bool,
+) -> int:
+    from nexus_harness.evals import format_evals_report, run_evals
+
+    root = Path(project_root)
+    cases_dir = Path(cases) if cases else root / "evals" / "cases"
+    if not cases_dir.is_absolute():
+        cases_dir = root / cases_dir
+    report = run_evals(cases_dir, repo_root=root)
+    if json_mode:
+        print(dumps_report(report.to_dict()))
+    else:
+        print(format_evals_report(report))
+    return 0 if report.gate == "PASS" else 1
+
+
 def cmd_optional_module(command: str, module: str, *, json_mode: bool) -> int:
     handler = _try_optional_main(module)
     if handler is None:
@@ -766,7 +795,13 @@ def main(
                 selected_project=getattr(args, "doctor_project", None),
             )
         if args.group == "evals":
-            return cmd_optional_module("evals", "evals", json_mode=json_mode)
+            if getattr(args, "evals_cmd", None) == "run":
+                return cmd_evals_run(
+                    project_root=root,
+                    cases=getattr(args, "cases", None),
+                    json_mode=json_mode,
+                )
+            return cmd_unavailable("evals", json_mode=json_mode)
         if args.group == "workflow" and args.workflow_cmd == "advance":
             return cmd_workflow_advance(
                 state_path=Path(args.state),

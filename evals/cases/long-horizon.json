@@ -1,0 +1,47 @@
+{
+  "name": "long-horizon",
+  "classification": {
+    "intent": "change",
+    "scope": "long-horizon",
+    "domains": ["backend", "frontend", "database"],
+    "risk": "high",
+    "environment": "local",
+    "quality_profile": "strict",
+    "work_type": "feature",
+    "mutable": true,
+    "independent_deliverables": ["ingest", "review", "export"]
+  },
+  "input": {
+    "parent_issue": 100,
+    "child_issues": [101, 102],
+    "authorize_remote_mutation": false,
+    "state": {
+      "issue": 100,
+      "acceptance": [{ "id": "AC-1", "status": "FAIL" }]
+    }
+  },
+  "expect": {
+    "classification": {
+      "scope": "long-horizon",
+      "work_type": "feature"
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["epic", "feature", "task"]
+    },
+    "graph": {},
+    "quality_profile": {
+      "name": "strict",
+      "fresh_review": true,
+      "e2e_visual": true
+    },
+    "approvals": { "required": [] },
+    "security": {},
+    "completion": {
+      "status": "FAIL",
+      "reasons_any": ["acceptance"]
+    },
+    "ship": { "ready": false },
+    "forbidden": ["remote_mutation", "live_model", "paid_inference"]
+  }
+}

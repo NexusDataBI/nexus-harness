@@ -1,0 +1,72 @@
+{
+  "name": "auth-security",
+  "classification": {
+    "intent": "change",
+    "scope": "bounded",
+    "domains": ["security", "backend"],
+    "risk": "critical",
+    "environment": "local",
+    "quality_profile": "critical",
+    "work_type": "change",
+    "mutable": true
+  },
+  "input": {
+    "changed_paths": ["apps/server/src/auth/session.ts"],
+    "ci_profile": "profiles/projects/sdr-platform.toml",
+    "authorize_remote_mutation": false,
+    "trivy": {
+      "Results": [
+        {
+          "Target": "apps/server/package-lock.json",
+          "Vulnerabilities": [
+            {
+              "VulnerabilityID": "CVE-2099-AUTH",
+              "PkgName": "jsonwebtoken",
+              "InstalledVersion": "8.0.0",
+              "Severity": "CRITICAL"
+            }
+          ]
+        }
+      ]
+    },
+    "state": {
+      "issue": 33,
+      "acceptance": [{ "id": "AC-1", "status": "FAIL" }],
+      "security_gate": { "gate": "FAIL", "diff_hash": "abc" }
+    }
+  },
+  "expect": {
+    "classification": {
+      "work_type": "change",
+      "domains": ["security", "backend"],
+      "quality_profile": "critical"
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["change"]
+    },
+    "graph": {
+      "components": ["server"],
+      "checks": ["trivy-source"]
+    },
+    "quality_profile": {
+      "name": "critical",
+      "security_scan": true,
+      "production_approvals": true,
+      "fresh_review": true
+    },
+    "approvals": { "required": [] },
+    "security": { "gate": "FAIL" },
+    "completion": {
+      "status": "FAIL",
+      "reasons_any": ["security_gate"]
+    },
+    "ship": { "ready": false },
+    "forbidden": [
+      "remote_mutation",
+      "live_model",
+      "paid_inference",
+      "ship_without_approval"
+    ]
+  }
+}

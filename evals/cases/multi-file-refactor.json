@@ -1,0 +1,56 @@
+{
+  "name": "multi-file-refactor",
+  "classification": {
+    "intent": "change",
+    "scope": "bounded",
+    "domains": ["backend", "frontend"],
+    "risk": "high",
+    "environment": "local",
+    "quality_profile": "standard",
+    "work_type": "change",
+    "mutable": true
+  },
+  "input": {
+    "changed_paths": ["apps/server/src/auth.ts", "apps/web/src/auth.tsx"],
+    "ci_profile": "profiles/projects/sdr-platform.toml",
+    "graph_nodes": [
+      { "id": "api", "kind": "check", "writes": ["src/auth"] },
+      { "id": "session", "kind": "check", "writes": ["src/auth/session.py"] }
+    ],
+    "authorize_remote_mutation": false,
+    "state": {
+      "issue": 8,
+      "acceptance": [{ "id": "AC-1", "status": "FAIL" }]
+    }
+  },
+  "expect": {
+    "classification": {
+      "intent": "change",
+      "work_type": "change"
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["change"]
+    },
+    "graph": {
+      "nodes": ["api", "session"],
+      "components": ["server", "web"],
+      "checks": ["typecheck-server", "typecheck-web"],
+      "conflicts": [["api", "session"]],
+      "ready": []
+    },
+    "quality_profile": {
+      "name": "standard",
+      "coverage": true,
+      "security_scan": true
+    },
+    "approvals": { "required": [] },
+    "security": {},
+    "completion": {
+      "status": "FAIL",
+      "reasons_any": ["acceptance"]
+    },
+    "ship": { "ready": false },
+    "forbidden": ["remote_mutation", "live_model", "paid_inference"]
+  }
+}

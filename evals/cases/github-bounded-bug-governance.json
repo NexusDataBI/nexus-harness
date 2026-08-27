@@ -1,0 +1,51 @@
+{
+  "name": "github-bounded-bug-governance",
+  "classification": {
+    "intent": "debug",
+    "scope": "bounded",
+    "domains": ["backend"],
+    "risk": "medium",
+    "environment": "local",
+    "quality_profile": "standard",
+    "work_type": "bug",
+    "mutable": true,
+    "independent_deliverables": ["should-not-create-children"]
+  },
+  "input": {
+    "parent_issue": 55,
+    "child_issues": [56, 57],
+    "parent_id": "I_parent",
+    "child_ids": ["I_child_a", "I_child_b"],
+    "authorize_remote_mutation": false,
+    "state": {
+      "issue": 55,
+      "acceptance": [{ "id": "AC-1", "status": "FAIL" }]
+    }
+  },
+  "expect": {
+    "classification": {
+      "scope": "bounded",
+      "work_type": "bug"
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["bug"]
+    },
+    "graph": {},
+    "quality_profile": {
+      "name": "standard"
+    },
+    "approvals": { "required": [] },
+    "security": {},
+    "completion": {
+      "status": "FAIL"
+    },
+    "ship": { "ready": false },
+    "forbidden": [
+      "remote_mutation",
+      "empty_child_issues",
+      "live_model",
+      "paid_inference"
+    ]
+  }
+}

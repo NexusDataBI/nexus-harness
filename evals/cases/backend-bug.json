@@ -1,0 +1,57 @@
+{
+  "name": "backend-bug",
+  "classification": {
+    "intent": "debug",
+    "scope": "bounded",
+    "domains": ["backend"],
+    "risk": "medium",
+    "environment": "local",
+    "quality_profile": "standard",
+    "work_type": "bug",
+    "mutable": true
+  },
+  "input": {
+    "changed_paths": ["apps/server/src/leads.ts"],
+    "ci_profile": "profiles/projects/sdr-platform.toml",
+    "authorize_remote_mutation": false,
+    "state": {
+      "issue": null,
+      "acceptance": [{ "id": "AC-1", "status": "FAIL" }]
+    }
+  },
+  "expect": {
+    "classification": {
+      "intent": "debug",
+      "scope": "bounded",
+      "work_type": "bug"
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["bug"]
+    },
+    "graph": {
+      "components": ["server"],
+      "checks": ["biome", "typecheck-server", "vitest-server", "trivy-source"]
+    },
+    "quality_profile": {
+      "name": "standard",
+      "security_scan": true,
+      "e2e_visual": false,
+      "coverage": true
+    },
+    "approvals": { "required": [] },
+    "security": {},
+    "visual": { "required": false },
+    "completion": {
+      "status": "FAIL",
+      "reasons_any": ["issue required"]
+    },
+    "ship": { "ready": false },
+    "forbidden": [
+      "remote_mutation",
+      "empty_child_issues",
+      "live_model",
+      "paid_inference"
+    ]
+  }
+}

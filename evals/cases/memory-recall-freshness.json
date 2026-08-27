@@ -1,0 +1,66 @@
+{
+  "name": "memory-recall-freshness",
+  "classification": {
+    "intent": "inspect",
+    "scope": "bounded",
+    "domains": ["docs"],
+    "risk": "low",
+    "environment": "local",
+    "quality_profile": "light",
+    "work_type": "inspect",
+    "mutable": false
+  },
+  "input": {
+    "authorize_remote_mutation": false,
+    "memory": {
+      "record": {
+        "schema_version": 1,
+        "id": "mem-lesson-auth-boundary-aaaa1111",
+        "type": "lesson",
+        "scope": "project",
+        "project_id": "eval",
+        "title": "Auth cookies are httpOnly",
+        "body": "Do not read session cookies from document.",
+        "status": "VERIFIED",
+        "confidence": "HIGH",
+        "created_at": "2026-08-01T00:00:00Z",
+        "verified_at": "2026-08-01T00:00:00Z",
+        "valid_at_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [{ "kind": "approved_spec", "ref": "SPEC-1" }],
+        "evidence_ids": [],
+        "related_paths": ["src/auth/**"],
+        "tags": ["auth"],
+        "supersedes": [],
+        "sensitivity": "INTERNAL"
+      },
+      "changed_paths": ["src/auth/session.py"],
+      "contradiction": [
+        { "id": "mem-stale", "authority": "STALE_MEMORY" },
+        { "id": "repo-truth", "authority": "CURRENT_REPO" }
+      ]
+    }
+  },
+  "expect": {
+    "classification": {
+      "intent": "inspect",
+      "work_type": "inspect"
+    },
+    "tracking": {
+      "required": false,
+      "shape": ["inspect"]
+    },
+    "graph": {},
+    "quality_profile": { "name": "light" },
+    "approvals": { "required": [] },
+    "security": {},
+    "memory": {
+      "freshness": "STALE",
+      "contradiction_winner": "repo-truth"
+    },
+    "completion": {
+      "status": "FAIL"
+    },
+    "ship": { "ready": false },
+    "forbidden": ["remote_mutation", "live_model", "paid_inference"]
+  }
+}

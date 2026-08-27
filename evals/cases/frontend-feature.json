@@ -1,0 +1,57 @@
+{
+  "name": "frontend-feature",
+  "classification": {
+    "intent": "change",
+    "scope": "bounded",
+    "domains": ["frontend"],
+    "risk": "medium",
+    "environment": "local",
+    "quality_profile": "strict",
+    "work_type": "feature",
+    "mutable": true
+  },
+  "input": {
+    "changed_paths": ["apps/web/src/app.tsx"],
+    "ci_profile": "profiles/projects/sdr-platform.toml",
+    "bind_visual": true,
+    "authorize_remote_mutation": false,
+    "state": {
+      "issue": 12,
+      "acceptance": [{ "id": "AC-1", "status": "FAIL" }]
+    }
+  },
+  "expect": {
+    "classification": {
+      "intent": "change",
+      "scope": "bounded",
+      "work_type": "feature",
+      "domains": ["frontend"]
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["feature"]
+    },
+    "graph": {
+      "components": ["web"],
+      "checks": ["biome", "typecheck-web", "vitest-web", "playwright-web"]
+    },
+    "quality_profile": {
+      "name": "strict",
+      "e2e_visual": true,
+      "security_scan": true,
+      "fresh_review": true
+    },
+    "approvals": { "required": [] },
+    "security": {},
+    "visual": {
+      "required": true,
+      "reasons_any": ["missing visual evidence"]
+    },
+    "completion": {
+      "status": "FAIL",
+      "reasons_any": ["acceptance"]
+    },
+    "ship": { "ready": false },
+    "forbidden": ["remote_mutation", "live_model", "paid_inference"]
+  }
+}

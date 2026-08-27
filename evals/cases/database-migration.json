@@ -1,0 +1,51 @@
+{
+  "name": "database-migration",
+  "classification": {
+    "intent": "migrate",
+    "scope": "bounded",
+    "domains": ["database"],
+    "risk": "high",
+    "environment": "local",
+    "quality_profile": "standard",
+    "work_type": "migration",
+    "mutable": true
+  },
+  "input": {
+    "changed_paths": ["apps/server/src/migrations/001_leads.sql"],
+    "ci_profile": "profiles/projects/sdr-platform.toml",
+    "authorize_remote_mutation": false,
+    "state": {
+      "issue": 21,
+      "acceptance": [{ "id": "AC-1", "status": "FAIL" }]
+    }
+  },
+  "expect": {
+    "classification": {
+      "intent": "migrate",
+      "work_type": "migration",
+      "domains": ["database"]
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["migration"]
+    },
+    "graph": {
+      "components": ["server"],
+      "checks": ["trivy-source"]
+    },
+    "quality_profile": {
+      "name": "standard",
+      "security_scan": true,
+      "e2e_visual": false
+    },
+    "approvals": { "required": [] },
+    "security": {},
+    "visual": { "required": false },
+    "completion": {
+      "status": "FAIL",
+      "reasons_any": ["acceptance"]
+    },
+    "ship": { "ready": false },
+    "forbidden": ["remote_mutation", "live_model", "paid_inference"]
+  }
+}

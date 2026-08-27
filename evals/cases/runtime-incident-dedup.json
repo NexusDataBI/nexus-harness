@@ -1,0 +1,60 @@
+{
+  "name": "runtime-incident-dedup",
+  "classification": {
+    "intent": "debug",
+    "scope": "bounded",
+    "domains": ["backend"],
+    "risk": "high",
+    "environment": "production",
+    "quality_profile": "standard",
+    "work_type": "bug",
+    "mutable": true
+  },
+  "input": {
+    "authorize_remote_mutation": false,
+    "incident": {
+      "occurrences": 12,
+      "affected_users": 8,
+      "regression": true,
+      "fatal": false,
+      "fingerprint": "fp-login",
+      "open_issues": [
+        {
+          "number": 44,
+          "state": "open",
+          "body": "login crash\n<!-- nexus-incident:fp-login -->\n"
+        }
+      ]
+    },
+    "state": {
+      "issue": 44,
+      "acceptance": [{ "id": "AC-1", "status": "FAIL" }]
+    }
+  },
+  "expect": {
+    "classification": {
+      "work_type": "bug",
+      "intent": "debug"
+    },
+    "tracking": {
+      "required": true,
+      "shape": ["bug"]
+    },
+    "graph": {},
+    "quality_profile": { "name": "standard" },
+    "approvals": { "required": [] },
+    "security": {},
+    "incident": { "action": "UPDATE_EXISTING" },
+    "completion": {
+      "status": "FAIL"
+    },
+    "ship": { "ready": false },
+    "forbidden": [
+      "remote_mutation",
+      "auto_create_incident",
+      "empty_child_issues",
+      "live_model",
+      "paid_inference"
+    ]
+  }
+}
