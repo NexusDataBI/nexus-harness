@@ -66,6 +66,4 @@ Mysterious Name, Duplicated Code, Feature Envy, Data Clumps, Primitive Obsession
 
 One primary tool per responsibility. Prefer existing, free, open-source, local. A new external service needs uncovered capability, material benefit, evidence existing tools cannot cover it, and explicit approval.
 
-## Pending extract
-
-Divergent Claude vs Codex `code-review` copies remain in the export. Unique Nexus gates above are canonical; remaining tracker-setup prose stays pending extract into reviewer agents.
+Unique Nexus gates above are canonical. Divergent Claude vs Codex `code-review` copies remain in the immutable export; tracker-setup prose is not a second review product.

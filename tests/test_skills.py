@@ -88,3 +88,33 @@ class SkillTests(unittest.TestCase):
         self.assertGreater(len(ledger), 0)
         for entry in ledger:
             self.assertIn("target", entry, msg=f"missing target on {entry['name']}")
+
+    def test_unique_heuristics_has_zero_unresolved_divergent_rows(self):
+        text = (REPO_ROOT / "docs/migration/unique-heuristics.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("## Pending extract", text)
+        self.assertNotRegex(text, r"(?im)\|\s*Pending\b")
+        resolved = (
+            "PRESERVED",
+            "PRESERVE",
+            "ALREADY_COVERED",
+            "ALREADY COVERED",
+            "DISCARDED_WITH_REASON",
+            "DISCARD",
+        )
+        for line in text.splitlines():
+            if not line.startswith("|") or line.lower().startswith("| source"):
+                continue
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            if len(cells) < 3 or set(cells[0]) <= {"-"}:
+                continue
+            blob = cells[-1]
+            self.assertTrue(
+                any(blob.startswith(token) for token in resolved),
+                msg=f"row {cells[0]!r} status {blob!r} is not resolved",
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
