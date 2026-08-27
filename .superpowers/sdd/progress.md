@@ -20,7 +20,7 @@ fresh post-FF tests: 760/760 PASS; scripts/validate PASS
 - Task 4: DONE (final migration report; local commit; 835 tests OK)
 - Task 5: DONE (reproducible release builder; local commit; see task-5-report.md)
 - Task 6: DONE (acceptance matrix + disposable smoke; local commit; 867 tests OK)
-- Task 7: pending
+- Task 7: DONE (cutover/activation docs; local commit; 872 tests OK)
 
 ## Constraints
 
