@@ -107,6 +107,7 @@ class ResolveRepoIdentityTests(unittest.TestCase):
         self.assertEqual(identity.change_head_sha, HEAD_H)
         self.assertEqual(identity.base_sha, BASE_B)
         self.assertEqual(identity.merge_sha, MERGE_M)
+        self.assertFalse(identity.is_fork)
         self.assertNotEqual(identity.change_head_sha, MERGE_M)
         self.assertNotEqual(identity.change_head_sha, FORGED)
 
@@ -179,6 +180,21 @@ class ResolveRepoIdentityTests(unittest.TestCase):
             git_head=MERGE_M,
         )
         self.assertEqual(identity.change_head_sha, HEAD_H)
+
+    def test_fork_pull_request_still_uses_event_head(self):
+        payload = _pr_event(head=HEAD_H, base=BASE_B, merge=MERGE_M)
+        payload["pull_request"]["head"]["repo"]["fork"] = True
+        identity = resolve_repo_identity(
+            env={
+                "GITHUB_ACTIONS": "true",
+                "GITHUB_EVENT_NAME": "pull_request",
+                "GITHUB_SHA": MERGE_M,
+            },
+            event=payload,
+            git_head=MERGE_M,
+        )
+        self.assertEqual(identity.change_head_sha, HEAD_H)
+        self.assertTrue(identity.is_fork)
 
     def test_pull_request_target_fails_closed(self):
         with self.assertRaises(IdentityError):

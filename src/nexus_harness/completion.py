@@ -113,6 +113,8 @@ def promote_acceptance(state, evidence, ledger=None):
     current = _get(state, "current_diff_hash")
     if record.diff_hash != current:
         raise ValueError("evidence diff_hash does not match current_diff_hash")
+    if not _change_head_fresh(state, record):
+        raise ValueError("evidence change_head_sha does not match change_head_sha")
     if not _is_commit_independent(record) and not _valid_base_commit(
         record.base_commit
     ):
@@ -167,6 +169,8 @@ def _structured_report(value) -> dict | None:
     return {
         "gate": gate,
         "diff_hash": getattr(value, "diff_hash", None),
+        "change_head_sha": getattr(value, "change_head_sha", None),
+        "checkout_sha": getattr(value, "checkout_sha", None),
     }
 
 
@@ -177,10 +181,39 @@ def _report_diff_hash(value):
     return report.get("diff_hash")
 
 
+def _change_head(state) -> str | None:
+    raw = _get(state, "change_head_sha")
+    text = str(raw or "").strip()
+    return text or None
+
+
+def _record_change_head(record) -> str | None:
+    if record is None:
+        return None
+    if isinstance(record, dict):
+        raw = record.get("change_head_sha")
+    else:
+        raw = getattr(record, "change_head_sha", None)
+    text = str(raw or "").strip()
+    return text or None
+
+
+def _change_head_fresh(state, record) -> bool:
+    target = _change_head(state)
+    if not target:
+        return True
+    if record is not None and _is_commit_independent(record):
+        return True
+    bound = _record_change_head(record)
+    return bool(bound) and bound == target
+
+
 def _gate_fresh(state, key, current_diff_hash) -> bool:
     value = _get(state, key)
     report = _structured_report(value)
     if report is None:
+        return False
+    if not _change_head_fresh(state, report):
         return False
     report_hash = _report_diff_hash(value)
     if report_hash is None or str(report_hash).strip() == "":
@@ -243,6 +276,12 @@ def _as_evidence(value) -> Evidence | None:
             base_commit=str(value.get("base_commit") or ""),
             summary=str(value.get("summary") or ""),
             commit_independent=bool(value.get("commit_independent")),
+            change_head_sha=(str(value["change_head_sha"]).strip() or None)
+            if value.get("change_head_sha")
+            else None,
+            checkout_sha=(str(value["checkout_sha"]).strip() or None)
+            if value.get("checkout_sha")
+            else None,
         )
     return None
 
@@ -291,6 +330,8 @@ def _acceptance_evidence_fresh(state, current_diff_hash) -> bool:
         if record is None or record.exit_code != 0:
             return False
         if record.diff_hash != current_diff_hash:
+            return False
+        if not _change_head_fresh(state, record):
             return False
         if not _is_commit_independent(record) and not _valid_base_commit(
             record.base_commit

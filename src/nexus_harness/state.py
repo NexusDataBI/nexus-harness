@@ -36,6 +36,10 @@ class TaskState:
     issue: int | None = None
     tracking_required: bool | None = None
     current_diff_hash: str | None = None
+    change_head_sha: str | None = None
+    checkout_sha: str | None = None
+    base_sha: str | None = None
+    merge_sha: str | None = None
     intent: str | None = None
     failures: FailureMemory | dict | None = None
     quality_gate: object | None = None
@@ -89,6 +93,14 @@ class TaskState:
             payload["tracking_required"] = self.tracking_required
         if self.current_diff_hash is not None:
             payload["current_diff_hash"] = self.current_diff_hash
+        if self.change_head_sha is not None:
+            payload["change_head_sha"] = self.change_head_sha
+        if self.checkout_sha is not None:
+            payload["checkout_sha"] = self.checkout_sha
+        if self.base_sha is not None:
+            payload["base_sha"] = self.base_sha
+        if self.merge_sha is not None:
+            payload["merge_sha"] = self.merge_sha
         if self.intent is not None:
             payload["intent"] = self.intent
         if self.failures is not None:
@@ -145,6 +157,10 @@ class TaskState:
             issue=payload.get("issue"),
             tracking_required=payload.get("tracking_required"),
             current_diff_hash=payload.get("current_diff_hash"),
+            change_head_sha=payload.get("change_head_sha"),
+            checkout_sha=payload.get("checkout_sha"),
+            base_sha=payload.get("base_sha"),
+            merge_sha=payload.get("merge_sha"),
             intent=payload.get("intent"),
             failures=_failures_from_payload(payload.get("failures")),
             quality_gate=payload.get("quality_gate"),
