@@ -46,6 +46,8 @@ class QualityReport:
     profile: str | None = None
     diff_hash: str | None = None
     score: float | None = None
+    change_head_sha: str | None = None
+    checkout_sha: str | None = None
 
     def to_dict(self) -> dict:
         payload = {
@@ -58,6 +60,10 @@ class QualityReport:
             payload["diff_hash"] = self.diff_hash
         if self.score is not None:
             payload["score"] = self.score
+        if self.change_head_sha is not None:
+            payload["change_head_sha"] = self.change_head_sha
+        if self.checkout_sha is not None:
+            payload["checkout_sha"] = self.checkout_sha
         return payload
 
 
@@ -140,6 +146,8 @@ def evaluate_report(
     score: float | None = None,
     profile: str | None = None,
     diff_hash: str | None = None,
+    change_head_sha: str | None = None,
+    checkout_sha: str | None = None,
 ) -> QualityReport:
     results = [evaluate_metric(metric) for metric in metrics]
     required_failed = any(item.required and item.status == "FAIL" for item in results)
@@ -158,6 +166,8 @@ def evaluate_report(
         profile=profile,
         diff_hash=diff_hash,
         score=score,
+        change_head_sha=change_head_sha,
+        checkout_sha=checkout_sha,
     )
 
 

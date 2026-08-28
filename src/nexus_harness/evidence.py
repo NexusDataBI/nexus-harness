@@ -22,6 +22,8 @@ class Evidence:
     limitation: str | None = None
     timestamp: str = field(default_factory=_utc_now)
     commit_independent: bool = False
+    change_head_sha: str | None = None
+    checkout_sha: str | None = None
 
     def is_fresh(self, current_diff_hash: str) -> bool:
         return self.diff_hash == current_diff_hash

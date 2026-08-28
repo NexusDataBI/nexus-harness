@@ -31,6 +31,8 @@ class SecurityReport:
     findings: list = field(default_factory=list)
     scanner: str = "trivy"
     diff_hash: str | None = None
+    change_head_sha: str | None = None
+    checkout_sha: str | None = None
 
     def to_dict(self) -> dict:
         payload = {
@@ -44,6 +46,10 @@ class SecurityReport:
         }
         if self.diff_hash is not None:
             payload["diff_hash"] = self.diff_hash
+        if self.change_head_sha is not None:
+            payload["change_head_sha"] = self.change_head_sha
+        if self.checkout_sha is not None:
+            payload["checkout_sha"] = self.checkout_sha
         return payload
 
 
@@ -120,26 +126,46 @@ def _from_misconfiguration(item: dict, target: str) -> Finding:
     )
 
 
-def _fail_closed_report(*, diff_hash: str | None = None) -> SecurityReport:
+def _fail_closed_report(
+    *,
+    diff_hash: str | None = None,
+    change_head_sha: str | None = None,
+    checkout_sha: str | None = None,
+) -> SecurityReport:
     return SecurityReport(
         gate="FAIL",
         counts={name: 0 for name in _SEVERITY_COUNTS},
         findings=[],
         diff_hash=diff_hash,
+        change_head_sha=change_head_sha,
+        checkout_sha=checkout_sha,
     )
 
 
 def normalize_trivy(
-    payload, policy: dict | None = None, *, diff_hash: str | None = None
+    payload,
+    policy: dict | None = None,
+    *,
+    diff_hash: str | None = None,
+    change_head_sha: str | None = None,
+    checkout_sha: str | None = None,
 ) -> SecurityReport:
     policy = policy or load_security_policy()
     if not isinstance(payload, dict):
-        return _fail_closed_report(diff_hash=diff_hash)
+        return _fail_closed_report(
+            diff_hash=diff_hash,
+            change_head_sha=change_head_sha,
+            checkout_sha=checkout_sha,
+        )
     findings: list[Finding] = []
     malformed = False
     results = payload.get("Results") or []
     if not isinstance(results, list):
-        return _fail_closed_report(diff_hash=diff_hash)
+        return _fail_closed_report(
+            diff_hash=diff_hash,
+            change_head_sha=change_head_sha,
+            checkout_sha=checkout_sha,
+        )
     for result in results:
         if not isinstance(result, dict):
             malformed = True
@@ -177,4 +203,6 @@ def normalize_trivy(
         counts=counts,
         findings=findings,
         diff_hash=diff_hash,
+        change_head_sha=change_head_sha,
+        checkout_sha=checkout_sha,
     )
