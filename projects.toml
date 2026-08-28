@@ -9,3 +9,69 @@ name = "Marketing Hub"
 repository = "NexusDataBI/marketing-hub"
 client = "nexus"
 status = "active"
+
+[projects.elabore-web]
+name = "Elabore Web"
+repository = "NexusDataBI/elabore-web"
+client = "elabore"
+status = "active"
+
+[projects.elabore-api]
+name = "Elabore API"
+repository = "NexusDataBI/elabore-api"
+client = "elabore"
+status = "active"
+
+[projects.elabore-ia]
+name = "Elabore IA"
+repository = "NexusDataBI/elabore-ia"
+client = "elabore"
+status = "active"
+
+[projects.koinon]
+name = "Koinon"
+repository = "NexusDataBI/koinon"
+client = "nexus"
+status = "active"
+
+[projects.nexus-data-lp]
+name = "Nexus Data LP"
+repository = "NexusDataBI/nexus-data-lp"
+client = "nexus"
+status = "active"
+
+[projects.ghasper-bi-api]
+name = "Ghasper BI API"
+repository = "Rubens-Marques/ghasper-bi-api"
+client = "ghasper"
+status = "active"
+
+[projects.ai-process-agent]
+name = "AI Process Agent"
+repository = "Rubens-Marques/ai-process-agent"
+client = "nexus"
+status = "active"
+
+[projects.etl-data-pipeline]
+name = "ETL Data Pipeline"
+repository = "Rubens-Marques/etl-data-pipeline"
+client = "nexus"
+status = "active"
+
+[projects.n8n-flows-library]
+name = "n8n Flows Library"
+repository = "Rubens-Marques/n8n-flows-library"
+client = "nexus"
+status = "active"
+
+[projects.rpa-web-automator]
+name = "RPA Web Automator"
+repository = "Rubens-Marques/rpa-web-automator"
+client = "nexus"
+status = "active"
+
+[projects.rag-document-assistant]
+name = "RAG Document Assistant"
+repository = "Rubens-Marques/rag-document-assistant"
+client = "nexus"
+status = "active"
