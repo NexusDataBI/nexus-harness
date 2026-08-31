@@ -169,8 +169,9 @@ class ReleaseManifestTests(unittest.TestCase):
             self.assertEqual(first["schema"], RELEASE_SCHEMA)
             self.assertEqual(first["schema"], "nexus-harness-release/v1")
             self.assertEqual(first["version"], RELEASE_VERSION)
-            self.assertEqual(first["version"], "4.0.0-rc2")
+            self.assertEqual(first["version"], "4.0.0")
             self.assertEqual(first["channel"], RELEASE_CHANNEL)
+            self.assertEqual(first["channel"], "GA")
             self.assertEqual(first["commit"], "deadbeef")
             self.assertTrue(first["lock_identity"])
             files = first["files"]
@@ -240,7 +241,9 @@ class ReleaseAssemblyTests(unittest.TestCase):
             self.assertIn(str(len(manifest["files"])), identity)
             self.assertIn(manifest["commit"], identity)
             self.assertIn(manifest["lock_identity"], identity)
-            self.assertIn("LOCAL RELEASE CANDIDATE", install)
+            self.assertIn("GA (GA) — stable 4.0.0.", install)
+            self.assertNotIn("LOCAL RELEASE CANDIDATE", install)
+            self.assertNotIn("not stable", install)
             paths = {item["path"] for item in manifest["files"]}
             blob = "\n".join(sorted(paths))
             self.assertIn("nexus-harness-v4/core/constitution.md", paths)
