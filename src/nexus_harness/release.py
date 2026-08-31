@@ -24,8 +24,8 @@ from pathlib import Path
 from nexus_harness.compile import compile_harness
 
 RELEASE_SCHEMA = "nexus-harness-release/v1"
-RELEASE_VERSION = "4.0.0-rc2"
-RELEASE_CHANNEL = "LOCAL_RELEASE_CANDIDATE"
+RELEASE_VERSION = "4.0.0"
+RELEASE_CHANNEL = "GA"
 BUNDLE_NAME = "nexus-harness-v4"
 ARCHIVE_NAME = "nexus-harness-v4.tar.gz"
 HEX_HASH = re.compile(r"^[0-9a-f]{40}$|^[0-9a-f]{64}$")
@@ -590,7 +590,7 @@ def _assemble(root: Path, bundle: Path) -> None:
 def _install_text(commit: str, lock_identity: str) -> str:
     return (
         f"# Nexus Harness {RELEASE_VERSION}\n\n"
-        f"LOCAL RELEASE CANDIDATE ({RELEASE_CHANNEL}) — not stable 4.0.0.\n\n"
+        f"GA ({RELEASE_CHANNEL}) — stable 4.0.0.\n\n"
         f"- schema: `{RELEASE_SCHEMA}`\n"
         f"- source commit: `{commit}`\n"
         f"- lock identity: `{lock_identity}`\n\n"
