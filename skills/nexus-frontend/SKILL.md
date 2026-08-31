@@ -1,6 +1,6 @@
 ---
 name: nexus-frontend
-description: "Single frontend entry skill. Mode router: implement, redesign, audit, explain, visual-validate, design-system, polish. Routes specialists; does not replace them."
+description: "Single frontend entry skill. Mode router: implement, redesign, audit, explain, visual-validate, design-system, polish, code-to-figma. Routes specialists; does not replace them."
 ---
 
 # nexus-frontend
@@ -13,15 +13,16 @@ Authority order, load budget, and retained specialists: [references/router.md](r
 
 Choose **one** primary mode:
 
-| Mode              | Use when                                        | Routes                                                                     |
-| ----------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
-| `implement`       | Build or change UI in an existing visual world  | source of truth + stack policy + one surface specialist                    |
-| `redesign`        | Multi-surface or replacement visual world       | discover → audit → authority → implement → visual-validate                 |
-| `audit`           | Focused interface critique                      | Impeccable critique / `visual-validation` / `accessibility` as appropriate |
-| `explain`         | Explain how an interface works                  | nexus-frontend `explain` mode                                              |
-| `visual-validate` | Material visual change needs vision-in-the-loop | `visual-validation`                                                        |
-| `design-system`   | Tokens, components, extraction, variants        | `design-system`, `brand`, `extract-design-system`, `variant`               |
-| `polish`          | Craft pass after direction exists               | Impeccable; `baseline-ui` / `better-*` as focused references               |
+| Mode              | Use when                                        | Routes                                                                                                        |
+| ----------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `implement`       | Build or change UI in an existing visual world  | source of truth + stack policy + one surface specialist                                                       |
+| `redesign`        | Multi-surface or replacement visual world       | discover → audit → authority → implement → visual-validate                                                    |
+| `audit`           | Focused interface critique                      | Impeccable critique / `visual-validation` / `accessibility` as appropriate                                    |
+| `explain`         | Explain how an interface works                  | nexus-frontend `explain` mode                                                                                 |
+| `visual-validate` | Material visual change needs vision-in-the-loop | `visual-validation`                                                                                           |
+| `design-system`   | Tokens, components, extraction, variants        | `design-system`, `brand`, `extract-design-system`, `variant`                                                  |
+| `polish`          | Craft pass after direction exists               | Impeccable; `baseline-ui` / `better-*` as focused references                                                  |
+| `code-to-figma`   | Codebase → manifests → library → views → QA     | Official Figma skills + `visual-validation`. Spec: [references/code-to-figma.md](references/code-to-figma.md) |
 
 ## Source of truth (precedence)
 
@@ -44,7 +45,8 @@ Load budget: 1 source of truth + 1 surface specialist + 0–1 technical speciali
 - **data-dense:** `ui-craft-dense-dashboard`. Deny Taste.
 - **motion:** `design-motion-principles` owns decisions; `fixing-motion-performance` and `accessibility` afterward when quality requires it. Do not copy motion recipes here.
 - **React/Next:** `vercel-react-best-practices`, `vercel-composition-patterns`. Vercel skills are engineering guidance, never a hosting target. `feature-sliced-design` only for large architecture — not landings or small apps.
-- **Figma:** source of truth when explicitly provided.
+- **Figma (design-to-code):** provided file is source of truth when the user named it (`figma-design-to-code`).
+- **Figma (code-to-figma):** codebase is structural source of truth; Figma is the editable visual model. Orchestrate only — see [references/code-to-figma.md](references/code-to-figma.md).
 - **reference site:** `extract-design-system` is evidence, never the project DS.
 
 Taste and Dense Dashboard are mutually exclusive by surface.
