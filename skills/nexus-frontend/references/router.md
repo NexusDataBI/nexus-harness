@@ -47,7 +47,8 @@ Optional a11y recipes live under `skills/accessibility/references/`. Do not inve
 - **data-dense:** `ui-craft-dense-dashboard`. Deny Taste-class specialists.
 - **motion:** `design-motion-principles` owns decisions; `accessibility` afterward when quality requires it.
 - **React/Next:** `vercel-react-best-practices`, `vercel-composition-patterns`. `feature-sliced-design` only for large architecture.
-- **Figma:** the provided file is source of truth when the user named it.
+- **Figma (design-to-code):** the provided file is source of truth when the user named it.
+- **Figma (code-to-figma):** orchestrate via [code-to-figma.md](code-to-figma.md). Official Figma skills execute canvas work.
 - **validation:** `visual-validation` plus `accessibility` when the defect is a11y-bearing.
 
 ## Search / explore
