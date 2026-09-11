@@ -1,65 +1,105 @@
 # Frontend router
 
-Authority, load budget, and specialist routing for `nexus-frontend`.
-Do not copy Motion Principles, Impeccable, or Vercel guidance into this file.
+Authority, phase budgets, and specialist routing for `nexus-frontend`.
 
 ## Authority order
 
-Higher wins. Do not invert this list for convenience.
+Higher wins:
 
 1. explicit user request
 2. project design system / brand
 3. explicit Figma or visual target
-4. surface specialist
-5. framework engineering guidance
-6. polish/generic guidance
+4. approved Design Read / surface contract
+5. surface specialist
+6. framework engineering guidance
+7. generic/search intelligence and polish
 
-Never silently override project brand or an explicit visual target.
-Search catalogs and generic design intelligence live at level 6 only.
-Their recommendations never outrank an explicit request, brand, or Figma target.
+Never silently override a higher authority. Search catalogs and generic design intelligence live at level 7 only.
 
-## Load budget
+## Two-axis classification
 
-Per phase: 1 source of truth + 1 surface specialist + 0–1 technical specialist + `visual-validation` at the end of material visual work.
+Classify both:
 
-Do not load multiple generic visual specialists without a concrete reason.
-Taste-class guidance and dense-dashboard guidance are mutually exclusive by surface.
+- **intent:** `persuade | operate | read | experience`
+- **surface:** `marketing | product | data-dense | motion | figma | architecture | validation`
 
-## Retained specialists
+Intent is the visitor/user outcome. Surface is the UI shape. The same product may have different intents on different routes.
 
-Route these by name. Do not duplicate their text into runtime roots.
+Examples:
 
-| Specialist                    | When                                              |
-| ----------------------------- | ------------------------------------------------- |
-| `design-motion-principles`    | Motion is a decision, not decoration              |
-| `visual-validation`           | Material visual change needs vision-in-the-loop   |
-| Impeccable                    | Critique, craft, or polish after direction exists |
-| `accessibility`               | Keyboard, name, focus, form, motion, or WCAG work |
-| `vercel-react-best-practices` | React/Next performance and implementation         |
-| `vercel-composition-patterns` | Component API and composition                     |
+| Surface | Intent | Why |
+| --- | --- | --- |
+| SaaS landing page | persuade | visitor decides/acts |
+| SaaS dashboard | operate | user completes work |
+| product docs | read | user understands |
+| portfolio gallery | experience | artifact is the experience |
 
-Vercel skills are engineering guidance, never a hosting target.
-Optional a11y recipes live under `skills/accessibility/references/`. Do not invent a second accessibility product.
+## Phase load budget
+
+Budget applies **per phase**:
+
+| Phase | Budget |
+| --- | --- |
+| discover/authority | 1 source of truth |
+| direction/intelligence | 1 owning visual specialist + optional advisory query |
+| implementation | 1 stack/engineering specialist |
+| harden/audit | 1 focused specialist per concrete risk |
+| validation | `visual-validation`; add accessibility only for a11y-bearing findings |
+| polish | 1 craft specialist after direction exists |
+
+Do not load multiple generic visual specialists without a concrete reason. Direction specialists are mutually exclusive owners for a pass.
+
+## Specialist roles
+
+| Specialist | Role | Authority |
+| --- | --- | --- |
+| `frontend-design` | distinctive direction for new/replacement visual worlds when host runtime exposes it | owns direction only when selected |
+| Impeccable | shape/new-work, critique, harden, polish | owns selected craft pass |
+| `ui-ux-pro-max` | searchable design/UX intelligence when available | advisory only |
+| `ui-craft-dense-dashboard` | dense operational/dashboard craft | owns data-dense surface craft |
+| `design-motion-principles` | motion decisions | owns motion |
+| `fixing-motion-performance` | diagnose motion performance | technical follow-up |
+| `accessibility` | keyboard/name/focus/forms/motion/WCAG-bearing work | owns a11y |
+| `vercel-react-best-practices` | React/Next performance/implementation | engineering only |
+| `vercel-composition-patterns` | component APIs/composition | engineering only |
+| `visual-validation` | rendered browser/device evidence | validation only |
+| official Figma skills | canvas/file operations | Figma execution only |
+
+Vercel guidance never implies Vercel hosting. Optional host specialists do not become hard dependencies.
+
+## Direction routing
+
+Use `frontend-design` or Impeccable as the direction owner when a new/replacement visual world needs stronger aesthetic authorship. Do not run both as competing directors in the same direction pass.
+
+Use `ui-ux-pro-max` only as a bounded query layer:
+
+1. ask for one semantic outcome or one design-system direction;
+2. keep one dominant intent and 2–5 useful terms;
+3. verify product/platform fit;
+4. retry once if off-topic;
+5. never persist or present unverified output as project truth.
+
+If it is unavailable, proceed using the Design Read and existing evidence.
 
 ## Surface routing
 
-- **marketing:** Impeccable plus `design-motion-principles` or a Vercel specialist when the work needs it. Deny dense-dashboard.
-- **data-dense:** `ui-craft-dense-dashboard`. Deny Taste-class specialists.
-- **motion:** `design-motion-principles` owns decisions; `accessibility` afterward when quality requires it.
-- **React/Next:** `vercel-react-best-practices`, `vercel-composition-patterns`. `feature-sliced-design` only for large architecture.
-- **Figma (design-to-code):** the provided file is source of truth when the user named it.
-- **Figma (code-to-figma):** orchestrate via [code-to-figma.md](code-to-figma.md). Official Figma skills execute canvas work.
-- **validation:** `visual-validation` plus `accessibility` when the defect is a11y-bearing.
+- **marketing / persuade:** direction specialist first; optional motion or React guidance later. Deny dense-dashboard defaults.
+- **product / operate:** incumbent design system first; Impeccable or project patterns for craft; stack specialist for implementation.
+- **data-dense / operate:** `ui-craft-dense-dashboard`; prioritize scanability, hierarchy, comparison, and compact states.
+- **read:** typography, structure, navigation, and comprehension outrank novelty.
+- **experience:** artifact/subject leads; chrome recedes; motion only when it supports the experience.
+- **motion:** `design-motion-principles`; accessibility/performance follow as needed.
+- **figma design-to-code:** provided Figma file is visual truth.
+- **figma code-to-figma:** follow `code-to-figma.md`.
+- **validation:** `visual-validation`, plus `accessibility` only when the finding is a11y-bearing.
+- **architecture:** framework/component architecture guidance must not silently redesign the surface.
 
-## Search / explore
+## Preserve vs replace
 
-When polish/generic guidance is used, keep one dominant intent and 2–5 terms.
-Ask for the semantic outcome first, then the implementation stack.
-Retry once; do not persist unverified catalog output.
-Do not invoke the `ui-ux-pro-max` entrypoint or copy its datasets.
+- `implement` and narrow `polish` preserve the incumbent visual identity unless scope explicitly says otherwise.
+- `redesign` may replace the visual world, but keeps product truth, content constraints, flows, and native/platform affordances.
+- Missing a design-system file is not evidence that the project is greenfield. Inspect incumbent tokens, CSS, components, screenshots, and assets.
 
-## Stack recipes
+## Stack policy
 
-Honor the project's existing TypeScript / Tailwind / shadcn / Expo stack.
-Do not impose shadcn, and do not run `shadcn init`, unless the repo already uses it or the user asks.
-Do not copy the `ui-styling` encyclopedia or its scripts into this tree.
+Detect the stack from the repository. Honor existing TypeScript/Tailwind/shadcn/Expo conventions. Do not run `shadcn init` or introduce a design framework unless the repository already uses it or the user explicitly requests it.
