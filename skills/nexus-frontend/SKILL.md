@@ -1,92 +1,119 @@
 ---
 name: nexus-frontend
-description: "Single frontend entry skill. Mode router: implement, redesign, audit, explain, visual-validate, design-system, polish, code-to-figma. Routes specialists; does not replace them."
+description: Use when frontend work changes, redesigns, audits, validates, explains, or extracts a user-facing interface, design system, visual target, or code-to-Figma flow.
 ---
 
 # nexus-frontend
 
-Single frontend entrypoint. Routes to locked upstream specialists. Does not copy Motion Principles, Vercel React guidance, or Impeccable into this file.
+Single frontend entrypoint and authority router. It chooses the visual contract and smallest specialist set; specialist playbooks stay in their own skills.
 
-Authority order, load budget, and retained specialists: [references/router.md](references/router.md).
+Read routing details in [references/router.md](references/router.md).
 
 ## Modes
 
 Choose **one** primary mode:
 
-| Mode              | Use when                                        | Routes                                                                                                        |
-| ----------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `implement`       | Build or change UI in an existing visual world  | source of truth + stack policy + one surface specialist                                                       |
-| `redesign`        | Multi-surface or replacement visual world       | discover → audit → authority → implement → visual-validate                                                    |
-| `audit`           | Focused interface critique                      | Impeccable critique / `visual-validation` / `accessibility` as appropriate                                    |
-| `explain`         | Explain how an interface works                  | nexus-frontend `explain` mode                                                                                 |
-| `visual-validate` | Material visual change needs vision-in-the-loop | `visual-validation`                                                                                           |
-| `design-system`   | Tokens, components, extraction, variants        | `design-system`, `brand`, `extract-design-system`, `variant`                                                  |
-| `polish`          | Craft pass after direction exists               | Impeccable; `baseline-ui` / `better-*` as focused references                                                  |
-| `code-to-figma`   | Codebase → manifests → library → views → QA     | Official Figma skills + `visual-validation`. Spec: [references/code-to-figma.md](references/code-to-figma.md) |
+| Mode | Use when |
+| --- | --- |
+| `implement` | Change UI inside an existing visual world |
+| `redesign` | Replace/materially reshape a visual world |
+| `audit` | Critique without redesigning by default |
+| `explain` | Explain how an interface works |
+| `visual-validate` | Material visual work needs rendered evidence |
+| `design-system` | Tokens/components/variants/extraction |
+| `polish` | Direction exists; improve craft |
+| `code-to-figma` | Codebase → editable Figma model → QA |
 
-## Source of truth (precedence)
+## Authority
+
+Higher authority wins:
 
 1. explicit user request
 2. project design system / brand
 3. explicit Figma or visual target
-4. surface specialist
-5. framework engineering guidance
-6. polish/generic guidance
+4. approved Design Read / surface contract
+5. surface specialist
+6. framework engineering guidance
+7. generic/search intelligence and polish
 
-Never silently override project brand or an explicit visual target. Details in [references/router.md](references/router.md).
+A catalog or specialist never silently overrides project truth.
 
-## Surface class (implement / redesign)
+## Surface contract
 
-`marketing` | `product` | `data-dense` | `motion` | `figma` | `architecture` | `validation`
+For material frontend work classify both:
 
-Load budget: 1 source of truth + 1 surface specialist + 0–1 technical specialist + `visual-validation` at the end of material visual work. Do not load multiple generic visual specialists without a concrete reason.
+```text
+intent: persuade | operate | read | experience
+surface: marketing | product | data-dense | motion | figma | architecture | validation
+platform: detected/declared
+stack: detected from repository
+```
 
-- **marketing:** Impeccable critique/craft plus `design-motion-principles` or `vercel-react-best-practices` as appropriate. Anti-slop heuristic: declare a one-line Design Read before generating; do not default to AI-purple / three-card heroes / Inter+slate. Deny `ui-craft-dense-dashboard`.
-- **data-dense:** `ui-craft-dense-dashboard`. Deny Taste.
-- **motion:** `design-motion-principles` owns decisions; `fixing-motion-performance` and `accessibility` afterward when quality requires it. Do not copy motion recipes here.
-- **React/Next:** `vercel-react-best-practices`, `vercel-composition-patterns`. Vercel skills are engineering guidance, never a hosting target. `feature-sliced-design` only for large architecture — not landings or small apps.
-- **Figma (design-to-code):** provided file is source of truth when the user named it (`figma-design-to-code`).
-- **Figma (code-to-figma):** codebase is structural source of truth; Figma is the editable visual model. Orchestrate only — see [references/code-to-figma.md](references/code-to-figma.md).
-- **reference site:** `extract-design-system` is evidence, never the project DS.
+Intent describes user success; surface selects the specialist. Do not infer style from product category. See [references/surface-intent.md](references/surface-intent.md).
 
-Taste and Dense Dashboard are mutually exclusive by surface.
+## Design Read
 
-## Redesign phases (unique from frontend-redesign-orchestrator)
+A new surface, redesign, or material visual-direction change requires a compact Design Read **before implementation**:
 
-1. **Discover** — classify preserve / refresh / rebuild; record what must not change (flows, URLs, field names, legal copy).
-2. **Audit** — smallest relevant set, not every specialist.
-3. **Select authority** — document primary vs advisory.
-4. **Implement** — this skill's policy + Vercel specialists by name.
-5. **Validate** — `visual-validation`; ≤ two automatic correction passes.
+```text
+subject · audience/context · primary_job · intent/surface
+authority · visual_pov · memorable_move
+variance/motion/density (1–10) · preserve · avoid
+```
+
+A narrow bugfix/refinement preserves the incumbent visual world and does not invent a new direction.
+
+The read must pass one check: if the same direction fits an unrelated product after changing only the name/copy, revise it.
+
+See [references/design-read.md](references/design-read.md) and [references/design-direction.md](references/design-direction.md).
+
+## Phase-scoped specialists
+
+Specialists participate by phase, not as a committee:
+
+```text
+discover/authority
+→ direction/intelligence
+→ implementation
+→ harden/audit
+→ visual validation
+→ optional polish
+```
+
+Per phase: 1 source of truth + 1 owning specialist + 0–1 technical specialist.
+
+- `frontend-design` may own distinctive direction for a new/replacement world when the host exposes it.
+- Impeccable may own shape/new-work, critique, harden, or polish; do not make it compete with another direction owner in the same pass.
+- `ui-ux-pro-max` may provide bounded search/intelligence when available; it is **advisory only**.
+- `ui-craft-dense-dashboard` owns dense operational craft.
+- `design-motion-principles` owns motion decisions.
+- `vercel-react-best-practices` / `vercel-composition-patterns` are implementation guidance, never visual authority or hosting requirements.
+- `accessibility` owns a11y-bearing work.
+- `visual-validation` owns rendered QA.
+
+Optional host specialists are never hard dependencies. If unavailable, continue from project authority + Design Read.
 
 ## Implementation policy
 
-- Inspect the existing stack before changing dependencies.
-- Reuse project components/tokens before creating new ones.
-- Honor the project's TypeScript / Tailwind / shadcn / Expo choices; do not impose shadcn on a repo that does not use it.
-- Real loading, empty, error, and disabled states when the flow needs them.
-- User-facing copy follows the project language.
-- Do not redesign during a narrow bugfix.
-- Retired local skills must not be invoked: `ux-audit`, `ux-writing`, `frontend-architecture-review`, `design-system-engineer`, `saas-product-review`.
+Inspect the stack first; reuse project components/tokens; do not impose shadcn or redesign during a narrow bugfix. Preserve product truth, flows, URLs, field names, legal/factual copy unless scope changes them. Implement real loading, empty, error, disabled, focus, and success states when relevant.
 
-## Visual-in-the-loop (material visual changes)
+Refinement preserves identity. Redesign may replace visual identity only after direction approval.
+
+## Anti-slop
+
+**Never replace one default aesthetic with another default aesthetic.**
+
+Every material visual decision needs a reason tied to subject, audience, and primary job. “Modern,” “clean,” or “premium” alone is not a design rationale. Prefer one memorable move with disciplined supporting UI.
+
+## Visual completion
+
+Material visual changes require current browser/device evidence:
 
 ```text
-start/reuse localhost → baseline screenshot when relevant → implement
-→ interaction → desktop/mobile screenshots → console/network
-→ visual reviewer → fix → screenshot again
+baseline when relevant → implement → exercise states/interactions
+→ representative screenshots → console/network
+→ visual reviewer → batch fixes → confirmation
 ```
 
-Visual evidence is stale after relevant UI changes. A compile is not completion.
+Relevant UI changes stale prior visual evidence. A compile is not visual completion. Motion remains governed by [references/motion-policy.md](references/motion-policy.md), including reduced-motion requirements.
 
-## Motion policy (Nexus, not a copy of Motion Principles)
-
-Animate only when motion improves comprehension. Skeletons only when content shape is predictable. Respect `prefers-reduced-motion`. Avoid decorative hover-scale/stagger. Review loading, empty, error, and transition states. Nexus contract: [references/motion-policy.md](references/motion-policy.md). Source of truth is the locked `upstream/design-motion-principles` recorded in `upstream/vendor-lock.json`. Do not copy that skill into runtime roots.
-
-## Accessibility
-
-Route `accessibility` for a11y-bearing work. Do not duplicate that skill here. Optional recipes: `skills/accessibility/references/`.
-
-## Frontend heuristic slice
-
-`ui-styling` stack-honor policy lives in Implementation policy and [references/router.md](references/router.md); the encyclopedia stays in the export. `ui-ux-pro-max` search/explore rules live in the router; catalogs stay in the export. See `docs/migration/unique-heuristics.md`.
